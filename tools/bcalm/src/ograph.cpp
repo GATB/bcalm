@@ -2,14 +2,16 @@
 #include <algorithm>
 #include <cassert>
 #include <cmath>
-#include <sparsehash/sparse_hash_map>
 
 /*
  * constructs the compressed dBG from a list of arbitrary sequences
  */
 
 using namespace std;
-using namespace google; 
+
+#ifdef SPARSE_HASH
+    using namespace google;
+#endif /* SPARSE_HASH */
 
 static inline int nt2num(char c){
     // 'a' -> 0, 'c' -> 1; 'g' -> 2, 't' -> 3

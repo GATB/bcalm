@@ -106,6 +106,9 @@ void bcalm_1::execute (){
 		Graph graph = Graph::create ("-in %s -kmer-size %d  -bloom none -out solidKmers.h5  -abundance %d -verbose 1", inputFile.c_str(), kmerSize,abundance);
 	}
 	
+	/** We set BankBinary buffer. */
+	BankBinary::setBufferSize (1000);
+
 	vector<BankBinary*> superBuckets(numBucket);
 	auto start=chrono::system_clock::now();
 	size_t maxBucket(0);

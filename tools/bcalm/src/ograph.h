@@ -7,13 +7,21 @@
 #include <array>
 #include <string>
 #include <cstdlib>
-#include <unordered_map>
-#include <unordered_set>
-#include <sparsehash/sparse_hash_map>
-#include <sparsehash/dense_hash_map>
-#include <sparsehash/dense_hash_set>
 
-using namespace google; 
+#ifdef SPARSE_HASH
+    #include <sparsehash/sparse_hash_map>
+    #include <sparsehash/dense_hash_map>
+    #include <sparsehash/dense_hash_set>
+
+    #define unordered_map sparse_hash_map
+    #define unordered_map dense_hash_map
+    #define unordered_set dense_hash_set
+#else
+    #include <unordered_map>
+    #include <unordered_set>
+
+#endif /* SPARSE_HASH */
+
 using namespace std;
 
 void create_hash_function_from_m_mers(int m);
@@ -22,9 +30,6 @@ void init_m_mers_table(int m);
 
 typedef unordered_map<string,int> HashMap;
 
-//~ #define unordered_map sparse_hash_map
-#define unordered_map dense_hash_map
-//~ #define unordered_set dense_hash_set
 
 HashMap build_hash_map(int len);
 
@@ -144,8 +149,8 @@ class graph2
 			k=ka;
 			minimizer=min;
 			//~ multiple.set_empty_key(-1);
-			left2unitig.set_empty_key(-1);
-			right2unitig.set_empty_key(-1);
+//			left2unitig.set_empty_key(-1);
+//			right2unitig.set_empty_key(-1);
 			unitigs.push_back("");
 			leftmins.push_back(-1);
 			rightmins.push_back(-1);
