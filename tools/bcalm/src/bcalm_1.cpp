@@ -28,9 +28,9 @@ using namespace std;
 bcalm_1::bcalm_1 ()  : Tool ("bcalm_1"){
     getParser()->push_front (new OptionOneParam ("-in", "input file",  true));
     getParser()->push_front (new OptionOneParam ("-out", "output file",  false,"out.fa"));
-    getParser()->push_front (new OptionOneParam ("-nks", "abundance threeshold",  false,"3"));
     getParser()->push_front (new OptionOneParam ("-k", "kmer size",  false,"31"));
     getParser()->push_front (new OptionOneParam ("-m", "minimizer size",  false,"8"));
+    getParser()->push_front (new OptionOneParam ("-abundance", "abundance threeshold",  false,"3"));
 }
 
 void buckerOrSuper(const string& tmp, size_t min, size_t minimizer,vector<BankBinary*>& superBuckets,vector<BankBinary*>& Buckets){
@@ -94,18 +94,19 @@ void bcalm_1::execute (){
 	string inputFile(getInput()->getStr("-in"));
 	BankFasta out (getInput()->getStr("-out"));
 	kmerSize=getInput()->getInt("-k");
-	size_t abundance=getInput()->getInt("-nks");
+	size_t abundance=getInput()->getInt("-abundance");
 	minSize=getInput()->getInt("-m");
 	
 	Model model(kmerSize, minSize);
 	Model modelK1(kmerSize-1, minSize);
 	numBucket = 1<<minSize;
-	
+
 	{
 		/**KMER COUNTING DO NOT REMOVE THOSE BRACKETS**/
-		Graph graph = Graph::create ("-in %s -kmer-size %d  -bloom none -out solidKmers.h5  -abundance %d -verbose 1", inputFile.c_str(), kmerSize,abundance);
+		Graph graph = Graph::create ("-in %s -kmer-size %d  -bloom none -out solidKmers.h5  -abundance-min %d -verbose 1", inputFile.c_str(), kmerSize,abundance);
 	}
-	
+
+
 	/** We set BankBinary buffer. */
 	BankBinary::setBufferSize (1000);
 
