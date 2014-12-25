@@ -5,14 +5,14 @@ cmake_minimum_required(VERSION 2.6)
 ################################################################################
 # Shortcuts
 ################################################################################
-SET (GATB_CORE_HOME  ${PROJECT_SOURCE_DIR}/thirdparty/gatb-core)
+SET (GATB_CORE_HOME  ${PROJECT_SOURCE_DIR}/gatb-core)
 
 ################################################################################
 # Define cmake modules directory
 ################################################################################
-FOREACH (path "cmake" "../../cmake")
-    IF (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/${path}")
-        SET (CMAKE_MODULE_PATH  "${CMAKE_MODULE_PATH}" "${CMAKE_CURRENT_SOURCE_DIR}/${path}")
+FOREACH (path "${CMAKE_CURRENT_SOURCE_DIR}/cmake" "${GATB_CORE_HOME}/gatb-core/cmake")
+    IF (EXISTS "${path}")
+        SET (CMAKE_MODULE_PATH  "${CMAKE_MODULE_PATH}" "${path}")
     ENDIF()
 ENDFOREACH(path)
 
