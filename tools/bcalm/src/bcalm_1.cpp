@@ -6,6 +6,9 @@
 #include <iomanip>
 #include <algorithm>
 #include <chrono>
+#ifndef OSX
+#include <sys/sysinfo.h> // to determine system memory
+#endif
 
 
 
@@ -21,6 +24,7 @@ using namespace std;
 	size_t kmerSize=31;
 	size_t minSize=8;
 	size_t numBucket=1<<minSize;
+	size_t threads=2;
 
 /********************************************************************************/
 
@@ -31,25 +35,29 @@ bcalm_1::bcalm_1 ()  : Tool ("bcalm_1"){
     getParser()->push_front (new OptionOneParam ("-k", "kmer size",  false,"31"));
     getParser()->push_front (new OptionOneParam ("-m", "minimizer size",  false,"8"));
     getParser()->push_front (new OptionOneParam ("-abundance", "abundance threeshold",  false,"3"));
+    getParser()->push_front (new OptionOneParam ("-threads", "number of threads",  false,"2")); // todo: set to max, as in dsk
+}
+
+
+// todo: write in binary instead of ascii
+void insertInto(vector<BankBinary*>& dests, bool isSuperBucket, size_t minimizer, string seq)
+{
+	Sequence buffer (Data::ASCII);
+	buffer.getData().setRef ((char*)seq.c_str(), seq.size());
+	if(dests[minimizer]==NULL){
+		BankBinary* bb= new BankBinary((isSuperBucket?"SB":"B")+to_string(minimizer));
+		dests[minimizer]=bb;
+	}
+	dests[minimizer]->insert(buffer);
 }
 
 void buckerOrSuper(const string& tmp, size_t min, size_t minimizer,vector<BankBinary*>& superBuckets,vector<BankBinary*>& Buckets){
-	Sequence seq (Data::ASCII);
-	seq.getData().setRef ((char*)tmp.c_str(), tmp.size());
 	size_t prefix(minimizer/numBucket);
 	size_t Lprefix(min/numBucket);
 	if(Lprefix>prefix){
-		if(superBuckets[Lprefix]==NULL){
-			BankBinary* bb= new BankBinary("SB"+to_string(Lprefix));
-			superBuckets[Lprefix]=bb;
-		}
-		superBuckets[Lprefix]->insert(seq);
+		insertInto(superBuckets, true, Lprefix, tmp);
 	}else{
-		if(Buckets[min%numBucket]==NULL){
-			BankBinary* bb= new BankBinary("B"+to_string(min%numBucket));
-			Buckets[min%numBucket]=bb;
-		}
-		Buckets[min%numBucket]->insert(seq);
+		insertInto(Buckets, false, min%numBucket, tmp);
 	}
 }
 
@@ -96,15 +104,32 @@ void bcalm_1::execute (){
 	kmerSize=getInput()->getInt("-k");
 	size_t abundance=getInput()->getInt("-abundance");
 	minSize=getInput()->getInt("-m");
+	threads = getInput()->getInt("-threads");
 	
 	Model model(kmerSize, minSize);
 	Model modelK1(kmerSize-1, minSize);
 	numBucket = 1<<minSize;
 
+	/** check if it's a tiny memory machine, e.g. ec2 micro, if so, limit memory during kmer counting (default is 1G) */
+#ifndef OSX
+	struct sysinfo info;
+	sysinfo(&info);
+	int total_ram = (int)(((double)info.totalram*(double)info.mem_unit)/1024/1024);
+	printf("Total RAM: %d MB\n",total_ram);
+#else
+	int total_ram = 128*1024;
+#endif
+	const char * memory_limit = (total_ram < 1500 ? "-max-memory 500" : "");
+
+	/** kmer counting **/
+	auto start_kc=chrono::system_clock::now();
 	{
-		/**KMER COUNTING DO NOT REMOVE THOSE BRACKETS**/
-		Graph graph = Graph::create ("-in %s -kmer-size %d  -bloom none -out solidKmers.h5  -abundance-min %d -verbose 1", inputFile.c_str(), kmerSize,abundance);
+		/**DO NOT REMOVE THOSE BRACKETS**/
+		Graph graph = Graph::create ("-in %s -kmer-size %d  -bloom none -out solidKmers.h5  -abundance-min %d -verbose 1 %s", inputFile.c_str(), kmerSize, abundance, memory_limit);
 	}
+	auto end_kc=chrono::system_clock::now();
+	auto waitedFor_kc=end_kc-start_kc;
+	cout<<"Kmer-counting wallclock: "<<chrono::duration_cast<chrono::seconds>(waitedFor_kc).count()<<" seconds"<<endl;
 
 
 	/** We set BankBinary buffer. */
@@ -112,7 +137,15 @@ void bcalm_1::execute (){
 
 	vector<BankBinary*> superBuckets(numBucket);
 	auto start=chrono::system_clock::now();
+	auto start_part=chrono::system_clock::now();
 	size_t maxBucket(0);
+	unsigned long nbKmers(0);
+	bool parallel = (threads > 1); 	
+
+	//parallel = true;
+	// forcing glue code even in single thread for now
+
+	/** partitioning into superbuckets **/
 	{
 		Storage* storage = StorageFactory(STORAGE_HDF5).load ("solidKmers.h5");
 		
@@ -123,29 +156,40 @@ void bcalm_1::execute (){
 		typedef Kmer<SPAN>::Count Count;
 		Partition<Count>& partition = dskGroup.getPartition<Count> ("solid", nbPartitions);
 		
-		
-		
 		/**PUT KMER IN SUPERBUCKET **/
-		//Here we read kmers, we want to read sequences TODO
+		//Here we read kmers, we want to read sequences TODO (R: todo what?
 		Iterator<Count>* it = partition.iterator();
 		LOCAL (it);
 		for (it->first(); !it->isDone(); it->next()){
+			nbKmers++;
 			Kmer<SPAN>::Type current = it->item().value;
 			int minimizer=model.getMinimizerValue(current);
+
 			minimizer/=numBucket;
+
+			insertInto(superBuckets, true, minimizer, model.toString (current));
 			
-			Sequence seq (Data::ASCII);
-			string tmp = model.toString (current);
-			
-			seq.getData().setRef ((char*)tmp.c_str(), model.getKmerSize());
-			
-			if(superBuckets[minimizer]==NULL){
-				BankBinary* bb= new BankBinary("SB"+to_string(minimizer));
-				superBuckets[minimizer]=bb;
+			/** in the parallel version, if the minimizers of the left and right (k-1)-mers
+         			are different, then we write to both buckets */
+			if (parallel)
+			{
+ 				Data data (Data::BINARY);
+				data.set ((char*) &current, kmerSize);
+				size_t leftMin(modelK1.getMinimizerValue(modelK1.getKmer(data,0).value()));
+				size_t rightMin(modelK1.getMinimizerValue(modelK1.getKmer(data,1).value()));
+				if (leftMin != rightMin)
+				{
+					size_t max_minimizer = std::max(leftMin, rightMin);
+					max_minimizer /= numBucket;
+
+					insertInto(superBuckets, true, max_minimizer, model.toString (current));
+				}
 			}
-			superBuckets[minimizer]->insert(seq);
 		}
 	}
+    auto end_part=chrono::system_clock::now();
+    auto waitedFor_part=end_part-start_part;
+    cout<<"Partitioned " << nbKmers << " solid kmers into " << numBucket << " major buckets in wall-clock "<<chrono::duration_cast<chrono::seconds>(waitedFor_part).count()<<" seconds"<<endl;
     
     
     /**FOREACH SUPERBUCKET **/
@@ -168,35 +212,18 @@ void bcalm_1::execute (){
 						tmp.push_back(tableASCII[(b>>2)&3]);
 						tmp.push_back(tableASCII[(b>>0)&3]);
 					}
-					Sequence seq (Data::ASCII);
-					seq.getData().setRef ((char*)tmp.c_str(),itBinary->getDataSize());
+					tmp.resize(itBinary->getDataSize());
 					if(leftMin<=rightMin){
 						if((leftMin/numBucket)==i){
-							if(Buckets[leftMin%numBucket]==NULL){
-								BankBinary* bb= new BankBinary("B"+to_string(leftMin%numBucket));
-								Buckets[leftMin%numBucket]=bb;
-							}
-							Buckets[leftMin%numBucket]->insert(seq);
+							insertInto(Buckets, false, leftMin%numBucket, tmp);
 						}else{
-							if(Buckets[rightMin%numBucket]==NULL){
-								BankBinary* bb= new BankBinary("B"+to_string(rightMin%numBucket));
-								Buckets[rightMin%numBucket]=bb;
-							}
-							Buckets[rightMin%numBucket]->insert(seq);
+							insertInto(Buckets, false, rightMin%numBucket, tmp);
 						}
 					}else{
 						if((rightMin/numBucket)==i){
-							if(Buckets[rightMin%numBucket]==NULL){
-								BankBinary* bb= new BankBinary("B"+to_string(rightMin%numBucket));
-								Buckets[rightMin%numBucket]=bb;
-							}
-							Buckets[rightMin%numBucket]->insert(seq);
+							insertInto(Buckets, false, rightMin%numBucket, tmp);
 						}else{
-							if(Buckets[leftMin%numBucket]==NULL){
-								BankBinary* bb= new BankBinary("B"+to_string(leftMin%numBucket));
-								Buckets[leftMin%numBucket]=bb;
-							}
-							Buckets[leftMin%numBucket]->insert(seq);
+							insertInto(Buckets, false, leftMin%numBucket, tmp);
 						}
 					}
 				}
@@ -264,7 +291,7 @@ void bcalm_1::execute (){
 	
 	auto end=chrono::system_clock::now();
 	auto waitedFor=end-start;
-	cout<<"Last for "<<chrono::duration_cast<chrono::seconds>(waitedFor).count()<<" seconds"<<endl;
+	cout<<"BCALM wallclock: "<<chrono::duration_cast<chrono::seconds>(waitedFor).count()<<" seconds"<<endl;
 	cout<<"Max bucket : "<<maxBucket<<endl;
 }
 
