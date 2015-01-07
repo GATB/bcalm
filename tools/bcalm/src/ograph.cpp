@@ -785,47 +785,49 @@ unsigned char neighbour::removetype(unsigned char c){
 	return 0;
 }
 
-
 string compaction2(const string& seq1,const string& seq2, int k){
-	int s1(seq1.size()),s2(seq2.size());
-	string rc2(reversecompletment(seq2));
-	string rc1(reversecompletment(seq1));
-	
-	
-	if(seq1.substr(0,k)==seq2.substr(s2-k,k)){
-		return seq2+seq1.substr(k);
-	}else{
-		if(rc2.substr(s2-k,k)==seq1.substr(0,k)){
-			return rc2+seq1.substr(k);
-		}
-	}
-	
-	if(seq2.substr(0,k)==seq1.substr(s1-k,k)){
-		return seq1+seq2.substr(k);
-	}else{
-		if(rc1.substr(s1-k,k)==seq2.substr(0,k)){
-			return rc1+seq2.substr(k);
-		}
-	}
-	
-	if(rc1.substr(0,k)==seq2.substr(s2-k,k)){
-			return seq2+rc1.substr(k);
-	}else{
-		if(rc2.substr(s2-k,k)==rc1.substr(0,k)){
-			return rc2+rc1.substr(k);
-		}
-	}
-	
-	if(rc2.substr(0,k)==seq1.substr(s1-k,k)){
-		return seq1+rc2.substr(k);
-	}else{
-		if(rc1.substr(s1-k,k)==rc2.substr(0,k)){
-			return rc1+rc2.substr(k);
-		}
-	}
+    size_t s1(seq1.size()),s2(seq2.size());
+    if(s1==0){return seq2;}
+    if(s2==0){return seq1;}
 
-	return seq1;
+    string rc2(reversecompletment(seq2));
+    string rc1(reversecompletment(seq1));
+   
+   
+    if(seq1.substr(0,k)==seq2.substr(s2-k,k)){
+        return seq2+seq1.substr(k);
+    }else{
+        if(rc2.substr(s2-k,k)==seq1.substr(0,k)){
+            return rc2+seq1.substr(k);
+        }
+    }
+   
+    if(seq2.substr(0,k)==seq1.substr(s1-k,k)){
+        return seq1+seq2.substr(k);
+    }else{
+        if(rc1.substr(s1-k,k)==seq2.substr(0,k)){
+            return rc1+seq2.substr(k);
+        }
+    }
+   
+    if(rc1.substr(0,k)==seq2.substr(s2-k,k)){
+            return seq2+rc1.substr(k);
+    }else{
+        if(rc2.substr(s2-k,k)==rc1.substr(0,k)){
+            return rc2+rc1.substr(k);
+        }
+    }
+   
+    if(rc2.substr(0,k)==seq1.substr(s1-k,k)){
+        return seq1+rc2.substr(k);
+    }else{
+        if(rc1.substr(s1-k,k)==rc2.substr(0,k)){
+            return rc1+rc2.substr(k);
+        }
+    }
+    return seq1;
 }
+
 
 string compaction(const string& seq1,const string& seq2, int k){
 	int s1(seq1.size()),s2(seq2.size());
