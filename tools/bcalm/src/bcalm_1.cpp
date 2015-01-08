@@ -14,16 +14,22 @@
 #endif
 
 
-//#ifdef _OPENMP
-//   #include <omp.h>
-//   #define omp_diff_wtime_bcalm(x,y) (y - x) 
-//#else
+//#define CXX11THREADS // not yet ready
+#ifdef CXX11THREADS
+ #include <thread>
+ #include <tbb/concurrent_queue.h>
+#endif
+
+#ifdef _OPENMP
+   #include <omp.h>
+   #define omp_diff_wtime_bcalm(x,y) (y - x) 
+#else
    #define omp_get_thread_num() 0
    #define omp_set_num_threads(x) 0
    #define omp_get_max_threads() 1
    #define omp_get_wtime() chrono::system_clock::now() 
    #define omp_diff_wtime_bcalm(x,y) chrono::duration_cast<chrono::nanoseconds>(y - x).count() 
-//#endif
+#endif
 
 
 using namespace std;
@@ -57,8 +63,6 @@ string add_commas(T num) {
 	}
 	return retval;
 }
-
-
 
 
     // timing-related variables
@@ -602,11 +606,16 @@ void bcalm_1::execute (){
 #endif
     const char * memory_limit = (total_ram < 1500 ? "-max-memory 500" : "");
 
+    bool is_kmercounted = inputFile.substr(inputFile.size()-2,2) == "h5";
+
     /** kmer counting **/
     auto start_kc=chrono::system_clock::now();
-    {
-        /**DO NOT REMOVE THOSE BRACKETS**/
-        Graph graph = Graph::create ("-in %s -kmer-size %d  -bloom none -out solidKmers.h5  -abundance-min %d -verbose 1 %s", inputFile.c_str(), kmerSize, abundance, memory_limit);
+    {   /**DO NOT REMOVE THOSE BRACKETS**/
+
+        if (!is_kmercounted)
+        {
+            Graph graph = Graph::create ("-in %s -kmer-size %d  -bloom none -out solidKmers.h5  -abundance-min %d -verbose 1 %s", inputFile.c_str(), kmerSize, abundance, memory_limit);
+        }
     }
     auto end_kc=chrono::system_clock::now();
     auto waitedFor_kc=end_kc-start_kc;
@@ -628,7 +637,7 @@ void bcalm_1::execute (){
 
     /** partitioning into superbuckets **/
     {
-        Storage* storage = StorageFactory(STORAGE_HDF5).load ("solidKmers.h5");
+        Storage* storage = StorageFactory(STORAGE_HDF5).load ( is_kmercounted ? inputFile.c_str() : "solidKmers.h5");
         
         LOCAL (storage);
         Group& dskGroup = storage->getGroup("dsk");
@@ -698,6 +707,7 @@ void bcalm_1::execute (){
             auto end_flush_t=omp_get_wtime();
 #pragma omp atomic
             global_wtime_flush_sb += omp_diff_wtime_bcalm(start_flush_t, end_flush_t);
+
             if(superBuckets[i]->getSize()>0){
                 auto start_createbucket_t=omp_get_wtime();
                 vector<BankBinary*> Buckets(numBucket);
@@ -747,90 +757,114 @@ void bcalm_1::execute (){
                             }
                         }
                     }
-                }
+                } // end for itBinary
+
                 auto end_createbucket_t=omp_get_wtime();
-#pragma omp atomic
+    #pragma omp atomic
                 global_wtime_create_buckets += omp_diff_wtime_bcalm(start_createbucket_t, end_createbucket_t);
 
                 auto start_foreach_bucket_t=omp_get_wtime();
 
+#ifdef CXX11THREADS
+                std::vector<std::thread> threads;
+#endif
+
                 /**FOREACH BUCKET **/
                 for(uint j(0);j<numBucket;++j){
                     if(Buckets[j]!=NULL){
-                        Buckets[j]->flush();
-                        if(Buckets[j]->getSize()>0){
-                            //~ graph1 g(kmerSize);
-                            
-                            /* add nodes to graph */
-                            auto start_nodes_t=omp_get_wtime();
-                            size_t actualMinimizer((i<<minSize)+j);
-                            graph2 g(kmerSize-1,actualMinimizer,minSize);
-                            BankBinary::Iterator itBinary (*Buckets[j]);
-                            for (itBinary.first(); !itBinary.isDone(); itBinary.next()){
-                                string tmp;
-                                size_t leftMin(modelK1.getMinimizerValue(modelK1.getKmer(itBinary->getData(),0).value()));
-                                size_t rightMin(modelK1.getMinimizerValue(modelK1.getKmer(itBinary->getData(),itBinary->getData().size()-modelK1.getKmerSize()).value()));
-                                for (size_t i=0; i< (itBinary->getDataSize()+3)/4; i++){
+
+#ifdef CXX11THREADS
+                        tbb::concurrent_queue<std::pair<string, size_t> > glue_queue;
+
+                        threads.push_back(
+                                std::thread([&Buckets, &glue_queue, &i, &j, &modelK1, &maxBucket, &superBuckets, &parallel, &out ]() {
+#endif 
+                                    Buckets[j]->flush();
+                                    if(Buckets[j]->getSize()>0){
+                                    //~ graph1 g(kmerSize);
+
+                                    /* add nodes to graph */
+                                    auto start_nodes_t=omp_get_wtime();
+                                    size_t actualMinimizer((i<<minSize)+j);
+                                    graph2 g(kmerSize-1,actualMinimizer,minSize);
+                                    BankBinary::Iterator itBinary (*Buckets[j]);
+                                    for (itBinary.first(); !itBinary.isDone(); itBinary.next()){
+                                    string tmp;
+                                    size_t leftMin(modelK1.getMinimizerValue(modelK1.getKmer(itBinary->getData(),0).value()));
+                                    size_t rightMin(modelK1.getMinimizerValue(modelK1.getKmer(itBinary->getData(),itBinary->getData().size()-modelK1.getKmerSize()).value()));
+                                    for (size_t i=0; i< (itBinary->getDataSize()+3)/4; i++){
                                     char b = (itBinary->getData()[i] & 0xFF) ;
                                     tmp.push_back(tableASCII[(b>>6)&3]);
                                     tmp.push_back(tableASCII[(b>>4)&3]);
                                     tmp.push_back(tableASCII[(b>>2)&3]);
                                     tmp.push_back(tableASCII[(b>>0)&3]);
-                                }
-                                tmp=tmp.substr(0,itBinary->getDataSize());
-                                
-                                g.addvertex(tmp);
-                                g.addleftmin(leftMin);
-                                g.addrightmin(rightMin);
-                            }
-                            auto end_nodes_t=omp_get_wtime();
+                                    }
+                                    tmp=tmp.substr(0,itBinary->getDataSize());
+
+                                    g.addvertex(tmp);
+                                    g.addleftmin(leftMin);
+                                    g.addrightmin(rightMin);
+                                    }
+                                    auto end_nodes_t=omp_get_wtime();
 #pragma omp atomic
-                            global_wtime_add_nodes += omp_diff_wtime_bcalm(start_nodes_t, end_nodes_t);
+                                    global_wtime_add_nodes += omp_diff_wtime_bcalm(start_nodes_t, end_nodes_t);
 
-                            /* compact graph*/
-                            auto start_dbg=omp_get_wtime();
-                            g.debruijn();
-                            //~ g.compressh(actualMinimizer);
-                            g.compress2();
-                            auto end_dbg=omp_get_wtime();
+                                    /* compact graph*/
+                                    auto start_dbg=omp_get_wtime();
+                                    g.debruijn();
+                                    //~ g.compressh(actualMinimizer);
+                                    g.compress2();
+                                    auto end_dbg=omp_get_wtime();
 #pragma omp atomic
-                            global_wtime_compactions += omp_diff_wtime_bcalm(start_dbg, end_dbg);
+                                    global_wtime_compactions += omp_diff_wtime_bcalm(start_dbg, end_dbg);
 
-                            /* distribute nodes (to other buckets, or output, or glue) */
-                            auto start_cdistribution_t=omp_get_wtime(); 
-                            for(uint32_t i(1);i<g.unitigs.size();++i){
-                                if(g.unitigs[i].size()!=0){
-                                    if (parallel)
-                                        put_into_glue(g.unitigs[i], actualMinimizer, out, glue, modelK1);
-                                    else /* write to another bucket or output */
-                                        goodplace(g.unitigs[i],actualMinimizer,out,superBuckets,Buckets,modelK1);
+                                    /* distribute nodes (to other buckets, or output, or glue) */
+                                    auto start_cdistribution_t=omp_get_wtime(); 
+                                    for(uint32_t i(1);i<g.unitigs.size();++i){
+                                        if(g.unitigs[i].size()!=0){
+                                            if (parallel)
+                                            {
+#ifdef CXX11THREADS
+                                                glue_queue.push(make_pair<string, size_t>((string)(g.unitigs[i]), (size_t)actualMinimizer));
+                                            #else
+                                                put_into_glue(g.unitigs[i], actualMinimizer, out, glue, modelK1);
+#endif
+                                            }
+                                            else /* write to another bucket or output */
+                                                goodplace(g.unitigs[i],actualMinimizer,out,superBuckets,Buckets,modelK1);
 
-                                }
-                            }
-                            auto end_cdistribution_t=omp_get_wtime();
+                                        }
+                                    }
+                                    auto end_cdistribution_t=omp_get_wtime();
 #pragma omp atomic
-                            global_wtime_cdistribution += omp_diff_wtime_bcalm(start_cdistribution_t, end_cdistribution_t);
+                                    global_wtime_cdistribution += omp_diff_wtime_bcalm(start_cdistribution_t, end_cdistribution_t);
 
-                            /* what was this code for? */ 
-                            //~ size_t node_index(0);
-                            //~ for(auto it(g.nodes.begin());it!=g.nodes.end();it++){
-                                //~ if(it->size()!=0)
-                                //~ {
+                                    /* what was this code for? */ 
+                                    //~ size_t node_index(0);
+                                    //~ for(auto it(g.nodes.begin());it!=g.nodes.end();it++){
+                                    //~ if(it->size()!=0)
+                                    //~ {
                                     //~ int leftmin = g.leftmins[node_index];
                                     //~ int rightmin = g.rightmins[node_index];
                                     //~ goodplace(*it,leftmin,rightmin,actualMinimizer,out,numBucket,superBuckets,Buckets);
-                                //~ }
-                                //~ node_index++;
-                            //~ }
-                            size_t size(g.size());
-                            if(size>maxBucket){
-                                maxBucket=size;
-                            }
-                            delete(Buckets[j]);
-                            remove(("B"+to_string(j)).c_str());
-                        }
-                    }
-                }
+                                    //~ }
+                                    //~ node_index++;
+                                    //~ }
+                                    size_t size(g.size());
+                                    if(size>maxBucket){
+                                        maxBucket=size;
+                                    }
+                                    delete(Buckets[j]);
+                                    remove(("B"+to_string(j)).c_str());
+                                    } // end if bucket non empty
+
+#ifdef CXX11THREADS
+                                })); // end thread
+#endif
+
+                    } // end if bucket non null
+                } // end for each bucket
+
                 delete(superBuckets[i]);
                 remove(("SB"+to_string(i)).c_str());
 
@@ -849,10 +883,10 @@ void bcalm_1::execute (){
 #pragma omp atomic
                     global_wtime_glue += omp_diff_wtime_bcalm(start_glue_t, end_glue_t);
  
-				}
-            }
-        }
-    }
+				} // end if parallel
+            } // end if superbucket non empty
+        } // end if superbucket non null
+    } // end foreach superbucket
 	
 	glue.printMemStats();
 
@@ -870,8 +904,8 @@ void bcalm_1::execute (){
     cout <<"     glueing "<< global_wtime_glue / unit <<" secs"<<endl;
     double sum = global_wtime_glue + global_wtime_cdistribution + global_wtime_compactions + global_wtime_add_nodes + global_wtime_flush_sb + global_wtime_create_buckets;
     cout<<"Sum of the above fine-grained timings: "<< sum / unit <<" secs"<<endl;
-    cout<<"BCALM total wallclock (incl kmer counting): "<<chrono::duration_cast<chrono::nanoseconds>(end_t-start_t).count() / unit <<" secs"<<endl;
     cout<<"Discrepancy between sum of fine-grained timings and total wallclock of buckets compactions step: "<< (chrono::duration_cast<chrono::nanoseconds>(end_t-start_buckets).count() - sum ) / unit <<" secs"<<endl;
+    cout<<"BCALM total wallclock (incl kmer counting): "<<chrono::duration_cast<chrono::nanoseconds>(end_t-start_t).count() / unit <<" secs"<<endl;
     cout<<"Max bucket : "<<maxBucket<<endl;
 
 
