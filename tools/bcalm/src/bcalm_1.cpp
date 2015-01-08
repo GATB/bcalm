@@ -1,5 +1,5 @@
 
-// FIXME: looks buggy on 1000nodechain-k16.fa (compare with bcalm-original, some nodes missing, an extra compaction on the big unitig -> maybe because k-1 is set during compaction with graph2??)
+// FIXME: looks buggy on 1000nodechain-k16.fa (compare with bcalm-original, some nodes missing, an extra compaction on the big unitig)
 #include <assert.h>
 #include <bcalm_1.hpp>
 #include <ograph.h>
@@ -13,6 +13,17 @@
 #include <sys/sysinfo.h> // to determine system memory
 #endif
 
+
+//#ifdef _OPENMP
+//   #include <omp.h>
+//   #define omp_diff_wtime_bcalm(x,y) (y - x) 
+//#else
+   #define omp_get_thread_num() 0
+   #define omp_set_num_threads(x) 0
+   #define omp_get_max_threads() 1
+   #define omp_get_wtime() chrono::system_clock::now() 
+   #define omp_diff_wtime_bcalm(x,y) chrono::duration_cast<chrono::nanoseconds>(y - x).count() 
+//#endif
 
 
 using namespace std;
@@ -29,6 +40,9 @@ using namespace std;
     size_t numBucket=1<<minSize;
     size_t threads=1;
 
+
+    // timing-related variables
+    double global_wtime_compactions = 0, global_wtime_cdistribution = 0, global_wtime_add_nodes = 0, global_wtime_create_buckets = 0, global_wtime_glue = 0, global_wtime_foreach_bucket = 0, global_wtime_flush_sb = 0, global_wtime_test = 0;
 /********************************************************************************/
 
 
@@ -458,14 +472,17 @@ void bcalm_1::execute (){
     }
     auto end_kc=chrono::system_clock::now();
     auto waitedFor_kc=end_kc-start_kc;
-    cout<<"Kmer-counting wallclock: "<<chrono::duration_cast<chrono::seconds>(waitedFor_kc).count()<<" seconds"<<endl;
+    double unit = 1000000000;
+    cout.setf(ios_base::fixed);
+    cout.precision(1);
+    cout<<"Kmer-counting wallclock: "<<chrono::duration_cast<chrono::nanoseconds>(waitedFor_kc).count() / unit <<" secs"<<endl;
 
 
     /** We set BankBinary buffer. */
     BankBinary::setBufferSize (1000);
 
     vector<BankBinary*> superBuckets(numBucket);
-    auto start=chrono::system_clock::now();
+    auto start_t=chrono::system_clock::now();
     auto start_part=chrono::system_clock::now();
     size_t maxBucket(0);
     unsigned long nbKmers(0);
@@ -528,18 +545,25 @@ void bcalm_1::execute (){
     }
     auto end_part=chrono::system_clock::now();
     auto waitedFor_part=end_part-start_part;
-    cout<<"Partitioned " << nbKmers << " solid kmers into " << numBucket << " major buckets in wall-clock "<<chrono::duration_cast<chrono::seconds>(waitedFor_part).count()<<" seconds"<<endl;
+    cout<<"Partitioned " << nbKmers << " solid kmers into " << numBucket << " major buckets in wall-clock "<<chrono::duration_cast<chrono::nanoseconds>(waitedFor_part).count() / unit <<" secs"<<endl;
     
     Glue glue(kmerSize, out);
+
+    auto start_buckets=chrono::system_clock::now();
 
     /**FOREACH SUPERBUCKET **/
     for(uint i(0);i<numBucket;++i){
         cout<<'-'<<flush;
         if(superBuckets[i]!=NULL){
+            auto start_flush_t=omp_get_wtime();
             superBuckets[i]->flush();
+            auto end_flush_t=omp_get_wtime();
+#pragma omp atomic
+            global_wtime_flush_sb += omp_diff_wtime_bcalm(start_flush_t, end_flush_t);
             if(superBuckets[i]->getSize()>0){
+                auto start_createbucket_t=omp_get_wtime();
                 vector<BankBinary*> Buckets(numBucket);
-            
+           
                 /* expand a superbucket into buckets */ 
                 BankBinary::Iterator itBinary (*superBuckets[i]);
                 for (itBinary.first(); !itBinary.isDone(); itBinary.next()){
@@ -586,15 +610,23 @@ void bcalm_1::execute (){
                         }
                     }
                 }
-                
+                auto end_createbucket_t=omp_get_wtime();
+#pragma omp atomic
+                global_wtime_create_buckets += omp_diff_wtime_bcalm(start_createbucket_t, end_createbucket_t);
+
+                auto start_foreach_bucket_t=omp_get_wtime();
+
                 /**FOREACH BUCKET **/
                 for(uint j(0);j<numBucket;++j){
                     if(Buckets[j]!=NULL){
                         Buckets[j]->flush();
                         if(Buckets[j]->getSize()>0){
+                            //~ graph1 g(kmerSize);
+                            
+                            /* add nodes to graph */
+                            auto start_nodes_t=omp_get_wtime();
                             size_t actualMinimizer((i<<minSize)+j);
                             graph2 g(kmerSize-1,actualMinimizer,minSize);
-                            //~ graph1 g(kmerSize);
                             BankBinary::Iterator itBinary (*Buckets[j]);
                             for (itBinary.first(); !itBinary.isDone(); itBinary.next()){
                                 string tmp;
@@ -613,10 +645,21 @@ void bcalm_1::execute (){
                                 g.addleftmin(leftMin);
                                 g.addrightmin(rightMin);
                             }
+                            auto end_nodes_t=omp_get_wtime();
+#pragma omp atomic
+                            global_wtime_add_nodes += omp_diff_wtime_bcalm(start_nodes_t, end_nodes_t);
+
+                            /* compact graph*/
+                            auto start_dbg=omp_get_wtime();
                             g.debruijn();
                             //~ g.compressh(actualMinimizer);
                             g.compress2();
-                            
+                            auto end_dbg=omp_get_wtime();
+#pragma omp atomic
+                            global_wtime_compactions += omp_diff_wtime_bcalm(start_dbg, end_dbg);
+
+                            /* distribute nodes (to other buckets, or output, or glue) */
+                            auto start_cdistribution_t=omp_get_wtime(); 
                             for(uint32_t i(1);i<g.unitigs.size();++i){
                                 if(g.unitigs[i].size()!=0){
                                     if (parallel)
@@ -626,7 +669,11 @@ void bcalm_1::execute (){
 
                                 }
                             }
-                            
+                            auto end_cdistribution_t=omp_get_wtime();
+#pragma omp atomic
+                            global_wtime_cdistribution += omp_diff_wtime_bcalm(start_cdistribution_t, end_cdistribution_t);
+
+                            /* what was this code for? */ 
                             //~ size_t node_index(0);
                             //~ for(auto it(g.nodes.begin());it!=g.nodes.end();it++){
                                 //~ if(it->size()!=0)
@@ -649,17 +696,43 @@ void bcalm_1::execute (){
                 delete(superBuckets[i]);
                 remove(("SB"+to_string(i)).c_str());
 
+                auto end_foreach_bucket_t=omp_get_wtime();
+        #pragma omp atomic
+                global_wtime_foreach_bucket += omp_diff_wtime_bcalm(start_foreach_bucket_t, end_foreach_bucket_t);
+
                 // do the gluing at the end of each superbucket
                 if (parallel)
+                {
+                    auto start_glue_t=omp_get_wtime();
                     glue.glue();
+
+                    auto end_glue_t=omp_get_wtime();
+#pragma omp atomic
+                    global_wtime_glue += omp_diff_wtime_bcalm(start_glue_t, end_glue_t);
+                }
             }
         }
     }
 
-    auto end=chrono::system_clock::now();
-    auto waitedFor=end-start;
-    cout<<"BCALM wallclock: "<<chrono::duration_cast<chrono::seconds>(waitedFor).count()<<" seconds"<<endl;
+    /* printing some timing stats */
+    auto end_t=chrono::system_clock::now();
+    cout<<"Buckets compaction and gluing: "<<chrono::duration_cast<chrono::nanoseconds>(end_t - start_buckets).count() / unit<<" secs"<<endl;
+    cout<<"Within that, \n";
+    cout <<"     creating buckets from superbuckets: "<< global_wtime_create_buckets / unit <<" secs"<<endl;
+    cout <<"     bucket compaction (except gluing): "<< global_wtime_foreach_bucket / unit <<" secs" <<endl;
+    cout <<"     within that, \n";
+    cout << "                 flushing superbuckets: "<< global_wtime_flush_sb / unit <<" secs" <<endl;
+    cout << "                 adding nodes to subgraphs: "<< global_wtime_add_nodes / unit <<" secs" <<endl;
+    cout <<"                  subgraphs constructions and compactions: "<< global_wtime_compactions / unit <<" secs"<<endl;
+    cout <<"                  compacted nodes redistribution: "<< global_wtime_cdistribution / unit <<" secs"<<endl;
+    cout <<"     glueing "<< global_wtime_glue / unit <<" secs"<<endl;
+    double sum = global_wtime_glue + global_wtime_cdistribution + global_wtime_compactions + global_wtime_add_nodes + global_wtime_flush_sb + global_wtime_create_buckets;
+    cout<<"Sum of the above fine-grained timings: "<< sum / unit <<" secs"<<endl;
+    cout<<"BCALM total wallclock (incl kmer counting): "<<chrono::duration_cast<chrono::nanoseconds>(end_t-start_t).count() / unit <<" secs"<<endl;
+    cout<<"Discrepancy between sum of fine-grained timings and total wallclock of buckets compactions step: "<< (chrono::duration_cast<chrono::nanoseconds>(end_t-start_buckets).count() - sum ) / unit <<" secs"<<endl;
     cout<<"Max bucket : "<<maxBucket<<endl;
+
+
 }
 
 
