@@ -28,17 +28,37 @@
 
 using namespace std;
 
- const size_t SPAN = KSIZE_2;
+const size_t SPAN = KSIZE_2;
 
-    /** Shortcuts. */
-    typedef Kmer<SPAN>::Type  Type;
-    typedef Kmer<SPAN>::Count Count;
-    typedef Kmer<SPAN>::ModelCanonical ModelCanon;
-    typedef Kmer<SPAN>::ModelMinimizer <ModelCanon> Model;
-    size_t kmerSize=31;
-    size_t minSize=8;
-    size_t numBucket=1<<minSize;
-    size_t threads=1;
+/** Shortcuts. */
+typedef Kmer<SPAN>::Type  Type;
+typedef Kmer<SPAN>::Count Count;
+typedef Kmer<SPAN>::ModelCanonical ModelCanon;
+typedef Kmer<SPAN>::ModelMinimizer <ModelCanon> Model;
+size_t kmerSize=31;
+size_t minSize=8;
+size_t numBucket=1<<minSize;
+size_t threads=1;
+
+
+
+template<typename T>
+string add_commas(T num) {
+	string s, retval;
+	ostringstream o;
+	o << num;
+	s = o.str();
+	for (int i = 0; i < s.length(); i++) {
+		retval.push_back(s.at(i));
+		int j = s.length() - 1 - i;
+		if (((j % 3) == 0) && (j != 0)) {
+			retval.push_back(',');
+		}
+	}
+	return retval;
+}
+
+
 
 
     // timing-related variables
@@ -47,88 +67,88 @@ using namespace std;
 
 
 bcalm_1::bcalm_1 ()  : Tool ("bcalm_1"){
-    getParser()->push_front (new OptionOneParam ("-in", "input file",  true));
-    getParser()->push_front (new OptionOneParam ("-out", "output file",  false,"out.fa"));
-    getParser()->push_front (new OptionOneParam ("-k", "kmer size",  false,"31"));
-    getParser()->push_front (new OptionOneParam ("-m", "minimizer size",  false,"8"));
-    getParser()->push_front (new OptionOneParam ("-abundance", "abundance threeshold",  false,"3"));
-    getParser()->push_front (new OptionOneParam ("-threads", "number of threads",  false,"2")); // todo: set to max, as in dsk
+	getParser()->push_front (new OptionOneParam ("-in", "input file",  true));
+	getParser()->push_front (new OptionOneParam ("-out", "output file",  false,"out.fa"));
+	getParser()->push_front (new OptionOneParam ("-k", "kmer size",  false,"31"));
+	getParser()->push_front (new OptionOneParam ("-m", "minimizer size",  false,"8"));
+	getParser()->push_front (new OptionOneParam ("-abundance", "abundance threeshold",  false,"3"));
+	getParser()->push_front (new OptionOneParam ("-threads", "number of threads",  false,"2")); // todo: set to max, as in dsk
 }
 
 
 // common to glue and non-glue
 void insertInto(vector<BankBinary*>& dests, bool isSuperBucket, size_t index, string seq)
 {
-    Sequence buffer (Data::ASCII);
-    buffer.getData().setRef ((char*)seq.c_str(), seq.size());
-    if(dests[index]==NULL){
-        BankBinary* bb= new BankBinary((isSuperBucket?"SB":"B")+to_string(index));
-        dests[index]=bb;
-    }
-    dests[index]->insert(buffer);
+	Sequence buffer (Data::ASCII);
+	buffer.getData().setRef ((char*)seq.c_str(), seq.size());
+	if(dests[index]==NULL){
+		BankBinary* bb= new BankBinary((isSuperBucket?"SB":"B")+to_string(index));
+		dests[index]=bb;
+	}
+	dests[index]->insert(buffer);
 }
 
 // non-glue
 void buckerOrSuper(const string& tmp, size_t min, size_t minimizer,vector<BankBinary*>& superBuckets,vector<BankBinary*>& Buckets){
-    size_t prefix(minimizer/numBucket);
-    size_t Lprefix(min/numBucket);
-    if(Lprefix>prefix){
-        insertInto(superBuckets, true, Lprefix, tmp);
-    }else{
-        insertInto(Buckets, false, min%numBucket, tmp);
-    }
+	size_t prefix(minimizer/numBucket);
+	size_t Lprefix(min/numBucket);
+	if(Lprefix>prefix){
+		insertInto(superBuckets, true, Lprefix, tmp);
+	}else{
+		insertInto(Buckets, false, min%numBucket, tmp);
+	}
 }
 
 
 // non-glue
 void goodplace(string& seq, size_t minimizer,BankFasta& out,vector<BankBinary*>& superBuckets,vector<BankBinary*>& Buckets,Model& modelK1){
-    Model::Kmer kmmerBegin=modelK1.codeSeed(seq.substr(0,kmerSize-1).c_str(),Data::ASCII);
-    size_t leftMin(modelK1.getMinimizerValue(kmmerBegin.value()));
-    Model::Kmer kmmerEnd=modelK1.codeSeed(seq.substr(seq.size()-kmerSize+1,kmerSize-1).c_str(),Data::ASCII);
-    size_t rightMin(modelK1.getMinimizerValue(kmmerEnd.value()));
-    
-    if(leftMin<=rightMin){
-        if(leftMin>minimizer){
-            buckerOrSuper(seq,leftMin,minimizer,superBuckets,Buckets);
-        }else{
-            if(rightMin>minimizer){
-                buckerOrSuper(seq,rightMin,minimizer,superBuckets,Buckets);
-            }else{ // leftmin <= minimizer and rightmin <= minimizer, means leftmin=rightmin=minimizer
-                Sequence s (Data::ASCII);
-                s.getData().setRef ((char*)seq.c_str(), seq.size());
-                out.insert(s);
-            }
-        }
-    }else{ // leftmin > rightmin
-        if(rightMin>minimizer){ // leftmin > rightmin > minimizer
-            buckerOrSuper(seq,rightMin,minimizer,superBuckets,Buckets);
-        }else{
-            if(leftMin>minimizer){ // leftmin > minimizer >= rightmin
-                buckerOrSuper(seq,leftMin,minimizer,superBuckets,Buckets);
-            } 
-            // else same as above, leftmin <= minimizer and rightmin <= minimizer
-        }
-    }
+	Model::Kmer kmmerBegin=modelK1.codeSeed(seq.substr(0,kmerSize-1).c_str(),Data::ASCII);
+	size_t leftMin(modelK1.getMinimizerValue(kmmerBegin.value()));
+	Model::Kmer kmmerEnd=modelK1.codeSeed(seq.substr(seq.size()-kmerSize+1,kmerSize-1).c_str(),Data::ASCII);
+	size_t rightMin(modelK1.getMinimizerValue(kmmerEnd.value()));
+
+	if(leftMin<=rightMin){
+		if(leftMin>minimizer){
+			buckerOrSuper(seq,leftMin,minimizer,superBuckets,Buckets);
+		}else{
+			if(rightMin>minimizer){
+				buckerOrSuper(seq,rightMin,minimizer,superBuckets,Buckets);
+			}else{ // leftmin <= minimizer and rightmin <= minimizer, means leftmin=rightmin=minimizer
+				Sequence s (Data::ASCII);
+				s.getData().setRef ((char*)seq.c_str(), seq.size());
+				out.insert(s);
+			}
+		}
+	}else{ // leftmin > rightmin
+		if(rightMin>minimizer){ // leftmin > rightmin > minimizer
+			buckerOrSuper(seq,rightMin,minimizer,superBuckets,Buckets);
+		}else{
+			if(leftMin>minimizer){ // leftmin > minimizer >= rightmin
+				buckerOrSuper(seq,leftMin,minimizer,superBuckets,Buckets);
+			} 
+			// else same as above, leftmin <= minimizer and rightmin <= minimizer
+		}
+	}
 }
 
 
 
 string reversecomplement(const string& dna) // code taken from TakeABreak
 {
-    string revComp= "";
+	string revComp= "";
 
-    for (string::const_reverse_iterator it = dna.rbegin(); it != dna.rend(); it++) {
-        switch(*it) {
-            case 'a' :                revComp += "t";                break;
-            case 't' :                revComp += "a";                break;
-            case 'c' :                revComp += "g";                break;
-            case 'g' :                revComp += "c";                break;
-            case 'A' :                revComp += "T";                break;
-            case 'T' :                revComp += "A";                break;
-            case 'C' :                revComp += "G";                break;
-            case 'G' :                revComp += "C";                break;
-        }
-    }
+	for (string::const_reverse_iterator it = dna.rbegin(); it != dna.rend(); it++) {
+		switch(*it) {
+			case 'a' :                revComp += "t";                break;
+			case 't' :                revComp += "a";                break;
+			case 'c' :                revComp += "g";                break;
+			case 'g' :                revComp += "c";                break;
+			case 'A' :                revComp += "T";                break;
+			case 'T' :                revComp += "A";                break;
+			case 'C' :                revComp += "G";                break;
+			case 'G' :                revComp += "C";                break;
+		}
+	}
     return revComp;
 }
 
@@ -158,6 +178,71 @@ string debug_highlight(string s, string motif)
 
 
 
+/*class to support two-bit encoding of entries in the glue table
+ * PM: NOT YET ACTIVE
+class SeqAndTags {
+	public:
+		const static int MAX_SIZE = 1000;
+		bool raw[MAX_SIZE];
+		int rawLen;
+
+		SeqAndTags(bool * _raw, int _rawLen) : rawLen(_rawLen) { 
+			for (int i = 0; i < rawLen; i++) {
+				raw[i] = _raw[i];
+			}
+		}
+
+		SeqAndTags(string seq, bool leftmark, bool rightmark) {
+			rawLen = seq.length() * 2 + 2;
+			for (int i = 0; i < seq.length(); i++) {
+				if ((seq[i] == 'A') || (seq[i] == 'C')) {
+					raw[2*i] = 0;
+				} else {
+					raw[2*i] = 1;
+				}
+				if ((seq[i] == 'A') || (seq[i] == 'G')) {
+					raw[2*i + 1] = 0;
+				} else {
+					raw[2*i + 1] = 1;
+				}
+			}
+			raw[seq.length() * 2] = leftmark;
+			raw[seq.length() * 2 + 1] = rightmark;
+		}
+
+
+		char bits2char (bool leftbit, bool rightbit) {
+			if (leftbit == 0 && rightbit == 0) return 'A';
+			else if (leftbit == 0 && rightbit == 1) return 'C';
+			else if (leftbit == 1 && rightbit == 0) return 'G';
+			else return 'T';
+		}
+
+
+		string getSeq() {
+			string retval;
+			for (int  i = 0; i < rawLen - 2; i += 2) {
+				retval.push_back(bits2char(raw[i], raw[i+1]));
+			}
+			return retval;
+		}
+
+		string getLeftKmer(int k) {
+			return getSeq().substr(0,k);
+		}
+		string getRightKmer(int k) {
+			string seq = getSeq();
+			return seq.substr(seq.length() - k, k);
+		}
+		bool getLeftMark() {
+			return raw[rawLen - 2];
+		}
+		bool getRightMark() {
+			return raw[rawLen - 1];
+		}
+};
+*/
+
 class Glue
 {
     // optimize it later.. (2 bits sequences)
@@ -168,7 +253,67 @@ class Glue
     {
     }
 
-    void now_really_addhash(string key, string value)
+	void now_really_addhash(string key, string value);
+	void aux_addhash(string seq, string kmer, bool leftmark, bool rightmark, bool left);
+	void insert(string seq, bool leftmark, bool rightmark);
+	string seq_only(string seq);
+	void remove(string seq);
+	void output(string seq);
+	void glue();
+
+
+	void resetMemStats() {
+		maxEntries = 0; totEntries = 0; numDataPoints = 0; maxSize = 0; totSize = 0;
+	}
+
+	void updateMemStats() {
+		maxEntries = std::max(maxEntries, glueStrings.size());
+		totEntries += glueStrings.size();
+
+		size_t size = 0;
+		for (auto it_gS = glueStrings.begin(); it_gS != glueStrings.end(); it_gS++)
+		{
+			size += sizeof(it_gS->first) + sizeof(it_gS->second.first) + sizeof(it_gS->second.second);
+		}
+
+		maxSize = std::max(maxSize, size);
+		totSize += size;
+
+		numDataPoints++;
+	}
+
+
+
+	void printMemStats() {
+		if (numDataPoints == 0) {
+			cout << "Glue: no data points to output memory stats.\n";
+		} else {
+			cout << "Glue memory stats: max entries: " << add_commas(maxEntries) << " avg entries: " << add_commas(totEntries/numDataPoints) << " max size: " << add_commas(maxSize) 
+				<< "b avg size: " << add_commas(totSize / numDataPoints) << "b\n";
+		}
+	}
+
+	private:
+
+	ModelCanon model;
+	typedef unordered_map<string, pair<string, string>> GlueMap; 
+	GlueMap glueStrings;
+	BankFasta out;
+	bool debug;
+
+	//used for tracking memory usage
+	size_t maxEntries = 0;
+	size_t totEntries = 0;
+	int numDataPoints = 0;
+	size_t maxSize = 0;
+	size_t totSize = 0;
+
+
+	
+};
+
+
+    void Glue::now_really_addhash(string key, string value)
     {
           GlueMap::const_iterator got = glueStrings.find (key);
           if ( got == glueStrings.end() )
@@ -197,7 +342,7 @@ class Glue
     }
 
 
-    void aux_addhash(string seq, string kmer, bool leftmark, bool rightmark, bool left)
+    void Glue::aux_addhash(string seq, string kmer, bool leftmark, bool rightmark, bool left)
     {
          if (kmer.compare(reversecomplement(kmer)) <= 0)
                now_really_addhash(kmer, seq + int2string(leftmark) + int2string(rightmark));
@@ -222,7 +367,7 @@ class Glue
         }
     }
 
-    void insert(string seq, bool leftmark, bool rightmark)
+    void Glue::insert(string seq, bool leftmark, bool rightmark)
     {
         //if (leftmark)
         {
@@ -240,12 +385,12 @@ class Glue
         }
     }
 
-    string seq_only(string seq)
+    string Glue::seq_only(string seq)
     {
         return seq.substr(0,seq.size()-2);
     }
 
-    void remove(string seq)
+    void Glue::remove(string seq)
     {
         // extremely naive for now
             string leftkmer = seq.substr(0,kmerSize);
@@ -279,17 +424,17 @@ class Glue
 
     }
 
-    void output(string seq)
+    void Glue::output(string seq)
     {
         Sequence s (Data::ASCII);
         s.getData().setRef ((char*)seq.c_str(), seq.size());
         out.insert(s);
     }
 
-    void glue()
+    void Glue::glue()
     {
         size_t k = kmerSize;
- 
+
         // mostly copypaste of code by Colleen
         for (auto it_gS = glueStrings.begin(); it_gS != glueStrings.end(); it_gS++)
         {
@@ -386,6 +531,7 @@ class Glue
         }
         cout << "new size: " << glueStrings.size() <<endl;
 
+
         /*
         cout << "what remains in the glue\n";
         for (auto it = glueStrings.begin(); it != glueStrings.end(); it++)
@@ -402,14 +548,6 @@ class Glue
         }
         */
     }
-
-    private:
-    ModelCanon model;
-    typedef unordered_map<string, pair<string, string>> GlueMap; 
-    GlueMap glueStrings;
-    BankFasta out;
-    bool debug;
-};
 
 void put_into_glue(string seq, size_t minimizer, BankFasta &out, Glue &glue, Model& modelK1)
 {
@@ -701,18 +839,22 @@ void bcalm_1::execute (){
                 global_wtime_foreach_bucket += omp_diff_wtime_bcalm(start_foreach_bucket_t, end_foreach_bucket_t);
 
                 // do the gluing at the end of each superbucket
-                if (parallel)
-                {
+                if (parallel) {
                     auto start_glue_t=omp_get_wtime();
-                    glue.glue();
+
+					glue.updateMemStats();
+					glue.glue();
 
                     auto end_glue_t=omp_get_wtime();
 #pragma omp atomic
                     global_wtime_glue += omp_diff_wtime_bcalm(start_glue_t, end_glue_t);
-                }
+ 
+				}
             }
         }
     }
+	
+	glue.printMemStats();
 
     /* printing some timing stats */
     auto end_t=chrono::system_clock::now();
@@ -734,6 +876,7 @@ void bcalm_1::execute (){
 
 
 }
+
 
 
 
