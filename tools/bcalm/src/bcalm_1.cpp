@@ -13,6 +13,11 @@
 #include <sys/sysinfo.h> // to determine system memory
 #endif
 
+//#define SPARSEHASH 
+#ifdef SPARSEHASH
+#include <sparsehash/sparse_hash_map>
+using google::sparse_hash_map;
+#endif 
 
 //#ifdef _OPENMP
 //   #include <omp.h>
@@ -251,6 +256,9 @@ class Glue
 
     Glue(size_t kmerSize, BankFasta &out) : model(kmerSize), out(out), debug(false)
     {
+#ifdef SPARSEHASH
+    glueStrings.set_deleted_key("");
+#endif
     }
 
 	void now_really_addhash(string key, string value);
@@ -274,6 +282,7 @@ class Glue
 		for (auto it_gS = glueStrings.begin(); it_gS != glueStrings.end(); it_gS++)
 		{
 			size += sizeof(it_gS->first) + sizeof(it_gS->second.first) + sizeof(it_gS->second.second);
+			size += it_gS->first.size() + it_gS->second.first.size() + it_gS->second.second.size();
 		}
 
 		maxSize = std::max(maxSize, size);
@@ -296,7 +305,11 @@ class Glue
 	private:
 
 	ModelCanon model;
-	typedef unordered_map<string, pair<string, string>> GlueMap; 
+#ifdef SPARSEHASH
+	typedef  sparse_hash_map<string, pair<string, string>> GlueMap; 
+#else
+	typedef unordered_map<string, pair<string, string>> GlueMap;
+#endif
 	GlueMap glueStrings;
 	BankFasta out;
 	bool debug;
@@ -525,10 +538,19 @@ class Glue
         for (auto it = glueStrings.begin(); it != glueStrings.end();)
         {
             if ((it->second).first == "-1" && (it->second).second == "-1")
+            {
+#ifdef SPARSEHASH
+                glueStrings.erase(it);
+#else
                 it = glueStrings.erase(it);
+#endif
+            }
             else
                 it ++;
         }
+#ifdef SPARSEHASH
+        glueStrings.resize(0); // effectively remove erased entries from memory
+#endif
         cout << "new size: " << glueStrings.size() <<endl;
 
 
