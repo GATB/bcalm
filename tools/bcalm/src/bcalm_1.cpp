@@ -14,6 +14,7 @@
 #endif
 
 
+#define CXX11THREADS // let's enable that by default. for now, just comment this line if your gcc version is not high enough
 #ifdef CXX11THREADS
  #include <thread>
  #include <atomic>
