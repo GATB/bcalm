@@ -14,7 +14,6 @@
 #endif
 
 
-//#define CXX11THREADS
 #ifdef CXX11THREADS
  #include <thread>
  #include <atomic>
@@ -454,6 +453,8 @@ void bcalm_1::execute (){
                               std::thread(*/
                             if (nb_threads > 1) 
                                 pool.enqueue(lambdaCompact);
+                            else
+                                lambdaCompact();
 #else
                             lambdaCompact();
 #endif
