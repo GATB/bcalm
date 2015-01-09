@@ -179,7 +179,7 @@ void bcalm_1::execute (){
     minSize=getInput()->getInt("-m");
     nb_threads = getInput()->getInt("-threads");
     original_algo = getParser()->saw("-original");
-    use_glueing = ! original_algo;
+    use_glueing = (!original_algo);
     
     Model model(kmerSize, minSize);
     Model modelK1(kmerSize-1, minSize);
