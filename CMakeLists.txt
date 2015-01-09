@@ -29,11 +29,6 @@ SET (GATB_CORE_EXCLUDE_EXAMPLES  1)
 # GATB CORE
 include (GatbCore)
 
-# TBB
-set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/Modules/")
-find_package(TBB)
-message("TBB_LIBRARIES = ${TBB_LIBRARIES}")
-
 ################################################################################
 # TOOLS
 ################################################################################

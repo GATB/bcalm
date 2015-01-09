@@ -17,7 +17,7 @@
 #ifdef CXX11THREADS
  #include <thread>
  #include <atomic>
- #include <tbb/concurrent_queue.h>
+ #include <../../../thirdparty/concurrentqueue.h>
  #include "../../../thirdparty/ThreadPool.h"
 #endif
 
@@ -354,7 +354,7 @@ void bcalm_1::execute (){
 
 #ifdef CXX11THREADS
                 std::vector<std::thread> threads;
-                tbb::concurrent_queue<std::pair<string, size_t> > glue_queue;
+                moodycamel::ConcurrentQueue<std::pair<string, size_t> > glue_queue;
                 ThreadPool pool(nb_threads);
 #else
                 int glue_queue;//dummy
@@ -408,12 +408,12 @@ void bcalm_1::execute (){
 
                                 /* distribute nodes (to other buckets, or output, or glue) */
                                 auto start_cdistribution_t=omp_get_wtime(); 
-                                for(uint32_t i(1);i<g.unitigs.size();++i){
+                                for(uint32_t i(1);i<g.unitigs.size();++i){ // TODO: determine if i(1) is not a bug, why not i(0)?
                                     if(g.unitigs[i].size()!=0){
                                         if (use_glueing)
                                         {
 #if defined CXX11THREADS
-                                            glue_queue.push(make_pair<string, size_t>((string)(g.unitigs[i]), (size_t)actualMinimizer));
+                                            glue_queue.enqueue(make_pair<string, size_t>((string)(g.unitigs[i]), (size_t)actualMinimizer));
 #else
                                             put_into_glue(g.unitigs[i], actualMinimizer, glue, modelK1);
 #endif
@@ -470,11 +470,10 @@ void bcalm_1::execute (){
 
                 // put everything into the glue
                 std::pair<string, size_t> glue_elt;
-                while (glue_queue.try_pop(glue_elt))
+                while (glue_queue.try_dequeue(glue_elt))
                 {
                     put_into_glue(glue_elt.first, glue_elt.second, glue, modelK1);
                 }
-
 #endif
 
                 for(uint j(0);j<numBucket;++j){
@@ -506,7 +505,8 @@ void bcalm_1::execute (){
         } // end if superbucket non null
     } // end foreach superbucket
 	
-	glue.glueStorage.printMemStats();
+    if (use_glueing)
+    	glue.glueStorage.printMemStats();
 
     /* printing some timing stats */
     auto end_t=chrono::system_clock::now();
