@@ -1,5 +1,4 @@
 
-// FIXME: looks buggy on 1000nodechain-k16.fa (compare with bcalm-original, some nodes missing, an extra compaction on the big unitig)
 #include <assert.h>
 #include <bcalm_1.hpp>
 #include <glue.hpp>
@@ -15,10 +14,12 @@
 #endif
 
 
-//#define CXX11THREADS // not yet ready
+#define CXX11THREADS
 #ifdef CXX11THREADS
  #include <thread>
+ #include <atomic>
  #include <tbb/concurrent_queue.h>
+ #include "../../../thirdparty/ThreadPool.h"
 #endif
 
 #ifdef _OPENMP
@@ -45,12 +46,25 @@ typedef Kmer<SPAN>::ModelMinimizer <ModelCanon> Model;
 size_t kmerSize=31;
 size_t minSize=8;
 size_t numBucket=1<<minSize;
-size_t threads=1;
-
+size_t nb_threads=1;
+bool original_algo = false, use_glueing = true;
 
 
 // timing-related variables
-double global_wtime_compactions = 0, global_wtime_cdistribution = 0, global_wtime_add_nodes = 0, global_wtime_create_buckets = 0, global_wtime_glue = 0, global_wtime_foreach_bucket = 0, global_wtime_flush_sb = 0, global_wtime_test = 0;
+
+#ifdef CXX11THREADS
+void atomic_double_add(std::atomic<double> &d1, double d2) {
+      double current = d1;
+        while (d1.compare_exchange_weak(current, current + d2))
+                ;
+}
+typedef std::atomic<double> atomic_double;
+#else
+#define atomic_double_add(d1,d2) d1 += d2;
+typedef double atomic_double;
+#endif
+atomic_double global_wtime_compactions (0), global_wtime_cdistribution (0), global_wtime_add_nodes (0), global_wtime_create_buckets (0), global_wtime_glue (0), global_wtime_foreach_bucket (0), global_wtime_flush_sb (0), global_wtime_test (0);
+
 /********************************************************************************/
 
 
@@ -61,6 +75,7 @@ bcalm_1::bcalm_1 ()  : Tool ("bcalm_1"){
 	getParser()->push_front (new OptionOneParam ("-m", "minimizer size",  false,"8"));
 	getParser()->push_front (new OptionOneParam ("-abundance", "abundance threeshold",  false,"3"));
 	getParser()->push_front (new OptionOneParam ("-threads", "number of threads",  false,"2")); // todo: set to max, as in dsk
+	getParser()->push_front (new OptionNoParam ("-original", "original BCALM 1 algorithm, without reconciliation",  false));
 }
 
 
@@ -162,7 +177,9 @@ void bcalm_1::execute (){
     kmerSize=getInput()->getInt("-k");
     size_t abundance=getInput()->getInt("-abundance");
     minSize=getInput()->getInt("-m");
-    threads = getInput()->getInt("-threads");
+    nb_threads = getInput()->getInt("-threads");
+    original_algo = getParser()->saw("-original");
+    use_glueing = ! original_algo;
     
     Model model(kmerSize, minSize);
     Model modelK1(kmerSize-1, minSize);
@@ -206,7 +223,6 @@ void bcalm_1::execute (){
     auto start_part=chrono::system_clock::now();
     size_t maxBucket(0);
     unsigned long nbKmers(0);
-    bool parallel = (threads > 1);  
 
     /** partitioning into superbuckets **/
     {
@@ -234,7 +250,7 @@ void bcalm_1::execute (){
             
             /** in the parallel version, if the minimizers of the left and right (k-1)-mers
                     are different, then we write to both buckets (actually here, superbuckets) */
-            if (parallel)
+            if (use_glueing)
             {
                 /*
                  // for some reason that code produces buggy minimizers; why??
@@ -278,8 +294,8 @@ void bcalm_1::execute (){
             auto start_flush_t=omp_get_wtime();
             superBuckets[i]->flush();
             auto end_flush_t=omp_get_wtime();
-#pragma omp atomic
-            global_wtime_flush_sb += omp_diff_wtime_bcalm(start_flush_t, end_flush_t);
+
+            atomic_double_add(global_wtime_flush_sb,omp_diff_wtime_bcalm(start_flush_t, end_flush_t));
 
             if(superBuckets[i]->getSize()>0){
                 auto start_createbucket_t=omp_get_wtime();
@@ -300,7 +316,7 @@ void bcalm_1::execute (){
                     }
                     tmp.resize(itBinary->getDataSize());
                     
-                    if (parallel)
+                    if (use_glueing)
                     { // with glue, it's simple: we write to both buckets if leftMin != rightMin
                         if (leftMin / numBucket == i)
                         {
@@ -333,27 +349,32 @@ void bcalm_1::execute (){
                 } // end for itBinary
 
                 auto end_createbucket_t=omp_get_wtime();
-    #pragma omp atomic
-                global_wtime_create_buckets += omp_diff_wtime_bcalm(start_createbucket_t, end_createbucket_t);
+                atomic_double_add(global_wtime_create_buckets, omp_diff_wtime_bcalm(start_createbucket_t, end_createbucket_t));
 
                 auto start_foreach_bucket_t=omp_get_wtime();
 
 #ifdef CXX11THREADS
                 std::vector<std::thread> threads;
+                tbb::concurrent_queue<std::pair<string, size_t> > glue_queue;
+                ThreadPool pool(nb_threads);
 #endif
+
+                // parallel_for doesn't look good, it seems to statically partition the range
+                //tbb::parallel_for(4, 0, numBucket, ([&Buckets, &glue_queue, &i, &modelK1, &maxBucket, &superBuckets, &parallel, &out ](long j) {
 
                 /**FOREACH BUCKET **/
                 for(uint j(0);j<numBucket;++j){
                     if(Buckets[j]!=NULL){
+                        Buckets[j]->flush();
+                        if(Buckets[j]->getSize()>0){
 
 #ifdef CXX11THREADS
-                        tbb::concurrent_queue<std::pair<string, size_t> > glue_queue;
-
-                        threads.push_back(
-                                std::thread([&Buckets, &glue_queue, &i, &j, &modelK1, &maxBucket, &superBuckets, &parallel, &out ]() {
+                            /* let's not have one thread per bucket.. we pool them now */
+                        /*threads.push_back(
+                                std::thread(*/
+                                    pool.enqueue(
+                                        [&Buckets, &glue_queue, &i, j, &modelK1, &maxBucket, &superBuckets]() {
 #endif 
-                                    Buckets[j]->flush();
-                                    if(Buckets[j]->getSize()>0){
                                     //~ graph1 g(kmerSize);
 
                                     /* add nodes to graph */
@@ -380,8 +401,7 @@ void bcalm_1::execute (){
 
                                     }
                                     auto end_nodes_t=omp_get_wtime();
-#pragma omp atomic
-                                    global_wtime_add_nodes += omp_diff_wtime_bcalm(start_nodes_t, end_nodes_t);
+                                    atomic_double_add(global_wtime_add_nodes, omp_diff_wtime_bcalm(start_nodes_t, end_nodes_t));
 
                                     /* compact graph*/
                                     auto start_dbg=omp_get_wtime();
@@ -389,30 +409,28 @@ void bcalm_1::execute (){
                                     //~ g.compressh(actualMinimizer);
                                     g.compress2();
                                     auto end_dbg=omp_get_wtime();
-#pragma omp atomic
-                                    global_wtime_compactions += omp_diff_wtime_bcalm(start_dbg, end_dbg);
+                                    atomic_double_add(global_wtime_compactions, omp_diff_wtime_bcalm(start_dbg, end_dbg));
 
                                     /* distribute nodes (to other buckets, or output, or glue) */
                                     auto start_cdistribution_t=omp_get_wtime(); 
                                     for(uint32_t i(1);i<g.unitigs.size();++i){
                                         if(g.unitigs[i].size()!=0){
-                                            if (parallel)
+                                            if (use_glueing)
                                             {
-#ifdef CXX11THREADS
+#if defined CXX11THREADS
                                                 glue_queue.push(make_pair<string, size_t>((string)(g.unitigs[i]), (size_t)actualMinimizer));
-                                            #else
-
+                                            }
+#else
                                                 put_into_glue(g.unitigs[i], actualMinimizer, glue, modelK1);
-#endif
                                             }
                                             else /* write to another bucket or output */
                                                 goodplace(g.unitigs[i],actualMinimizer,out,superBuckets,Buckets,modelK1);
+#endif
 
                                         }
                                     }
                                     auto end_cdistribution_t=omp_get_wtime();
-#pragma omp atomic
-                                    global_wtime_cdistribution += omp_diff_wtime_bcalm(start_cdistribution_t, end_cdistribution_t);
+                                    atomic_double_add(global_wtime_cdistribution, omp_diff_wtime_bcalm(start_cdistribution_t, end_cdistribution_t));
 
                                     /* what was this code for? */ 
                                     //~ size_t node_index(0);
@@ -429,34 +447,55 @@ void bcalm_1::execute (){
                                     if(size>maxBucket){
                                         maxBucket=size;
                                     }
-                                    delete(Buckets[j]);
-                                    remove(("B"+to_string(j)).c_str());
-                                    } // end if bucket non empty
+
 
 #ifdef CXX11THREADS
-                                })); // end thread
+//                                })); // end thread
+                                }); // end thread
+
 #endif
+                        } // end if bucket non empty
 
                     } // end if bucket non null
+
                 } // end for each bucket
+
+#ifdef CXX11THREADS
+                //for ( auto& thread : threads ){ thread.join(); }
+                pool.join();
+
+                // put everything into the glue
+                std::pair<string, size_t> glue_elt;
+                while (glue_queue.try_pop(glue_elt))
+                {
+                    put_into_glue(glue_elt.first, glue_elt.second, glue, modelK1);
+                }
+
+#endif
+
+                for(uint j(0);j<numBucket;++j){
+                    if(Buckets[j]!=NULL){
+                        delete(Buckets[j]);
+                        remove(("B"+to_string(j)).c_str());
+                    }
+                }
+
 
                 delete(superBuckets[i]);
                 remove(("SB"+to_string(i)).c_str());
 
                 auto end_foreach_bucket_t=omp_get_wtime();
-        #pragma omp atomic
-                global_wtime_foreach_bucket += omp_diff_wtime_bcalm(start_foreach_bucket_t, end_foreach_bucket_t);
+                atomic_double_add(global_wtime_foreach_bucket, omp_diff_wtime_bcalm(start_foreach_bucket_t, end_foreach_bucket_t));
 
                 // do the gluing at the end of each superbucket
-                if (parallel) {
+                if (use_glueing) {
                     auto start_glue_t=omp_get_wtime();
 
 					glue.glueStorage.updateMemStats();
 					glue.glue();
 
                     auto end_glue_t=omp_get_wtime();
-#pragma omp atomic
-                    global_wtime_glue += omp_diff_wtime_bcalm(start_glue_t, end_glue_t);
+                    atomic_double_add(global_wtime_glue,  omp_diff_wtime_bcalm(start_glue_t, end_glue_t));
  
 				} // end if parallel
             } // end if superbucket non empty
