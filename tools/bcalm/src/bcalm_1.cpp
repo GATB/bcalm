@@ -14,7 +14,7 @@
 #endif
 
 
-#define CXX11THREADS
+//#define CXX11THREADS
 #ifdef CXX11THREADS
  #include <thread>
  #include <atomic>
@@ -357,6 +357,8 @@ void bcalm_1::execute (){
                 std::vector<std::thread> threads;
                 tbb::concurrent_queue<std::pair<string, size_t> > glue_queue;
                 ThreadPool pool(nb_threads);
+#else
+                int glue_queue;//dummy
 #endif
 
                 // parallel_for doesn't look good, it seems to statically partition the range
@@ -368,7 +370,7 @@ void bcalm_1::execute (){
                         Buckets[j]->flush();
                         if(Buckets[j]->getSize()>0){
 
-                            auto lambdaCompact = [&Buckets, &glue_queue, &i, j, &modelK1, &maxBucket, &superBuckets, &out]() {
+                            auto lambdaCompact = [&Buckets, &glue_queue, &i, j, &modelK1, &maxBucket, &superBuckets, &out, &glue]() {
                                 //~ graph1 g(kmerSize);
 
                                 /* add nodes to graph */
