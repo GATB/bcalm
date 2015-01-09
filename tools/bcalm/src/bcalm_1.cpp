@@ -395,9 +395,10 @@ void bcalm_1::execute (){
                                     }
                                     tmp=tmp.substr(0,itBinary->getDataSize());
 
+									g.addleftmin(leftMin);
+									g.addrightmin(rightMin);
                                     g.addvertex(tmp);
-                                    g.addleftmin(leftMin);
-                                    g.addrightmin(rightMin);
+
                                     }
                                     auto end_nodes_t=omp_get_wtime();
                                     atomic_double_add(global_wtime_add_nodes, omp_diff_wtime_bcalm(start_nodes_t, end_nodes_t));
