@@ -921,6 +921,45 @@ string compactionEnd(const string& seq1,const string& seq2, int k){
 
 void graph2::addvertex(const string& unitig){
 	unitigs.push_back(unitig);
+	size_t i=unitigs.size()-1;
+	if(leftmins[i]){
+		string beg(unitigs[i].substr(0,k));
+		uint64_t leftKmer1(stringtoint(beg));
+		uint64_t leftKmer2(stringtointc(beg));
+		if(leftKmer1<leftKmer2){
+			if(left2unitig.count(leftKmer1)>0){
+				left2unitig[leftKmer1]=0;
+			}else{
+				left2unitig[leftKmer1]=i;
+			}
+		}else{
+			if(right2unitig.count(leftKmer2)>0){
+				right2unitig[leftKmer2]=0;
+			}else{
+				right2unitig[leftKmer2]=i;
+			}
+		}
+	}
+
+	if(rightmins[i]){
+		string end(unitigs[i].substr(unitigs[i].size()-k,k));
+		uint64_t rightKmer1(stringtoint(end));
+		uint64_t rightKmer2(stringtointc(end));
+		if(rightKmer1<rightKmer2){
+			if(right2unitig.count(rightKmer1)>0){
+				right2unitig[rightKmer1]=0;
+			}else{
+				right2unitig[rightKmer1]=i;
+			}
+		}else{
+			if(left2unitig.count(rightKmer2)>0){
+				left2unitig[rightKmer2]=0;
+			}else{
+				left2unitig[rightKmer2]=i;
+			}
+		}
+	}
+
 	//~ weight+=unitig.size();
 }
 
@@ -1011,43 +1050,7 @@ uint32_t graph2::goBeg(uint32_t i){
 
 void graph2::debruijn(){
 	for(uint32_t i=1;i<unitigs.size();++i){
-		if(leftmins[i]){
-			string beg(unitigs[i].substr(0,k));
-			uint64_t leftKmer1(stringtoint(beg));
-			uint64_t leftKmer2(stringtointc(beg));
-			if(leftKmer1<leftKmer2){
-				if(left2unitig.count(leftKmer1)>0){
-					left2unitig[leftKmer1]=0;
-				}else{
-					left2unitig[leftKmer1]=i;
-				}
-			}else{
-				if(right2unitig.count(leftKmer2)>0){
-					right2unitig[leftKmer2]=0;
-				}else{
-					right2unitig[leftKmer2]=i;
-				}
-			}
-		}
-		
-		if(rightmins[i]){
-			string end(unitigs[i].substr(unitigs[i].size()-k,k));
-			uint64_t rightKmer1(stringtoint(end));
-			uint64_t rightKmer2(stringtointc(end));
-			if(rightKmer1<rightKmer2){
-				if(right2unitig.count(rightKmer1)>0){
-					right2unitig[rightKmer1]=0;
-				}else{
-					right2unitig[rightKmer1]=i;
-				}
-			}else{
-				if(left2unitig.count(rightKmer2)>0){
-					left2unitig[rightKmer2]=0;
-				}else{
-					left2unitig[rightKmer2]=i;
-				}
-			}
-		}
+
 	}
 }
 
