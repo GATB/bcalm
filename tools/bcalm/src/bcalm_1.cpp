@@ -2,6 +2,7 @@
 // FIXME: looks buggy on 1000nodechain-k16.fa (compare with bcalm-original, some nodes missing, an extra compaction on the big unitig)
 #include <assert.h>
 #include <bcalm_1.hpp>
+#include <glue.hpp>
 #include <ograph.h>
 #include <iostream>
 #include <memory>
@@ -13,11 +14,6 @@
 #include <sys/sysinfo.h> // to determine system memory
 #endif
 
-//#define SPARSEHASH 
-#ifdef SPARSEHASH
-#include <sparsehash/sparse_hash_map>
-using google::sparse_hash_map;
-#endif 
 
 //#define CXX11THREADS // not yet ready
 #ifdef CXX11THREADS
@@ -53,25 +49,8 @@ size_t threads=1;
 
 
 
-template<typename T>
-string add_commas(T num) {
-	string s, retval;
-	ostringstream o;
-	o << num;
-	s = o.str();
-	for (int i = 0; i < s.length(); i++) {
-		retval.push_back(s.at(i));
-		int j = s.length() - 1 - i;
-		if (((j % 3) == 0) && (j != 0)) {
-			retval.push_back(',');
-		}
-	}
-	return retval;
-}
-
-
-    // timing-related variables
-    double global_wtime_compactions = 0, global_wtime_cdistribution = 0, global_wtime_add_nodes = 0, global_wtime_create_buckets = 0, global_wtime_glue = 0, global_wtime_foreach_bucket = 0, global_wtime_flush_sb = 0, global_wtime_test = 0;
+// timing-related variables
+double global_wtime_compactions = 0, global_wtime_cdistribution = 0, global_wtime_add_nodes = 0, global_wtime_create_buckets = 0, global_wtime_glue = 0, global_wtime_foreach_bucket = 0, global_wtime_flush_sb = 0, global_wtime_test = 0;
 /********************************************************************************/
 
 
@@ -141,465 +120,37 @@ void goodplace(string& seq, size_t minimizer,BankFasta& out,vector<BankBinary*>&
 }
 
 
+void put_into_glue(string seq, size_t minimizer, Glue & glue, Model& modelK1) {
 
-string reversecomplement(const string& dna) // code taken from TakeABreak
-{
-	string revComp= "";
+	size_t k = kmerSize;
+	Model::Kmer kmmerBegin = modelK1.codeSeed(seq.substr(0, k - 1).c_str(), Data::ASCII);
+	size_t leftMin(modelK1.getMinimizerValue(kmmerBegin.value()));
+	Model::Kmer kmmerEnd = modelK1.codeSeed(seq.substr(seq.size() - k + 1, k - 1).c_str(), Data::ASCII);
+	size_t rightMin(modelK1.getMinimizerValue(kmmerEnd.value()));
 
-	for (string::const_reverse_iterator it = dna.rbegin(); it != dna.rend(); it++) {
-		switch(*it) {
-			case 'a' :                revComp += "t";                break;
-			case 't' :                revComp += "a";                break;
-			case 'c' :                revComp += "g";                break;
-			case 'g' :                revComp += "c";                break;
-			case 'A' :                revComp += "T";                break;
-			case 'T' :                revComp += "A";                break;
-			case 'C' :                revComp += "G";                break;
-			case 'G' :                revComp += "C";                break;
-		}
+	//size_t i(minimizer/numBucket);
+	//size_t j(minimizer%numBucket); // following notation from the ismb2015 paper
+
+	bool leftmark  = minimizer != leftMin;
+	bool rightmark = minimizer != rightMin; 
+
+	//size_t b_pre_major = leftMin/numBucket;
+	//size_t b_suf_major = rightMin/numBucket;
+
+	if((!leftmark) && (!rightmark))
+	{ 
+		glue.output(seq);
+	} 
+	else
+	{ /* put into glue */
+		GlueEntry e;
+		e.seq = seq;
+		e.lmark = leftmark;
+		e.rmark = rightmark;
+		e.lkmer = e.seq.substr(0,k);
+		e.rkmer = e.seq.substr(e.seq.length() - k, k);
+		glue.insert(e);
 	}
-    return revComp;
-}
-
-string int2string(int c)
-{
-    if (c == 0)
-        return "0";
-    else if (c == 1)
-        return "1";
-    else
-        return "2";
-}
-
-/* nifty function to highlight a substring for printing to terminal */
-string debug_highlight(string s, string motif)
-{
-    size_t pos = s.find(motif);
-    if (pos == string::npos)
-        pos = s.find(reversecomplement(motif));
-    if (pos == string::npos)
-    {
-        return s;
-    }
-
-    return s.substr(0,pos) + "\033[1;31m" + s.substr(pos, motif.size()) + "\033[0m" + s.substr(pos + motif.size(), s.size() - pos - motif.size()); 
-}
-
-
-
-/*class to support two-bit encoding of entries in the glue table
- * PM: NOT YET ACTIVE
-class SeqAndTags {
-	public:
-		const static int MAX_SIZE = 1000;
-		bool raw[MAX_SIZE];
-		int rawLen;
-
-		SeqAndTags(bool * _raw, int _rawLen) : rawLen(_rawLen) { 
-			for (int i = 0; i < rawLen; i++) {
-				raw[i] = _raw[i];
-			}
-		}
-
-		SeqAndTags(string seq, bool leftmark, bool rightmark) {
-			rawLen = seq.length() * 2 + 2;
-			for (int i = 0; i < seq.length(); i++) {
-				if ((seq[i] == 'A') || (seq[i] == 'C')) {
-					raw[2*i] = 0;
-				} else {
-					raw[2*i] = 1;
-				}
-				if ((seq[i] == 'A') || (seq[i] == 'G')) {
-					raw[2*i + 1] = 0;
-				} else {
-					raw[2*i + 1] = 1;
-				}
-			}
-			raw[seq.length() * 2] = leftmark;
-			raw[seq.length() * 2 + 1] = rightmark;
-		}
-
-
-		char bits2char (bool leftbit, bool rightbit) {
-			if (leftbit == 0 && rightbit == 0) return 'A';
-			else if (leftbit == 0 && rightbit == 1) return 'C';
-			else if (leftbit == 1 && rightbit == 0) return 'G';
-			else return 'T';
-		}
-
-
-		string getSeq() {
-			string retval;
-			for (int  i = 0; i < rawLen - 2; i += 2) {
-				retval.push_back(bits2char(raw[i], raw[i+1]));
-			}
-			return retval;
-		}
-
-		string getLeftKmer(int k) {
-			return getSeq().substr(0,k);
-		}
-		string getRightKmer(int k) {
-			string seq = getSeq();
-			return seq.substr(seq.length() - k, k);
-		}
-		bool getLeftMark() {
-			return raw[rawLen - 2];
-		}
-		bool getRightMark() {
-			return raw[rawLen - 1];
-		}
-};
-*/
-
-class Glue
-{
-    // optimize it later.. (2 bits sequences)
-
-    public:
-
-    Glue(size_t kmerSize, BankFasta &out) : model(kmerSize), out(out), debug(false)
-    {
-#ifdef SPARSEHASH
-    glueStrings.set_deleted_key("");
-#endif
-    }
-
-	void now_really_addhash(string key, string value);
-	void aux_addhash(string seq, string kmer, bool leftmark, bool rightmark, bool left);
-	void insert(string seq, bool leftmark, bool rightmark);
-	string seq_only(string seq);
-	void remove(string seq);
-	void output(string seq);
-	void glue();
-
-
-	void resetMemStats() {
-		maxEntries = 0; totEntries = 0; numDataPoints = 0; maxSize = 0; totSize = 0;
-	}
-
-	void updateMemStats() {
-		maxEntries = std::max(maxEntries, glueStrings.size());
-		totEntries += glueStrings.size();
-
-		size_t size = 0;
-		for (auto it_gS = glueStrings.begin(); it_gS != glueStrings.end(); it_gS++)
-		{
-			size += sizeof(it_gS->first) + sizeof(it_gS->second.first) + sizeof(it_gS->second.second);
-			size += it_gS->first.size() + it_gS->second.first.size() + it_gS->second.second.size();
-		}
-
-		maxSize = std::max(maxSize, size);
-		totSize += size;
-
-		numDataPoints++;
-	}
-
-
-
-	void printMemStats() {
-		if (numDataPoints == 0) {
-			cout << "Glue: no data points to output memory stats.\n";
-		} else {
-			cout << "Glue memory stats: max entries: " << add_commas(maxEntries) << " avg entries: " << add_commas(totEntries/numDataPoints) << " max size: " << add_commas(maxSize) 
-				<< "b avg size: " << add_commas(totSize / numDataPoints) << "b\n";
-		}
-	}
-
-	private:
-
-	ModelCanon model;
-#ifdef SPARSEHASH
-	typedef  sparse_hash_map<string, pair<string, string>> GlueMap; 
-#else
-	typedef unordered_map<string, pair<string, string>> GlueMap;
-#endif
-	GlueMap glueStrings;
-	BankFasta out;
-	bool debug;
-
-	//used for tracking memory usage
-	size_t maxEntries = 0;
-	size_t totEntries = 0;
-	int numDataPoints = 0;
-	size_t maxSize = 0;
-	size_t totSize = 0;
-
-
-	
-};
-
-
-    void Glue::now_really_addhash(string key, string value)
-    {
-          GlueMap::const_iterator got = glueStrings.find (key);
-          if ( got == glueStrings.end() )
-          {
-              glueStrings[key].first = value;
-              glueStrings[key].second = "";
-          }
-          else
-          {
-              if (glueStrings[key].first == "-1" || glueStrings[key].first == "")
-              {
-                  glueStrings[key].first = value;
-                  glueStrings[key].second = "";
-              }
-              else
-              {
-                  if  (glueStrings[key].second != "")
-                  {
-                      printf("huh? kmer %s (%s,%s) inserting %s\n",key.c_str(), debug_highlight(glueStrings[key].first,key).c_str(), debug_highlight(glueStrings[key].second,key).c_str(), debug_highlight(value,key).c_str());
-                      exit(1);
-                  }
-                  glueStrings[key].second = value;
-              }
-          }
-
-    }
-
-
-    void Glue::aux_addhash(string seq, string kmer, bool leftmark, bool rightmark, bool left)
-    {
-         if (kmer.compare(reversecomplement(kmer)) <= 0)
-               now_really_addhash(kmer, seq + int2string(leftmark) + int2string(rightmark));
-         else
-               now_really_addhash(reversecomplement(kmer), reversecomplement(seq) + int2string(rightmark) + int2string(leftmark));
-        return;
-
-        // this was the former strategy
-        if (kmer.compare(reversecomplement(kmer)) <= 0)
-        {
-            if (left)
-                glueStrings[kmer].second = seq + int2string(leftmark) + int2string(rightmark);
-            else
-                glueStrings[kmer].first  = seq + int2string(leftmark) + int2string(rightmark);
-        }
-        else
-        {
-            if (left)
-                glueStrings[reversecomplement(kmer)].first = reversecomplement(seq) + int2string(rightmark) + int2string(leftmark);
-            else
-                glueStrings[reversecomplement(kmer)].second = reversecomplement(seq) + int2string(rightmark) + int2string(leftmark);
-        }
-    }
-
-    void Glue::insert(string seq, bool leftmark, bool rightmark)
-    {
-        //if (leftmark)
-        {
-            // don't yet know how to index the hash table with kmers
-            //ModelCanon::Kmer kmer = model.codeSeed(seq.substr(0,kmerSize).c_str(), Data::ASCII); 
-            string kmer = seq.substr(0,kmerSize);
-            aux_addhash(seq, kmer, leftmark, rightmark, true);
-        }
-        //if (rightmark)
-        if (seq.size() > kmerSize)
-        {
-            //ModelCanon::Kmer kmer = model.codeSeed(seq.substr(seq.size() - kmerSize,kmerSize).c_str(), Data::ASCII); 
-            string kmer = seq.substr(seq.size() - kmerSize, kmerSize);
-            aux_addhash(seq, kmer, leftmark, rightmark, false);
-        }
-    }
-
-    string Glue::seq_only(string seq)
-    {
-        return seq.substr(0,seq.size()-2);
-    }
-
-    void Glue::remove(string seq)
-    {
-        // extremely naive for now
-            string leftkmer = seq.substr(0,kmerSize);
-            string rightkmer = seq.substr(seq.size() - kmerSize - 2, kmerSize);
-
-            string min = std::min(leftkmer, reversecomplement(leftkmer));
-            if (seq_only(glueStrings[min].first) == seq_only(seq) \
-                    || seq_only(glueStrings[min].first) == reversecomplement(seq_only(seq)))
-            {
-                glueStrings[min].first = glueStrings[min].second;
-                glueStrings[min].second = "";
-            }
-            if (seq_only(glueStrings[min].second) == seq_only(seq) \
-                    || seq_only(glueStrings[min].second) == reversecomplement(seq_only(seq)))
-            {
-                glueStrings[min].second = "";
-            }
-
-            min = std::min(rightkmer, reversecomplement(rightkmer));
-            if (seq_only(glueStrings[min].first) == seq_only(seq) \
-                    || seq_only(glueStrings[min].first) == reversecomplement(seq_only(seq)))
-            {
-                glueStrings[min].first = glueStrings[min].second;
-                glueStrings[min].second = "";
-            }
-            if (seq_only(glueStrings[min].second) == seq_only(seq) \
-                    || seq_only(glueStrings[min].second) == reversecomplement(seq_only(seq)))
-            {
-                glueStrings[min].second = "";
-            }
-
-    }
-
-    void Glue::output(string seq)
-    {
-        Sequence s (Data::ASCII);
-        s.getData().setRef ((char*)seq.c_str(), seq.size());
-        out.insert(s);
-    }
-
-    void Glue::glue()
-    {
-        size_t k = kmerSize;
-
-        // mostly copypaste of code by Colleen
-        for (auto it_gS = glueStrings.begin(); it_gS != glueStrings.end(); it_gS++)
-        {
-            string query = (it_gS->second).first;   // "query" is always the first node, should be left side of final node
-            string match = (it_gS->second).second;
-
-            if (query == "" || match == "")
-                continue; // not yet ready to process this
-
-            assert((query.compare("-1") == 0 && match.compare("-1") == 0) || (query.compare("-1") != 0 && match.compare("-1") != 0)); // should never have just one string of pair -1
-            // fixme: for some reason assert does not work in this project 
-            if (query != "-1" && match=="-1") {printf("assert failed!\n"); exit(1);}
-
-            // already output
-            if (query == "-1")
-            {
-                continue;
-            }
-
-            string queryNode = query.substr(0, query.size()-2); // remove leftmark and rightmark
-            string rightKmer = queryNode.substr(queryNode.size() - k, k);                       //last k characters of the query node
-            string leftKmer = queryNode.substr(0, k);                                           //first k characters of the query node
-            string queryLeftMark = query.substr(query.size() - 2, 1);
-            string queryRightMark = query.substr(query.size() - 1, 1);
-
-            if (debug)
-                cout << "query is: " << queryNode << queryLeftMark << queryRightMark << "\n";
-            if (debug)
-                cout << "rightKmer is: " << rightKmer << "\n";
-
-            string matchNode = match.substr(0, match.size()-2);
-            if (debug)
-                cout << "matchnode: '" <<  matchNode << "' match: " << match << std::endl;
-
-            string matchLeftKmer = matchNode.substr(0, k);
-            string matchRightKmer = matchNode.substr(matchNode.size() - k, k);
-            string matchLeftMark = match.substr(match.size() - 2, 1);
-            string matchRightMark = match.substr(match.size() - 1, 1);
-
-            if (matchLeftMark != "1" || rightKmer.compare(matchLeftKmer) != 0) // try swapping
-            {
-                std::swap(query, match);
-
-                queryNode = query.substr(0, query.size()-2); // remove leftmark and rightmark
-                rightKmer = queryNode.substr(queryNode.size() - k, k);                       //last k characters of the query node
-                leftKmer = queryNode.substr(0, k);                                           //first k characters of the query node
-                queryLeftMark = query.substr(query.size() - 2, 1);
-                queryRightMark = query.substr(query.size() - 1, 1);
-
-                matchNode = match.substr(0, match.size()-2);
-                matchLeftKmer = matchNode.substr(0, k);
-                matchRightKmer = matchNode.substr(matchNode.size() - k, k);
-                matchLeftMark = match.substr(match.size() - 2, 1);
-                matchRightMark = match.substr(match.size() - 1, 1);
-
-            }
-
-            if (matchLeftMark != "1")
-                continue; // nothing to do here
-
-            if (rightKmer.compare(matchLeftKmer) == 0)
-            {
-                string node = queryNode + matchNode.substr(k, matchNode.size() - k);
-                it_gS->second.first = "-1";     // these are done being glued
-                it_gS->second.second = "-1";
-
-                remove(query); remove(match); // scrub the table
-
-                if (queryLeftMark == "0" && matchRightMark == "0")
-                {
-                    if (debug)
-                        cout << "Case 1 match and output: " << matchNode << " " << matchLeftMark << matchRightMark << "\n";
-                    output(node);
-                }
-                else    // at least one of left and right needs to be updated
-                {
-                    insert(node, queryLeftMark == "1", matchRightMark == "1");
-                }
-            }
-            else
-            {
-                cout << "uh oh, not matching" << endl;
-                cout << "  query: " << debug_highlight(query,rightKmer) <<  "\n";
-                cout << "  match: " << debug_highlight(match,matchLeftKmer) << std::endl;
-            }
-        }
-
-        for (auto it = glueStrings.begin(); it != glueStrings.end();)
-        {
-            if ((it->second).first == "-1" && (it->second).second == "-1")
-            {
-#ifdef SPARSEHASH
-                glueStrings.erase(it);
-#else
-                it = glueStrings.erase(it);
-#endif
-            }
-            else
-                it ++;
-        }
-#ifdef SPARSEHASH
-        glueStrings.resize(0); // effectively remove erased entries from memory
-#endif
-        cout << "new size: " << glueStrings.size() <<endl;
-
-
-        /*
-        cout << "what remains in the glue\n";
-        for (auto it = glueStrings.begin(); it != glueStrings.end(); it++)
-        {
-            cout << debug_highlight((it->second).first,it->first) << " - " << debug_highlight((it->second).second,it->first) << "\n";
-            {
-                string seq = it->first;
-                Model modelK1(kmerSize-1, minSize);
-                Model::Kmer kmmerBegin=modelK1.codeSeed(seq.substr(0,kmerSize-1).c_str(),Data::ASCII);
-                size_t leftMin(modelK1.getMinimizerValue(kmmerBegin.value()));
-                Model::Kmer kmmerEnd=modelK1.codeSeed(seq.substr(seq.size()-kmerSize+1,kmerSize-1).c_str(),Data::ASCII);
-                size_t rightMin(modelK1.getMinimizerValue(kmmerEnd.value()));
-            }
-        }
-        */
-    }
-
-void put_into_glue(string seq, size_t minimizer, BankFasta &out, Glue &glue, Model& modelK1)
-{
-
-    Model::Kmer kmmerBegin=modelK1.codeSeed(seq.substr(0,kmerSize-1).c_str(),Data::ASCII);
-    size_t leftMin(modelK1.getMinimizerValue(kmmerBegin.value()));
-    Model::Kmer kmmerEnd=modelK1.codeSeed(seq.substr(seq.size()-kmerSize+1,kmerSize-1).c_str(),Data::ASCII);
-    size_t rightMin(modelK1.getMinimizerValue(kmmerEnd.value()));
-    
-    size_t i(minimizer/numBucket);
-    size_t j(minimizer%numBucket); // following notation from the ismb2015 paper
-   
-    bool leftmark  = minimizer != leftMin;
-    bool rightmark = minimizer != rightMin; 
-
-    //size_t b_pre_major = leftMin/numBucket;
-    //size_t b_suf_major = rightMin/numBucket;
-
-    if((!leftmark) && (!rightmark))
-    { 
-        glue.output(seq);
-    } 
-    else
-    { /* put into glue */
-        glue.insert(seq, leftmark, rightmark);
-    }
 }
 
 
@@ -849,7 +400,8 @@ void bcalm_1::execute (){
 #ifdef CXX11THREADS
                                                 glue_queue.push(make_pair<string, size_t>((string)(g.unitigs[i]), (size_t)actualMinimizer));
                                             #else
-                                                put_into_glue(g.unitigs[i], actualMinimizer, out, glue, modelK1);
+
+                                                put_into_glue(g.unitigs[i], actualMinimizer, glue, modelK1);
 #endif
                                             }
                                             else /* write to another bucket or output */
@@ -898,7 +450,7 @@ void bcalm_1::execute (){
                 if (parallel) {
                     auto start_glue_t=omp_get_wtime();
 
-					glue.updateMemStats();
+					glue.glueStorage.updateMemStats();
 					glue.glue();
 
                     auto end_glue_t=omp_get_wtime();
@@ -910,7 +462,7 @@ void bcalm_1::execute (){
         } // end if superbucket non null
     } // end foreach superbucket
 	
-	glue.printMemStats();
+	glue.glueStorage.printMemStats();
 
     /* printing some timing stats */
     auto end_t=chrono::system_clock::now();
