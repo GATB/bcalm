@@ -54,9 +54,8 @@ bool original_algo = false, use_glueing = true;
 
 #ifdef CXX11THREADS
 void atomic_double_add(std::atomic<double> &d1, double d2) {
-      return; // FIXME disabling timing for now
-      double current = d1;
-        while (d1.compare_exchange_weak(current, current + d2))
+      double current = d1.load();
+        while (!d1.compare_exchange_weak(current, current + d2))
                 ;
 }
 typedef std::atomic<double> atomic_double;
