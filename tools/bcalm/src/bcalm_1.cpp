@@ -146,24 +146,27 @@ void put_into_glue(string seq, size_t minimizer, Glue & glue, Model& modelK1) {
 	//size_t i(minimizer/numBucket);
 	//size_t j(minimizer%numBucket); // following notation from the ismb2015 paper
 
-	bool leftmark  = minimizer != leftMin;
-	bool rightmark = minimizer != rightMin; 
+	GlueEntry e;
+	e.seq = seq;
+	e.lmark = minimizer != leftMin;
+	e.rmark = minimizer != rightMin; 
+	e.lkmer = e.seq.substr(0,k);
+	e.rkmer = e.seq.substr(e.seq.length() - k, k);
 
 	//size_t b_pre_major = leftMin/numBucket;
 	//size_t b_suf_major = rightMin/numBucket;
 
-	if((!leftmark) && (!rightmark))
+	const string keyofin = "CACATGTTCACACACACACACACACACACACACACACACACACACACACAC";
+	if ((seq.find(keyofin) != std::string::npos) || (seq.find(reversecomplement(keyofin)) != std::string::npos)) {
+		cout << "In put or glue, we got " << tostring(e, e.seq) << endl;
+	}
+
+	if((!e.lmark) && (!e.rmark))
 	{ 
 		glue.output(seq);
 	} 
 	else
 	{ /* put into glue */
-		GlueEntry e;
-		e.seq = seq;
-		e.lmark = leftmark;
-		e.rmark = rightmark;
-		e.lkmer = e.seq.substr(0,k);
-		e.rkmer = e.seq.substr(e.seq.length() - k, k);
 		glue.insert(e, true);
 	}
 }
@@ -507,7 +510,7 @@ void bcalm_1::execute (){
     } // end foreach superbucket
 	
     if (use_glueing) {
-		//cout << "Final glue:\n" << glue.glueStorage.dump() << "*****\n";
+		cout << "Final glue:\n" << glue.glueStorage.dump() << "*****\n";
     	glue.glueStorage.printMemStats();
 	}
 

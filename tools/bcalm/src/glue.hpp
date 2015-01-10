@@ -19,6 +19,8 @@ using google::sparse_hash_map;
 
 using namespace std;
 
+string reversecomplement(const string& dna); // code taken from TakeABreak
+string debug_highlight(string s, string motif);
 
 //class to represent an entry in GlueStorage
 //it is meant to be used only when an entry is extracted from storage. 
@@ -31,6 +33,7 @@ struct GlueEntry {
 	string rkmer = "";
 };
 
+string tostring(const GlueEntry e, string key);
 
 // class to support compact representation of a GlueEntry, as should be stored in memory
 // For now, this is very naive, and just stores it a string

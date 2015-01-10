@@ -19,7 +19,7 @@ using google::sparse_hash_map;
 #endif 
 
 const string key_of_interest = "CACATGTTCACACACACACACACACACACACACACACACACACACACACAC";
-const bool glueDebug = false;
+bool glueDebug = false;
 using namespace std;
 
 template<typename T>
@@ -267,7 +267,7 @@ void Glue::insert_aux(GlueEntry newEntry, string key) {
 		}
 	}
 	//if (key == key_of_interest) cout << "after\t" << glueStorage.dump(key,false ) << endl;
-	//if (glueDebug) cout << "after\t" << glueStorage.dump(key,false ) << endl;
+	if (glueDebug) cout << "after\t" << glueStorage.dump(key,false ) << endl;
 
 }
 
@@ -277,6 +277,11 @@ string rcnorm ( string seq ) {
 
 
 void Glue::insert(GlueEntry e, bool process) {
+	bool oldGlueDebug = glueDebug;
+
+	if ((e.seq.find(key_of_interest) != std::string::npos) || (e.seq.find(reversecomplement(key_of_interest)) != std::string::npos)) {
+		glueDebug = true;
+	}
 
 	if (glueDebug) cout << "insert\t" << tostring(e,"") << endl;
 
@@ -286,8 +291,7 @@ void Glue::insert(GlueEntry e, bool process) {
 		insert_aux(e, e.rkmer);
 	}
 	//if (e.seq == key_of_interest) cout << "Before second insert:\n" << glueStorage.dump(); 
-
-	if (e.lmark && (e.seq.length() > kmerSize)) {
+	if (e.lmark) {
 		insert_aux(e, e.lkmer);
 	}
 
@@ -302,7 +306,7 @@ void Glue::insert(GlueEntry e, bool process) {
 				exit(1);
 			}
 		}
-		if (e.lmark && (e.seq.length() > kmerSize)) {
+		if (e.lmark) {
 			if (glueStorage.find(rcnorm(e.lkmer), e1, e2)) {
 				glueSingleEntry(e1, e2, rcnorm(e.lkmer));
 			} else {
@@ -312,6 +316,7 @@ void Glue::insert(GlueEntry e, bool process) {
 			}
 		}
 	}
+	glueDebug = oldGlueDebug; 
 
 }
 
