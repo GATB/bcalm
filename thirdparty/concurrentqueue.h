@@ -1321,6 +1321,33 @@ private:
 				return false;
 			}
 		}
+
+        /* Rayan: duplicating that code to remove the template fixes a compilation error on my gcc 4.9.1 */
+		inline bool is_empty_explicit() const
+		{
+			if (BLOCK_SIZE <= EXPLICIT_BLOCK_EMPTY_COUNTER_THRESHOLD) {
+				// Check flags
+				for (size_t i = 0; i < BLOCK_SIZE; ++i) {
+					if (!emptyFlags[i].load(std::memory_order_relaxed)) {
+						return false;
+					}
+				}
+				
+				// Aha, empty; make sure we have all other memory effects that happened before the empty flags were set
+				std::atomic_thread_fence(std::memory_order_acquire);
+				return true;
+			}
+			else {
+				// Check counter
+				if (elementsCompletelyDequeued.load(std::memory_order_relaxed) == BLOCK_SIZE) {
+					std::atomic_thread_fence(std::memory_order_acquire);
+					return true;
+				}
+				assert(elementsCompletelyDequeued.load(std::memory_order_relaxed) <= BLOCK_SIZE);
+				return false;
+			}
+		}
+		
 		
 		// Returns true if the block is now empty (does not apply in explicit context)
 		template<InnerQueueContext context>
@@ -1535,7 +1562,7 @@ private:
 				auto block = this->tailBlock;
 				do {
 					block = block->next;
-					if (block->template is_empty<explicit_context>()) {
+					if (block->is_empty_explicit()) {
 						continue;
 					}
 					
@@ -1583,7 +1610,7 @@ private:
 				// We reached the end of a block, start a new one
 				auto startBlock = this->tailBlock;
 				auto originalBlockIndexSlotsUsed = pr_blockIndexSlotsUsed;
-				if (this->tailBlock != nullptr && this->tailBlock->next->template is_empty<explicit_context>()) {
+				if (this->tailBlock != nullptr && this->tailBlock->next->is_empty_explicit()) {
 					// We can re-use the block ahead of us, it's empty!					
 					this->tailBlock = this->tailBlock->next;
 					this->tailBlock->template reset_empty<explicit_context>();
@@ -1788,7 +1815,7 @@ private:
 			index_t currentTailIndex = (startTailIndex - 1) & ~static_cast<index_t>(BLOCK_SIZE - 1);
 			if (blockBaseDiff > 0) {
 				// Allocate as many blocks as possible from ahead
-				while (blockBaseDiff > 0 && this->tailBlock != nullptr && this->tailBlock->next != firstAllocatedBlock && this->tailBlock->next->template is_empty<explicit_context>()) {
+				while (blockBaseDiff > 0 && this->tailBlock != nullptr && this->tailBlock->next != firstAllocatedBlock && this->tailBlock->next->is_empty_explicit()) {
 					blockBaseDiff -= static_cast<index_t>(BLOCK_SIZE);
 					currentTailIndex += static_cast<index_t>(BLOCK_SIZE);
 					
