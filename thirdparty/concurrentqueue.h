@@ -106,10 +106,23 @@ namespace moodycamel { namespace details {
 
 #ifndef MOODYCAMEL_CPP11_THREAD_LOCAL_SUPPORTED
 // VS2013 doesn't support `thread_local`, and MinGW-w64 w/ POSIX threading has a crippling bug: http://sourceforge.net/p/mingw-w64/bugs/445
-#if (!defined(_MSC_VER) || _MSC_VER >= 1900) && (!defined(__MINGW32__) && !defined(__MINGW64__))
+#if (!defined(_MSC_VER) || _MSC_VER >= 1900) && (!defined(__MINGW32__) && !defined(__MINGW64__) && (GCC_VERSION >= 40800))
 // Assume `thread_local` is fully supported in all other C++11 compilers/runtimes
 #define MOODYCAMEL_CPP11_THREAD_LOCAL_SUPPORTED
 #endif
+#endif
+
+/* Rayan: is_trivially_destructible isn't available before gcc 4.8, so I'm replacing it with code from https://github.com/stephentu/silo/blob/master/ndb_type_traits.h
+ * without really understanding it */
+# if  (GCC_VERSION < 40800)/*
+template <typename T>
+  struct is_trivially_destructible {
+          static const bool value = std::is_scalar<T>::value;
+            };*/
+//another possibility:
+#define is_trivially_destructible std::has_trivial_destructor
+#else
+#define is_trivially_destructible std::is_trivially_destructible
 #endif
 
 // Compiler-specific likely/unlikely hints
@@ -1943,7 +1956,7 @@ private:
 						pr_blockIndexSlotsUsed = originalBlockIndexSlotsUsed;
 						this->tailBlock = startBlock == nullptr ? firstAllocatedBlock : startBlock;
 						
-						if (!std::is_trivially_destructible<T>::value) {
+						if (!is_trivially_destructible<T>::value) {
 							auto block = startBlock;
 							if ((startTailIndex & static_cast<index_t>(BLOCK_SIZE - 1)) == 0) {
 								block = firstAllocatedBlock;
@@ -2458,7 +2471,7 @@ private:
 						auto constructedStopIndex = currentTailIndex;
 						auto lastBlockEnqueued = this->tailBlock;
 						
-						if (!std::is_trivially_destructible<T>::value) {
+						if (!is_trivially_destructible<T>::value) {
 							auto block = startBlock;
 							if ((startTailIndex & static_cast<index_t>(BLOCK_SIZE - 1)) == 0) {
 								block = firstAllocatedBlock;
