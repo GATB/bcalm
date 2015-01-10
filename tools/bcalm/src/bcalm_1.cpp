@@ -527,7 +527,6 @@ void bcalm_1::execute (){
     cout<<"BCALM total wallclock (incl kmer counting): "<<chrono::duration_cast<chrono::nanoseconds>(end_t-start_t).count() / unit <<" secs"<<endl;
     cout<<"Max bucket : "<<maxBucket<<endl;
 
-
 }
 
 
