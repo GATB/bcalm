@@ -164,7 +164,7 @@ void put_into_glue(string seq, size_t minimizer, Glue & glue, Model& modelK1) {
 		e.rmark = rightmark;
 		e.lkmer = e.seq.substr(0,k);
 		e.rkmer = e.seq.substr(e.seq.length() - k, k);
-		glue.insert(e);
+		glue.insert(e, true);
 	}
 }
 
@@ -506,8 +506,10 @@ void bcalm_1::execute (){
         } // end if superbucket non null
     } // end foreach superbucket
 	
-    if (use_glueing)
+    if (use_glueing) {
+		//cout << "Final glue:\n" << glue.glueStorage.dump() << "*****\n";
     	glue.glueStorage.printMemStats();
+	}
 
     /* printing some timing stats */
     auto end_t=chrono::system_clock::now();
