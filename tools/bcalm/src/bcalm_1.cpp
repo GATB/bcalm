@@ -55,7 +55,7 @@ typedef std::atomic<double> atomic_double;
 #define atomic_double_add(d1,d2) d1 += d2;
 typedef double atomic_double;
 #endif
-atomic_double global_wtime_compactions (0), global_wtime_cdistribution (0), global_wtime_add_nodes (0), global_wtime_create_buckets (0), global_wtime_glue (0), global_wtime_foreach_bucket (0), global_wtime_flush_sb (0), global_wtime_lambda (0), global_wtime_parallel (0);
+atomic_double global_wtime_compactions (0), global_wtime_cdistribution (0), global_wtime_add_nodes (0), global_wtime_create_buckets (0), global_wtime_glue (0), global_wtime_foreach_bucket (0), global_wtime_flush_sb (0), global_wtime_lambda (0), global_wtime_parallel (0), global_wtime_longest_lambda;
 
 /********************************************************************************/
 
@@ -414,7 +414,6 @@ void bcalm_1::execute (){
 
                             auto lambdaCompact = [&Buckets, &glue_queue, &i, j, &modelK1, &maxBucket, &superBuckets, &out, &glue, &longest_time_lambda]() {
                                 //~ graph1 g(kmerSize);
-
                                 /* add nodes to graph */
                                 auto start_nodes_t=get_wtime();
                                 size_t actualMinimizer((i<<minSize)+j);
@@ -533,6 +532,7 @@ void bcalm_1::execute (){
                 weighted_best_theoretical_speedup = weighted_best_theoretical_speedup_cumul / weighted_best_theoretical_speedup_sum_times ;
                
                 atomic_double_add(global_wtime_parallel, wallclock_sb);
+                atomic_double_add(global_wtime_longest_lambda, longest_time_lambda);
                 global_wtime_lambda = 0;
 
                 /* cleaning up */
@@ -579,16 +579,16 @@ void bcalm_1::execute (){
 
     /* printing some timing stats */
     auto end_t=chrono::system_clock::now();
-    cout<<"Buckets compaction and gluing: "<<chrono::duration_cast<chrono::nanoseconds>(end_t - start_buckets).count() / unit<<" secs"<<endl;
+    cout<<"Buckets compaction and gluing           : "<<chrono::duration_cast<chrono::nanoseconds>(end_t - start_buckets).count() / unit<<" secs"<<endl;
     cout<<"Within that, \n";
     cout <<"     creating buckets from superbuckets: "<< global_wtime_create_buckets / unit <<" secs"<<endl;
-    cout <<"     bucket compaction (except gluing): "<< global_wtime_foreach_bucket / unit <<" secs" <<endl;
+    cout <<"      bucket compaction (except gluing): "<< global_wtime_foreach_bucket / unit <<" secs" <<endl;
     cout <<"     within that, \n";
-    cout << "                 flushing superbuckets: "<< global_wtime_flush_sb / unit <<" secs" <<endl;
-    cout << "                 adding nodes to subgraphs: "<< global_wtime_add_nodes / unit <<" secs" <<endl;
-    cout <<"                  subgraphs constructions and compactions: "<< global_wtime_compactions / unit <<" secs"<<endl;
-    cout <<"                  compacted nodes redistribution: "<< global_wtime_cdistribution / unit <<" secs"<<endl;
-    cout <<"     glueing "<< global_wtime_glue / unit <<" secs"<<endl;
+    cout <<"                       flushing superbuckets: "<< global_wtime_flush_sb / unit <<" secs" <<endl;
+    cout <<"                   adding nodes to subgraphs: "<< global_wtime_add_nodes / unit <<" secs" <<endl;
+    cout <<"     subgraphs constructions and compactions: "<< global_wtime_compactions / unit <<" secs"<<endl;
+    cout <<"              compacted nodes redistribution: "<< global_wtime_cdistribution / unit <<" secs"<<endl;
+    cout <<"                                     glueing: "<< global_wtime_glue / unit <<" secs"<<endl;
     double sum = global_wtime_glue + global_wtime_cdistribution + global_wtime_compactions + global_wtime_add_nodes + global_wtime_flush_sb + global_wtime_create_buckets;
     cout<<"Sum of the above fine-grained timings: "<< sum / unit <<" secs"<<endl;
     cout<<"Discrepancy between sum of fine-grained timings and total wallclock of buckets compactions step: "<< (chrono::duration_cast<chrono::nanoseconds>(end_t-start_buckets).count() - sum ) / unit <<" secs"<<endl;
@@ -596,6 +596,7 @@ void bcalm_1::execute (){
     cout<<"Max bucket : "<<maxBucket<<endl;
     cout<<"    Wallclock time spent in parallel section : "<< global_wtime_parallel / unit << " secs"<<endl;
     cout<<"Best theoretical speedup in parallel section : "<< weighted_best_theoretical_speedup <<endl;
+    cout<<"Sum of longest bucket compaction for each sb : "<< global_wtime_longest_lambda / unit << " secs"<<endl;
 
 }
 
