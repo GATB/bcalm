@@ -126,7 +126,8 @@ class Glue
 
 		void output(string seq);
 		void insert_aux(GlueEntry newEntry, string key, GlueEntry & glueResult); 
-		bool glueSingleEntry(GlueEntry query, GlueEntry match, string key, GlueEntry & glueResult);
+		void glueSingleEntry(GlueEntry query, GlueEntry match, string key, GlueEntry & glueResult);
+		bool check_if_empty(GlueEntry newEntry, string key);
 		void startTimer() { 
 			if (timerReferenceCount++ == 0) startTime =  chrono::system_clock::now(); 
 		};

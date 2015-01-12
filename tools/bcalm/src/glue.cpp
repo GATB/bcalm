@@ -18,7 +18,8 @@
 using google::sparse_hash_map;
 #endif 
 
-const string key_of_interest = "CACATGTTCACACACACACACACACACACACACACACACACACACACACAC";
+string key_of_interest = "twentyfourseven";
+//key_of_interest = "kalimanati";
 bool glueDebug = false;
 using namespace std;
 
@@ -144,17 +145,6 @@ bool GlueStorage::find (string key, GlueEntry & e) {
 	return derefIt(findIt, e);
 }
 
-/*bool GlueStorage::getFirst(GlueEntry & e1, GlueEntry & e2) {
-	curIt = glueMap.begin();
-	return derefIt(curIt, e1, e2);
-
-}
-bool GlueStorage::getNext(GlueEntry & e1, GlueEntry & e2) {
-	curIt++;
-	return derefIt(curIt, e1,e2);
-}
-*/
-
 void GlueStorage::insertAtKey(string key, GlueEntry e) {
 	//insertAtIt(glueMap.find(key), e1, e2);
 	string s = GlueEntryCompactNaive(e, kmerSize).getRaw();
@@ -172,48 +162,43 @@ void GlueStorage::insertAtIt(GlueMap::iterator it, GlueEntry e) {
 
 //returns true if a glue was possible, false if there was no overlap
 //glueResult contains the result of the glue
-bool Glue::glueSingleEntry(GlueEntry query, GlueEntry match, string key, GlueEntry & glueResult) {
+void Glue::glueSingleEntry(GlueEntry query, GlueEntry match, string key, GlueEntry & glueResult) {
 	glueResult = GlueEntry();
-	if ((query.seq == "") || (match.seq == "")) 
-		return false; // not yet ready to process this
-	if ((!query.lmark && !query.rmark)) {
-		if (!match.lmark && !match.rmark) {
-		printf ("Assert failed!\n"); 
-			exit(1);
-		}
-		return false; //already output
-	}
-	if (!match.lmark  || (query.rkmer.compare(match.lkmer) != 0)) {
+	//todo: actually check that the match is with the key
+	
+	if (!match.lmark  || (query.rkmer.compare(match.lkmer) != 0) || (query.rkmer != key)) {
 		std::swap(query, match);
 	}
-	if (!match.lmark) {
-		return false; // nothing to do here
-	}
-	if (query.rkmer.compare(match.lkmer) == 0) {
-		//glueStorage.insertAtKey(key, GlueEntry());  //effectively removes the entry from the table
-		string gluedStr = query.seq + match.seq.substr(kmerSize, match.seq.size() - kmerSize);
-		glueResult.seq = gluedStr;
-		glueResult.lmark = query.lmark;
-		glueResult.rmark = match.rmark;
-		glueResult.lkmer = glueResult.seq.substr(0,kmerSize);
-		glueResult.rkmer = glueResult.seq.substr(glueResult.seq.length() - kmerSize, kmerSize);
-	} else {
-		cout << "uh oh, not matching" << endl;
-		cout << "  query: " << debug_highlight(query.seq, query.rkmer) <<  "\n";
-		cout << "  match: " << debug_highlight(match.seq, match.lkmer) << std::endl;
+
+	if (!(match.lmark && (query.rkmer.compare(match.lkmer) == 0) && (query.rkmer == key)) ) {
+		cout << "glueSingleEntry received non-gluable input:\n";
+		cout << "  query: " << tostring(query, key) << endl;
+		cout << "  match: " << tostring(match, key) << endl;
 		exit(1);
 	}
-	return true;
+
+	string gluedStr = query.seq + match.seq.substr(kmerSize, match.seq.size() - kmerSize);
+	glueResult.seq = gluedStr;
+	glueResult.lmark = query.lmark;
+	glueResult.rmark = match.rmark;
+	glueResult.lkmer = glueResult.seq.substr(0,kmerSize);
+	glueResult.rkmer = glueResult.seq.substr(glueResult.seq.length() - kmerSize, kmerSize);
 }
 
 
+bool Glue::check_if_empty(GlueEntry newEntry, string key) {
+	GlueEntry e;
 
-bool same(GlueEntry e1, GlueEntry e2) {
-	// do these have the same left kmer, or the same right kmer? Its not trivial because we should consider double strandedness
-	if ((e1.lkmer == e2.lkmer) && (e1.lmark == e2.lmark)) return true;
-	if ((e1.rkmer == e2.rkmer) && (e1.rmark == e2.rmark)) return true;
-	if ((e1.lkmer == reversecomplement(e2.rkmer)) && (e1.lmark == e2.rmark)) return true;
-	if ((e1.rkmer == reversecomplement(e2.lkmer)) && (e1.rmark == e2.lmark)) return true;
+	if (key.compare(reversecomplement(key)) >= 0) {
+		rcGlueEntry(newEntry);
+		key = reversecomplement(key);
+	}
+
+	if (!glueStorage.find(key, e)) {
+		return true;
+	} else if (e.seq == "") {
+		return true;
+	}
 	return false;
 }
 
@@ -235,18 +220,10 @@ void Glue::insert_aux(GlueEntry newEntry, string key, GlueEntry & glueResult) {
 		if (e.seq == "") {
 			glueStorage.insertAfterFind(newEntry);
 		} else {
-			if (same(e, newEntry)) {
-				glueStorage.insertAfterFind(newEntry);
-			} else {
-				//Looks like we need to do a glue!
-				glueResult = GlueEntry();
-				if (!glueSingleEntry(e, newEntry, key, glueResult)) {
-					printf("huh? not able to glue though should be: kmer %s (%s,%s) inserting %s\n",key.c_str(), debug_highlight(e.seq, key).c_str(), debug_highlight(newEntry.seq, key).c_str());
-					exit(1);
-				} 
-				glueStorage.insertAfterFind(GlueEntry());
-				//insert(glueResult, true);
-			}
+			//Looks like we need to do a glue!
+			glueResult = GlueEntry();
+			glueSingleEntry(e, newEntry, key, glueResult); //glue the two strings
+			glueStorage.insertAfterFind(GlueEntry()); //clear entry
 		}
 	}
 	//if (key == key_of_interest) cout << "after\t" << glueStorage.dump(key,false ) << endl;
@@ -263,6 +240,7 @@ void Glue::insert(GlueEntry e, bool process) {
 		exit(1);
 	}
 
+	
 	if ((e.seq.find(key_of_interest) != std::string::npos) || (e.seq.find(reversecomplement(key_of_interest)) != std::string::npos)) {
 		glueDebug = true;
 	}
@@ -270,24 +248,41 @@ void Glue::insert(GlueEntry e, bool process) {
 	if (glueDebug) 
 		cout << "insert\t" << tostring(e,"") << endl;
 
-	//if (e.seq == key_of_interest) cout << "Before first insert:\n" << glueStorage.dump();
+	GlueEntry insRes;
 
-	GlueEntry insRes1, insRes2;
-
+	/*
 	if (!e.rmark && !e.lmark) {
 		output(e.seq);
 	} 
 	if (e.rmark) {
-		insert_aux(e, e.rkmer, insRes1);
+		insert_aux(e, e.rkmer, insRes);
 	}
 	else {
 		if (e.lmark) {
-			insert_aux(e, e.lkmer, insRes2);
+			insert_aux(e, e.lkmer, insRes);
 		}
 	}
+	*/
 
-	if (insRes1.seq != "") insert(insRes1, true);
-	if (insRes2.seq != "") insert(insRes2, true);
+	if (!e.rmark && !e.lmark) {
+		output(e.seq);
+	} else if (e.lmark && !e.rmark) {
+		insert_aux(e, e.lkmer, insRes);
+	} else if (!e.lmark && e.rmark) {
+		insert_aux(e, e.rkmer, insRes);
+	} else { 
+		//pick one that is not empty
+		//this is not necessary for correctness, picking an arbitrary one will do
+		//but picking a non-empty one may force glues to happen sooner rather later, preventing build-ups of long sequential chains
+		if (!check_if_empty(e, e.rkmer)) {
+			insert_aux(e, e.rkmer, insRes);
+		} else {
+			insert_aux(e, e.lkmer, insRes);
+		}
+	}
+	
+
+	if (insRes.seq != "") insert(insRes, true);
 
 	glueDebug = oldGlueDebug; 
 
@@ -317,11 +312,6 @@ void GlueStorage::cleanup() {
 
 void Glue::glue()
 {
-	/*cout << "Before Glue\n" << glueStorage.dump();
-	//cout << "Before glue:\t" << glueStorage.dump(key_of_interest) << endl;
-	cout << "After Glue\n" << glueStorage.dump();
-	//cout << "After glue:\t" << glueStorage.dump(key_of_interest) << endl;
-	*/
 	startTimer();
 	glueStorage.cleanup(); 
 	stopTimer();
