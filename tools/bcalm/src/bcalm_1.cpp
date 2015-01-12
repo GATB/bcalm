@@ -58,6 +58,7 @@ typedef double atomic_double;
 #endif
 atomic_double global_wtime_compactions (0), global_wtime_cdistribution (0), global_wtime_add_nodes (0), global_wtime_create_buckets (0), global_wtime_glue (0), global_wtime_foreach_bucket (0), global_wtime_flush_sb (0), global_wtime_lambda (0), global_wtime_parallel (0), global_wtime_longest_lambda (0), global_wtime_best_sched(0);
 
+bool time_lambdas = true;
 std::mutex lambda_timing_mutex;
 
 
@@ -292,7 +293,7 @@ void bcalm_1::execute (){
 
     /**FOREACH SUPERBUCKET **/
     for(uint i(0);i<numBucket;++i){
-        //cout<<'-'<<flush;
+        cout<<'-'<<flush;
         if(superBuckets[i]!=NULL){
             auto start_flush_t=get_wtime();
             superBuckets[i]->flush();
@@ -500,12 +501,15 @@ void bcalm_1::execute (){
                                     maxBucket=size;
                                 }
 
-                                auto time_lambda = diff_wtime(start_nodes_t, end_cdistribution_t);
-                                atomic_double_add(global_wtime_lambda, time_lambda);
 
-                                lambda_timing_mutex.lock();
-                                lambda_timings.push_back(time_lambda);
-                                lambda_timing_mutex.unlock();
+                                if (time_lambdas)
+                                {
+                                    auto time_lambda = diff_wtime(start_nodes_t, end_cdistribution_t);
+                                    atomic_double_add(global_wtime_lambda, time_lambda);
+                                    lambda_timing_mutex.lock();
+                                    lambda_timings.push_back(time_lambda);
+                                    lambda_timing_mutex.unlock();
+                                }
 
                             }; // end lambda function 
 
@@ -536,44 +540,44 @@ void bcalm_1::execute (){
                     auto end_foreach_bucket_t=get_wtime();
                     auto wallclock_sb = diff_wtime(start_foreach_bucket_t, end_foreach_bucket_t);
                     atomic_double_add(global_wtime_foreach_bucket, wallclock_sb);
-
-                    std::sort(lambda_timings.begin(), lambda_timings.end());
-                    std::reverse(lambda_timings.begin(), lambda_timings.end());
-                    /* compute a theoretical, i think optimal, scheduling of lambda's using the current number of threads 
-                     */
-                    double tot_time_best_sched_lambda = 0; // start with the longest lambda
-                    int t = 0;
-                    for (auto & lambda_time: lambda_timings) {
-                        if ((t++) % nb_threads_simulate == 0)
-                            tot_time_best_sched_lambda += lambda_time;
-                    }
-
-                    double longest_lambda = lambda_timings.front();
-
-                    cout <<"\nIn this superbucket," <<endl;
-                    cout <<"                  sum of time spent in lambda's: "<< global_wtime_lambda / 1000000 <<" msecs" <<endl;
-                    cout <<"                                 longest lambda: "<< longest_lambda / 1000000 <<" msecs" <<endl;
-                    cout <<"         tot time of best scheduling of lambdas: "<< tot_time_best_sched_lambda / 1000000 <<" msecs" <<endl;
-                    double best_theoretical_speedup =  global_wtime_lambda  / longest_lambda;
-                    double actual_theoretical_speedup =  global_wtime_lambda  / tot_time_best_sched_lambda;
-                    cout <<"                       best theoretical speedup: "<<  best_theoretical_speedup << "x" <<endl;
-                    if (nb_threads_simulate > 1)
-                        cout <<"     best theoretical speedup with "<< nb_threads_simulate << " thread(s): "<<  actual_theoretical_speedup << "x" <<endl;
-
-                    weighted_best_theoretical_speedup_cumul += best_theoretical_speedup * wallclock_sb;
-                    weighted_best_theoretical_speedup_sum_times                        += wallclock_sb;
-                    weighted_best_theoretical_speedup = weighted_best_theoretical_speedup_cumul / weighted_best_theoretical_speedup_sum_times ;
-
-                    weighted_actual_theoretical_speedup_cumul += actual_theoretical_speedup * wallclock_sb;
-                    weighted_actual_theoretical_speedup_sum_times                        += wallclock_sb;
-                    weighted_actual_theoretical_speedup = weighted_actual_theoretical_speedup_cumul / weighted_actual_theoretical_speedup_sum_times ;
-
-
                     atomic_double_add(global_wtime_parallel, wallclock_sb);
-                    atomic_double_add(global_wtime_longest_lambda, longest_lambda);
-                    atomic_double_add(global_wtime_best_sched, tot_time_best_sched_lambda);
 
-                    global_wtime_lambda = 0;
+                    if (time_lambdas)
+                    {
+                        std::sort(lambda_timings.begin(), lambda_timings.end());
+                        std::reverse(lambda_timings.begin(), lambda_timings.end());
+                        /* compute a theoretical, i think optimal, scheduling of lambda's using the current number of threads 
+                        */
+                        double tot_time_best_sched_lambda = 0; // start with the longest lambda
+                        int t = 0;
+                        for (auto & lambda_time: lambda_timings) {
+                            if ((t++) % nb_threads_simulate == 0)
+                                tot_time_best_sched_lambda += lambda_time;
+                        }
+
+                        double longest_lambda = lambda_timings.front();
+
+                        cout <<"\nIn this superbucket," <<endl;
+                        cout <<"                  sum of time spent in lambda's: "<< global_wtime_lambda / 1000000 <<" msecs" <<endl;
+                        cout <<"                                 longest lambda: "<< longest_lambda / 1000000 <<" msecs" <<endl;
+                        cout <<"         tot time of best scheduling of lambdas: "<< tot_time_best_sched_lambda / 1000000 <<" msecs" <<endl;
+                        double best_theoretical_speedup =  global_wtime_lambda  / longest_lambda;
+                        double actual_theoretical_speedup =  global_wtime_lambda  / tot_time_best_sched_lambda;
+                        cout <<"                       best theoretical speedup: "<<  best_theoretical_speedup << "x" <<endl;
+                        if (nb_threads_simulate > 1)
+                            cout <<"     best theoretical speedup with "<< nb_threads_simulate << " thread(s): "<<  actual_theoretical_speedup << "x" <<endl;
+
+                        weighted_best_theoretical_speedup_cumul += best_theoretical_speedup * wallclock_sb;
+                        weighted_best_theoretical_speedup_sum_times                        += wallclock_sb;
+                        weighted_best_theoretical_speedup = weighted_best_theoretical_speedup_cumul / weighted_best_theoretical_speedup_sum_times ;
+
+                        weighted_actual_theoretical_speedup_cumul += actual_theoretical_speedup * wallclock_sb;
+                        weighted_actual_theoretical_speedup_sum_times                        += wallclock_sb;
+                        weighted_actual_theoretical_speedup = weighted_actual_theoretical_speedup_cumul / weighted_actual_theoretical_speedup_sum_times ;
+                        atomic_double_add(global_wtime_longest_lambda, longest_lambda);
+                        atomic_double_add(global_wtime_best_sched, tot_time_best_sched_lambda);
+                        global_wtime_lambda = 0;
+                    }
                 }
 
                 /* cleaning up */
@@ -629,17 +633,20 @@ void bcalm_1::execute (){
     cout <<"                   adding nodes to subgraphs: "<< global_wtime_add_nodes / unit <<" secs" <<endl;
     cout <<"     subgraphs constructions and compactions: "<< global_wtime_compactions / unit <<" secs"<<endl;
     cout <<"              compacted nodes redistribution: "<< global_wtime_cdistribution / unit <<" secs"<<endl;
-    cout <<"                                     glueing: "<< global_wtime_glue / unit <<" secs"<<endl;
+    cout <<"\nglueing: "<< global_wtime_glue / unit <<" secs"<<endl;
     double sum = global_wtime_glue + global_wtime_cdistribution + global_wtime_compactions + global_wtime_add_nodes + global_wtime_flush_sb + global_wtime_create_buckets;
     cout<<"Sum of the above fine-grained timings: "<< sum / unit <<" secs"<<endl;
     cout<<"Discrepancy between sum of fine-grained timings and total wallclock of buckets compactions step: "<< (chrono::duration_cast<chrono::nanoseconds>(end_t-start_buckets).count() - sum ) / unit <<" secs"<<endl;
     cout<<"BCALM total wallclock (incl kmer counting): "<<chrono::duration_cast<chrono::nanoseconds>(end_t-start_t).count() / unit <<" secs"<<endl;
     cout<<"Max bucket : "<<maxBucket<<endl;
-    cout<<"                 Wallclock time spent in parallel section : "<< global_wtime_parallel / unit << " secs"<<endl;
-    cout<<"             Best theoretical speedup in parallel section : "<< weighted_best_theoretical_speedup << "x" <<endl;
-    cout<<"Best theoretical speedup in parallel section using " << nb_threads_simulate << " threads : "<< weighted_actual_theoretical_speedup << "x" <<endl;
-    cout<<"             Sum of longest bucket compaction for each sb : "<< global_wtime_longest_lambda / unit << " secs"<<endl;
-    cout<<"                       Sum of best scheduling for each sb : "<< global_wtime_best_sched / unit << " secs"<<endl;
+    if (time_lambdas)
+    {
+        cout<<"\n                 Wallclock time spent in parallel section : "<< global_wtime_parallel / unit << " secs"<<endl;
+        cout<<"             Best theoretical speedup in parallel section : "<< weighted_best_theoretical_speedup << "x" <<endl;
+        cout<<"Best theoretical speedup in parallel section using " << nb_threads_simulate << " threads : "<< weighted_actual_theoretical_speedup << "x" <<endl;
+        cout<<"             Sum of longest bucket compaction for each sb : "<< global_wtime_longest_lambda / unit << " secs"<<endl;
+        cout<<"                       Sum of best scheduling for each sb : "<< global_wtime_best_sched / unit << " secs"<<endl;
+    }
 
 }
 
