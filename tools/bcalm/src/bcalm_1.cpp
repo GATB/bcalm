@@ -22,16 +22,8 @@
  #include "../../../thirdparty/ThreadPool.h"
 #endif
 
-#ifdef _OPENMP
-   #include <omp.h>
-   #define omp_diff_wtime_bcalm(x,y) (y - x) 
-#else
-   #define omp_get_thread_num() 0
-   #define omp_set_num_threads(x) 0
-   #define omp_get_max_threads() 1
-   #define omp_get_wtime() chrono::system_clock::now() 
-   #define omp_diff_wtime_bcalm(x,y) chrono::duration_cast<chrono::nanoseconds>(y - x).count() 
-#endif
+#define get_wtime() chrono::system_clock::now() 
+#define diff_wtime(x,y) chrono::duration_cast<chrono::nanoseconds>(y - x).count() 
 
 
 using namespace std;
@@ -63,7 +55,7 @@ typedef std::atomic<double> atomic_double;
 #define atomic_double_add(d1,d2) d1 += d2;
 typedef double atomic_double;
 #endif
-atomic_double global_wtime_compactions (0), global_wtime_cdistribution (0), global_wtime_add_nodes (0), global_wtime_create_buckets (0), global_wtime_glue (0), global_wtime_foreach_bucket (0), global_wtime_flush_sb (0), global_wtime_test (0);
+atomic_double global_wtime_compactions (0), global_wtime_cdistribution (0), global_wtime_add_nodes (0), global_wtime_create_buckets (0), global_wtime_glue (0), global_wtime_foreach_bucket (0), global_wtime_flush_sb (0), global_wtime_lambda (0), global_wtime_parallel (0);
 
 /********************************************************************************/
 
@@ -279,20 +271,24 @@ void bcalm_1::execute (){
     
     Glue glue(kmerSize, out);
 
+    double weighted_best_theoretical_speedup_cumul = 0;
+    double weighted_best_theoretical_speedup_sum_times = 0;
+    double weighted_best_theoretical_speedup = 0;
+
     auto start_buckets=chrono::system_clock::now();
 
     /**FOREACH SUPERBUCKET **/
     for(uint i(0);i<numBucket;++i){
         //cout<<'-'<<flush;
         if(superBuckets[i]!=NULL){
-            auto start_flush_t=omp_get_wtime();
+            auto start_flush_t=get_wtime();
             superBuckets[i]->flush();
-            auto end_flush_t=omp_get_wtime();
+            auto end_flush_t=get_wtime();
 
-            atomic_double_add(global_wtime_flush_sb,omp_diff_wtime_bcalm(start_flush_t, end_flush_t));
+            atomic_double_add(global_wtime_flush_sb,diff_wtime(start_flush_t, end_flush_t));
 
             if(superBuckets[i]->getSize()>0){
-                auto start_createbucket_t=omp_get_wtime();
+                auto start_createbucket_t=get_wtime();
                 vector<BankBinary*> Buckets(numBucket);
            
                 /* expand a superbucket into buckets */ 
@@ -342,10 +338,10 @@ void bcalm_1::execute (){
                     }
                 } // end for itBinary
 
-                auto end_createbucket_t=omp_get_wtime();
-                atomic_double_add(global_wtime_create_buckets, omp_diff_wtime_bcalm(start_createbucket_t, end_createbucket_t));
+                auto end_createbucket_t=get_wtime();
+                atomic_double_add(global_wtime_create_buckets, diff_wtime(start_createbucket_t, end_createbucket_t));
 
-                auto start_foreach_bucket_t=omp_get_wtime();
+                auto start_foreach_bucket_t=get_wtime();
 
 #ifdef CXX11THREADS
                 std::vector<std::thread> threads;
@@ -355,20 +351,65 @@ void bcalm_1::execute (){
                 int glue_queue;//dummy
 #endif
 
+                double longest_time_lambda = 0;
+
                 // parallel_for doesn't look good, it seems to statically partition the range
                 //tbb::parallel_for(4, 0, numBucket, ([&Buckets, &glue_queue, &i, &modelK1, &maxBucket, &superBuckets, &parallel, &out ](long j) {
 
+#if 0
+                // TEMPORARY CODE to preload largest bucket from a superbucket (useful to debug parallelism)
+                vector<string> test_bucket;
+                int j = 0, maxj = 0, maxsize = 0;
+                for(;j<numBucket;++j){
+                    if(Buckets[j]!=NULL){
+                        Buckets[j]->flush();
+                        if(Buckets[j]->getSize()>0){
+                            if (Buckets[j]->getSize() > maxsize)
+                            {
+                                maxsize = Buckets[j]->getSize();
+                                maxj = j;
+                            }
+                        }
+                    }
+                }
+                j= maxj;
+                BankBinary::Iterator itBinarytest (*Buckets[j]);
+                for (itBinarytest.first(); !itBinarytest.isDone(); itBinarytest.next()){
+                    string tmp;
+                    for (size_t i=0; i< (itBinarytest->getDataSize()+3)/4; i++){
+                        char b = (itBinarytest->getData()[i] & 0xFF) ;
+                        tmp.push_back(tableASCII[(b>>6)&3]);
+                        tmp.push_back(tableASCII[(b>>4)&3]);
+                        tmp.push_back(tableASCII[(b>>2)&3]);
+                        tmp.push_back(tableASCII[(b>>0)&3]);
+                    }
+                    tmp=tmp.substr(0,itBinarytest->getDataSize());
+                    test_bucket.push_back(tmp);
+                }
+#endif
+ 
                 /**FOREACH BUCKET **/
                 for(uint j(0);j<numBucket;++j){
                     if(Buckets[j]!=NULL){
                         Buckets[j]->flush();
                         if(Buckets[j]->getSize()>0){
 
-                            auto lambdaCompact = [&Buckets, &glue_queue, &i, j, &modelK1, &maxBucket, &superBuckets, &out, &glue]() {
+/* // code for iterating largest bucket
+                                for (auto & test_bucket_str: test_bucket) {
+                                    string tmp = test_bucket_str;
+                                    string seq = tmp;
+                                    Model::Kmer kmmerBegin=modelK1.codeSeed(seq.substr(0,kmerSize-1).c_str(),Data::ASCII);
+                                    size_t leftMin(modelK1.getMinimizerValue(kmmerBegin.value()));
+                                    Model::Kmer kmmerEnd=modelK1.codeSeed(seq.substr(seq.size()-kmerSize+1,kmerSize-1).c_str(),Data::ASCII);
+                                    size_t rightMin(modelK1.getMinimizerValue(kmmerEnd.value()));
+*/
+
+
+                            auto lambdaCompact = [&Buckets, &glue_queue, &i, j, &modelK1, &maxBucket, &superBuckets, &out, &glue, &longest_time_lambda]() {
                                 //~ graph1 g(kmerSize);
 
                                 /* add nodes to graph */
-                                auto start_nodes_t=omp_get_wtime();
+                                auto start_nodes_t=get_wtime();
                                 size_t actualMinimizer((i<<minSize)+j);
                                 graph2 g(kmerSize-1,actualMinimizer,minSize);
                                 BankBinary::Iterator itBinary (*Buckets[j]);
@@ -390,19 +431,19 @@ void bcalm_1::execute (){
                                     g.addvertex(tmp);
 
                                 }
-                                auto end_nodes_t=omp_get_wtime();
-                                atomic_double_add(global_wtime_add_nodes, omp_diff_wtime_bcalm(start_nodes_t, end_nodes_t));
+                                auto end_nodes_t=get_wtime();
+                                atomic_double_add(global_wtime_add_nodes, diff_wtime(start_nodes_t, end_nodes_t));
 
                                 /* compact graph*/
-                                auto start_dbg=omp_get_wtime();
+                                auto start_dbg=get_wtime();
                                 g.debruijn();
                                 //~ g.compressh(actualMinimizer);
                                 g.compress2();
-                                auto end_dbg=omp_get_wtime();
-                                atomic_double_add(global_wtime_compactions, omp_diff_wtime_bcalm(start_dbg, end_dbg));
+                                auto end_dbg=get_wtime();
+                                atomic_double_add(global_wtime_compactions, diff_wtime(start_dbg, end_dbg));
 
                                 /* distribute nodes (to other buckets, or output, or glue) */
-                                auto start_cdistribution_t=omp_get_wtime(); 
+                                auto start_cdistribution_t=get_wtime(); 
                                 for(uint32_t i(1);i<g.unitigs.size();++i){ // TODO: determine if i(1) is not a bug, why not i(0)?
                                     if(g.unitigs[i].size()!=0){
                                         if (use_glueing)
@@ -421,8 +462,8 @@ void bcalm_1::execute (){
 
                                     }
                                 }
-                                auto end_cdistribution_t=omp_get_wtime();
-                                atomic_double_add(global_wtime_cdistribution, omp_diff_wtime_bcalm(start_cdistribution_t, end_cdistribution_t));
+                                auto end_cdistribution_t=get_wtime();
+                                atomic_double_add(global_wtime_cdistribution, diff_wtime(start_cdistribution_t, end_cdistribution_t));
 
                                 /* what was this code for? */ 
                                 //~ size_t node_index(0);
@@ -440,6 +481,11 @@ void bcalm_1::execute (){
                                     maxBucket=size;
                                 }
 
+                                auto time_lambda = diff_wtime(start_nodes_t, end_cdistribution_t);
+                                if (time_lambda > longest_time_lambda)
+                                    longest_time_lambda = time_lambda;
+                                atomic_double_add(global_wtime_lambda, time_lambda);
+
                             }; // end lambda function 
 
 #ifdef CXX11THREADS
@@ -447,7 +493,7 @@ void bcalm_1::execute (){
                             /*threads.push_back(
                               std::thread(*/
                             if (nb_threads > 1) 
-                                pool.enqueue(lambdaCompact);
+                                pool.enqueue(lambdaCompact); 
                             else
                                 lambdaCompact();
 #else
@@ -462,38 +508,56 @@ void bcalm_1::execute (){
 #ifdef CXX11THREADS
                 //for ( auto& thread : threads ){ thread.join(); }
                 pool.join();
-
-                // put everything into the glue
-                std::pair<string, size_t> glue_elt;
-                while (glue_queue.try_dequeue(glue_elt))
-                {
-                    put_into_glue(glue_elt.first, glue_elt.second, glue, modelK1);
-                }
 #endif
 
-                for(uint j(0);j<numBucket;++j){
-                    if(Buckets[j]!=NULL){
-                        delete(Buckets[j]);
-                        remove(("B"+to_string(j)).c_str());
+                auto end_foreach_bucket_t=get_wtime();
+                auto wallclock_sb = diff_wtime(start_foreach_bucket_t, end_foreach_bucket_t);
+                atomic_double_add(global_wtime_foreach_bucket, wallclock_sb);
+
+                cout <<"In this superbucket," <<endl;
+                cout <<"     sum of time spent in lambda's: "<< global_wtime_lambda / 1000000 <<" msecs" <<endl;
+                cout <<"     longest lambda: "<< longest_time_lambda / 1000000 <<" msecs" <<endl;
+                double best_theoretical_speedup =  global_wtime_lambda  / longest_time_lambda;
+                cout <<"     best theoretical speedup: "<<  best_theoretical_speedup << "x" <<endl;
+
+                
+                weighted_best_theoretical_speedup_cumul += best_theoretical_speedup * wallclock_sb;
+                weighted_best_theoretical_speedup_sum_times                        += wallclock_sb;
+                weighted_best_theoretical_speedup = weighted_best_theoretical_speedup_cumul / weighted_best_theoretical_speedup_sum_times ;
+               
+                atomic_double_add(global_wtime_parallel, wallclock_sb);
+                global_wtime_lambda = 0;
+
+                /* cleaning up */
+                {
+                    for(uint j(0);j<numBucket;++j){
+                        if(Buckets[j]!=NULL){
+                            delete(Buckets[j]);
+                            remove(("B"+to_string(j)).c_str());
+                        }
                     }
+                    delete(superBuckets[i]);
+                    remove(("SB"+to_string(i)).c_str());
                 }
-
-
-                delete(superBuckets[i]);
-                remove(("SB"+to_string(i)).c_str());
-
-                auto end_foreach_bucket_t=omp_get_wtime();
-                atomic_double_add(global_wtime_foreach_bucket, omp_diff_wtime_bcalm(start_foreach_bucket_t, end_foreach_bucket_t));
 
                 // do the gluing at the end of each superbucket
                 if (use_glueing) {
-                    auto start_glue_t=omp_get_wtime();
+                    auto start_glue_t=get_wtime();
+
+#ifdef CXX11THREADS
+                    // put everything into the glue
+                    std::pair<string, size_t> glue_elt;
+                    while (glue_queue.try_dequeue(glue_elt))
+                    {
+                        put_into_glue(glue_elt.first, glue_elt.second, glue, modelK1);
+                    }
+#endif
 
 					glue.glueStorage.updateMemStats();
 					glue.glue();
 
-                    auto end_glue_t=omp_get_wtime();
-                    atomic_double_add(global_wtime_glue,  omp_diff_wtime_bcalm(start_glue_t, end_glue_t));
+                    auto end_glue_t=get_wtime();
+                    atomic_double_add(global_wtime_glue,  diff_wtime(start_glue_t, end_glue_t));
  
 				} // end if parallel
             } // end if superbucket non empty
@@ -523,6 +587,8 @@ void bcalm_1::execute (){
     cout<<"Discrepancy between sum of fine-grained timings and total wallclock of buckets compactions step: "<< (chrono::duration_cast<chrono::nanoseconds>(end_t-start_buckets).count() - sum ) / unit <<" secs"<<endl;
     cout<<"BCALM total wallclock (incl kmer counting): "<<chrono::duration_cast<chrono::nanoseconds>(end_t-start_t).count() / unit <<" secs"<<endl;
     cout<<"Max bucket : "<<maxBucket<<endl;
+    cout<<"    Wallclock time spent in parallel section : "<< global_wtime_parallel / unit << " secs"<<endl;
+    cout<<"Best theoretical speedup in parallel section : "<< weighted_best_theoretical_speedup <<endl;
 
 }
 
