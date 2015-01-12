@@ -18,8 +18,8 @@
 using google::sparse_hash_map;
 #endif 
 
-string key_of_interest = "twentyfourseven";
-//key_of_interest = "kalimanati";
+string key_of_interest = "somestringthatwillneveroccur";
+//string key_of_interest = "GATGTGTTTGTCGTGTTCGCGATCGCCACGGCATCGGTTAGACTGCTAACC";
 bool glueDebug = false;
 using namespace std;
 
@@ -80,37 +80,15 @@ string debug_highlight(string s, string motif)
 }
 
 
-void rcGlueEntry(GlueEntry & entry) {
-	int k = entry.lkmer.size();
-	entry.seq = reversecomplement(entry.seq);
-	std::swap(entry.lmark, entry.rmark);
-	entry.lkmer = entry.seq.substr(0,k);
-	entry.rkmer = entry.seq.substr(entry.seq.length() - k, k);
-}
-
-string tostring(const GlueEntry e, string key) {
+string tostring(GlueEntry e, string key) {
 	ostringstream out;
-	if (e.lmark) out << "_"; else out << " ";
-	out << debug_highlight(e.seq, key);
-	if (e.rmark) out << "_"; else out << " ";
+	if (e.getLmark()) out << "_"; else out << " ";
+	out << debug_highlight(e.getSeq(), key);
+	if (e.getRmark()) out << "_"; else out << " ";
 	return out.str();
 }
 
 
-
-GlueEntry GlueEntryCompactNaive::getEntry() {
-	GlueEntry e;
-	//if (raw.length() < kmerSize + 2) { cout << "problem: " << raw << ".\n"; exit(1); }
-	if (raw.length() < kmerSize + 2) { //an empty entry
-		return e;
-	}
-	e.seq = raw.substr(0, raw.length() - 2);
-	e.lkmer = e.seq.substr(0, kmerSize);
-	e.rkmer = e.seq.substr(e.seq.length() - kmerSize, kmerSize);
-	e.lmark = raw[raw.length() - 2];
-	e.rmark = raw[raw.length() - 1];
-	return e;
-}
 
 string GlueStorage::dump() { 
 	ostringstream o;
@@ -136,7 +114,7 @@ string GlueStorage::dump(string key, bool dumpkey) {
 
 bool GlueStorage::derefIt (GlueMap::const_iterator it, GlueEntry & e) {
 	if (it == glueMap.end()) return false;
-	e = GlueEntryCompactNaive(it->second, kmerSize).getEntry();
+	e = GlueEntry(it->second, kmerSize); 
 	return true;
 }
 
@@ -146,9 +124,7 @@ bool GlueStorage::find (string key, GlueEntry & e) {
 }
 
 void GlueStorage::insertAtKey(string key, GlueEntry e) {
-	//insertAtIt(glueMap.find(key), e1, e2);
-	string s = GlueEntryCompactNaive(e, kmerSize).getRaw();
-	glueMap[key] = s;
+	glueMap[key] = e.getRaw();
 }
 
 void GlueStorage::insertAtIt(GlueMap::iterator it, GlueEntry e) {
@@ -156,33 +132,26 @@ void GlueStorage::insertAtIt(GlueMap::iterator it, GlueEntry e) {
 		cout << "GlueStorage::insertAtIt has it pointing to the end of glueMap...SHOULD not BE.\n";
 		exit(1);
 	}
-	string s = GlueEntryCompactNaive(e, kmerSize).getRaw();
-	it->second = s;
+	it->second = e.getRaw();
 }
 
-//returns true if a glue was possible, false if there was no overlap
 //glueResult contains the result of the glue
 void Glue::glueSingleEntry(GlueEntry query, GlueEntry match, string key, GlueEntry & glueResult) {
 	glueResult = GlueEntry();
-	//todo: actually check that the match is with the key
 	
-	if (!match.lmark  || (query.rkmer.compare(match.lkmer) != 0) || (query.rkmer != key)) {
+	if (!match.getLmark()  || (query.getRkmer() != match.getLkmer()) || (query.getRkmer() != key)) {
 		std::swap(query, match);
 	}
 
-	if (!(match.lmark && (query.rkmer.compare(match.lkmer) == 0) && (query.rkmer == key)) ) {
+	if (!(match.getLmark() && (query.getRkmer() == match.getLkmer()) && (query.getRkmer() == key)) ) {
 		cout << "glueSingleEntry received non-gluable input:\n";
 		cout << "  query: " << tostring(query, key) << endl;
 		cout << "  match: " << tostring(match, key) << endl;
 		exit(1);
 	}
 
-	string gluedStr = query.seq + match.seq.substr(kmerSize, match.seq.size() - kmerSize);
-	glueResult.seq = gluedStr;
-	glueResult.lmark = query.lmark;
-	glueResult.rmark = match.rmark;
-	glueResult.lkmer = glueResult.seq.substr(0,kmerSize);
-	glueResult.rkmer = glueResult.seq.substr(glueResult.seq.length() - kmerSize, kmerSize);
+	string gluedStr = query.getSeq() + match.getSeq().substr(kmerSize, match.getSeq().size() - kmerSize);
+	glueResult = GlueEntry(gluedStr, query.getLmark(), match.getRmark(), kmerSize);
 }
 
 
@@ -190,24 +159,31 @@ bool Glue::check_if_empty(GlueEntry newEntry, string key) {
 	GlueEntry e;
 
 	if (key.compare(reversecomplement(key)) >= 0) {
-		rcGlueEntry(newEntry);
+		newEntry.revComp();
 		key = reversecomplement(key);
 	}
 
 	if (!glueStorage.find(key, e)) {
 		return true;
-	} else if (e.seq == "") {
+	} else if (e.isEmpty()) {
 		return true;
 	}
 	return false;
 }
 
 
+/*void Glue::write2hash(string key, GlueEntry e) {
+	//auto tag = tagSystem.createTag(e);
+	//glueStorage.insertAtKey(key, tag);
+	glueStorage.insertAtKey(key, e);
+}
+*/
+
 void Glue::insert_aux(GlueEntry newEntry, string key, GlueEntry & glueResult) { 
 	GlueEntry e;
 
 	if (key.compare(reversecomplement(key)) >= 0) {
-		rcGlueEntry(newEntry);
+		newEntry.revComp();
 		key = reversecomplement(key);
 	}
 
@@ -217,13 +193,13 @@ void Glue::insert_aux(GlueEntry newEntry, string key, GlueEntry & glueResult) {
 	if (!glueStorage.find(key, e)) {
 		glueStorage.insertAtKey(key, newEntry);
 	} else {
-		if (e.seq == "") {
-			glueStorage.insertAfterFind(newEntry);
+		if (e.isEmpty()) {
+			glueStorage.insertAtKey(key, newEntry);
 		} else {
 			//Looks like we need to do a glue!
 			glueResult = GlueEntry();
 			glueSingleEntry(e, newEntry, key, glueResult); //glue the two strings
-			glueStorage.insertAfterFind(GlueEntry()); //clear entry
+			glueStorage.insertAtKey(key, GlueEntry()); //clear entry
 		}
 	}
 	//if (key == key_of_interest) cout << "after\t" << glueStorage.dump(key,false ) << endl;
@@ -241,7 +217,7 @@ void Glue::insert(GlueEntry e, bool process) {
 	}
 
 	
-	if ((e.seq.find(key_of_interest) != std::string::npos) || (e.seq.find(reversecomplement(key_of_interest)) != std::string::npos)) {
+	if ((e.getSeq().find(key_of_interest) != std::string::npos) || (e.getSeq().find(reversecomplement(key_of_interest)) != std::string::npos)) {
 		glueDebug = true;
 	}
 
@@ -264,25 +240,25 @@ void Glue::insert(GlueEntry e, bool process) {
 	}
 	*/
 
-	if (!e.rmark && !e.lmark) {
-		output(e.seq);
-	} else if (e.lmark && !e.rmark) {
-		insert_aux(e, e.lkmer, insRes);
-	} else if (!e.lmark && e.rmark) {
-		insert_aux(e, e.rkmer, insRes);
+	if (!e.getRmark() && !e.getLmark()) {
+		output(e.getSeq());
+	} else if (e.getLmark() && !e.getRmark()) {
+		insert_aux(e, e.getLkmer(), insRes);
+	} else if (!e.getLmark() && e.getRmark()) {
+		insert_aux(e, e.getRkmer(), insRes);
 	} else { 
 		//pick one that is not empty
 		//this is not necessary for correctness, picking an arbitrary one will do
 		//but picking a non-empty one may force glues to happen sooner rather later, preventing build-ups of long sequential chains
-		if (!check_if_empty(e, e.rkmer)) {
-			insert_aux(e, e.rkmer, insRes);
+		if (!check_if_empty(e, e.getRkmer())) {
+			insert_aux(e, e.getRkmer(), insRes);
 		} else {
-			insert_aux(e, e.lkmer, insRes);
+			insert_aux(e, e.getLkmer(), insRes);
 		}
 	}
 	
 
-	if (insRes.seq != "") insert(insRes, true);
+	if (!insRes.isEmpty()) insert(insRes, true);
 
 	glueDebug = oldGlueDebug; 
 
@@ -291,10 +267,11 @@ void Glue::insert(GlueEntry e, bool process) {
 
 
 void GlueStorage::cleanup() {
+	//GlueEntry e("bla", false, true, kmerSize);
 	GlueEntry e;
 	for (auto it = glueMap.begin(); it != glueMap.end(); ) {
 		derefIt(it, e);
-		if (e.seq == "") {
+		if (e.isEmpty()) {
 #ifdef SPARSEHASH
 			glueMap.erase(it);
 #else

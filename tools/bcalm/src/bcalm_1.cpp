@@ -146,12 +146,9 @@ void put_into_glue(string seq, size_t minimizer, Glue & glue, Model& modelK1) {
 	//size_t i(minimizer/numBucket);
 	//size_t j(minimizer%numBucket); // following notation from the ismb2015 paper
 
-	GlueEntry e;
-	e.seq = seq;
-	e.lmark = minimizer != leftMin;
-	e.rmark = minimizer != rightMin; 
-	e.lkmer = e.seq.substr(0,k);
-	e.rkmer = e.seq.substr(e.seq.length() - k, k);
+	bool lmark = minimizer != leftMin;
+	bool rmark = minimizer != rightMin; 
+	GlueEntry e(seq, lmark, rmark, kmerSize) ;
 
 	//size_t b_pre_major = leftMin/numBucket;
 	//size_t b_suf_major = rightMin/numBucket;

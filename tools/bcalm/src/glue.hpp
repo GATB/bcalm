@@ -23,35 +23,58 @@ string reversecomplement(const string& dna); // code taken from TakeABreak
 string debug_highlight(string s, string motif);
 
 //class to represent an entry in GlueStorage
-//it is meant to be used only when an entry is extracted from storage. 
-//For representation in storage, we use GlueEntryCompact*
-struct GlueEntry {
-	string seq = "";
-	bool lmark = 0;
-	bool rmark = 0;
-	string lkmer = "";
-	string rkmer = "";
+class GlueEntry {
+	public:
+
+		GlueEntry() : seq(""), lmark(false), rmark(false), kmerSize(-1) { };
+		GlueEntry(string raw, size_t _kmerSize) : kmerSize(_kmerSize) {
+			seq = raw.substr(0, raw.length() - 2);
+			lmark = raw.at(raw.length() - 2);
+			rmark = raw.at(raw.length() - 1);
+		}
+		GlueEntry(string _seq, bool _lmark, bool _rmark, size_t _kmerSize) : seq(_seq), lmark(_lmark), rmark(_rmark), kmerSize(_kmerSize) { };
+
+		string getSeq()   { return seq;   };
+		bool getLmark()   { return lmark; }; 
+		bool getRmark()   { return rmark; };
+		string getLkmer() { return seq.substr(0, kmerSize);  };
+		string getRkmer() { return seq.substr(seq.length() - kmerSize, kmerSize);  };
+		bool isEmpty()    { return seq == ""; };
+
+		string getRaw() {
+			string retval;
+			retval = seq;
+			retval.push_back(lmark);
+			retval.push_back(rmark);
+			return retval;
+		}
+
+		void revComp() {
+			seq = reversecomplement(seq);
+			std::swap(lmark, rmark);
+		}
+
+	private:
+		string seq;
+		bool lmark;
+		bool rmark;
+		size_t kmerSize;
 };
 
 string tostring(const GlueEntry e, string key);
 
-// class to support compact representation of a GlueEntry, as should be stored in memory
-// For now, this is very naive, and just stores it a string
-class GlueEntryCompactNaive{
+/*
+class TagSystem {
 	public:
-		GlueEntryCompactNaive(string _raw, size_t _kmerSize) : raw(_raw), kmerSize(_kmerSize) { }
-		GlueEntryCompactNaive(GlueEntry e, size_t _kmerSize) : kmerSize(_kmerSize) {
-			raw = e.seq;
-			raw.push_back(e.lmark); 
-			raw.push_back(e.rmark);
-		}
-		string getRaw() { return raw; }
-		GlueEntry getEntry();
+		typedef long int TagIndex;
+
+		TagIndex createTag(GlueEntry e);
 
 	private:
-		string raw;
-		size_t kmerSize;
+
 };
+*/
+
 
 
 
@@ -120,14 +143,15 @@ class Glue
 		BankFasta out;
 		int kmerSize;
 
-		std::chrono::system_clock::time_point startTime;
-		std::chrono::seconds totalTime;
-		int timerReferenceCount = 0;
-
 		void output(string seq);
 		void insert_aux(GlueEntry newEntry, string key, GlueEntry & glueResult); 
 		void glueSingleEntry(GlueEntry query, GlueEntry match, string key, GlueEntry & glueResult);
 		bool check_if_empty(GlueEntry newEntry, string key);
+
+		//timing code
+		std::chrono::system_clock::time_point startTime;
+		std::chrono::seconds totalTime;
+		int timerReferenceCount = 0;
 		void startTimer() { 
 			if (timerReferenceCount++ == 0) startTime =  chrono::system_clock::now(); 
 		};
