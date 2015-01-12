@@ -341,8 +341,6 @@ void bcalm_1::execute (){
                 auto end_createbucket_t=get_wtime();
                 atomic_double_add(global_wtime_create_buckets, diff_wtime(start_createbucket_t, end_createbucket_t));
 
-                auto start_foreach_bucket_t=get_wtime();
-
 #ifdef CXX11THREADS
                 std::vector<std::thread> threads;
                 moodycamel::ConcurrentQueue<std::pair<string, size_t> > glue_queue;
@@ -387,11 +385,20 @@ void bcalm_1::execute (){
                     test_bucket.push_back(tmp);
                 }
 #endif
+
+                // flush all buckets before spawning threads
+                 for(uint j(0);j<numBucket;++j){
+                    if(Buckets[j]!=NULL){
+                        Buckets[j]->flush();
+                    }
+                 }
+                
+                auto start_foreach_bucket_t=get_wtime();
+
  
                 /**FOREACH BUCKET **/
                 for(uint j(0);j<numBucket;++j){
                     if(Buckets[j]!=NULL){
-                        Buckets[j]->flush();
                         if(Buckets[j]->getSize()>0){
 
 /* // code for iterating largest bucket
