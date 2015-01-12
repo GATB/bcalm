@@ -39,6 +39,7 @@ size_t kmerSize=31;
 size_t minSize=8;
 size_t numBucket=1<<minSize;
 size_t nb_threads=1;
+size_t nb_threads_simulate=1;
 bool original_algo = false, use_glueing = true;
 
 
@@ -70,7 +71,8 @@ bcalm_1::bcalm_1 ()  : Tool ("bcalm_1"){
 	getParser()->push_front (new OptionOneParam ("-m", "minimizer size",  false,"8"));
 	getParser()->push_front (new OptionOneParam ("-abundance", "abundance threeshold",  false,"3"));
 	getParser()->push_front (new OptionOneParam ("-threads", "number of threads",  false,"2")); // todo: set to max, as in dsk
-	getParser()->push_front (new OptionNoParam ("-original", "original BCALM 1 algorithm, without reconciliation",  false));
+    getParser()->push_front (new OptionNoParam ("-original", "original BCALM 1 algorithm, without reconciliation",  false));
+	getParser()->push_front (new OptionOneParam ("-threads-simulate", "(debug) number of threads to compute scheduling for",  false,"2"));
 }
 
 
@@ -167,9 +169,13 @@ void bcalm_1::execute (){
     size_t abundance=getInput()->getInt("-abundance");
     minSize=getInput()->getInt("-m");
     nb_threads = getInput()->getInt("-threads");
+    nb_threads_simulate = getInput()->getInt("-threads-simulate");
     original_algo = getParser()->saw("-original");
     use_glueing = (!original_algo);
     
+    if (nb_threads > nb_threads_simulate)
+        nb_threads_simulate = nb_threads;
+
     Model model(kmerSize, minSize);
     Model modelK1(kmerSize-1, minSize);
     numBucket = 1<<minSize;
@@ -538,7 +544,7 @@ void bcalm_1::execute (){
                     double tot_time_best_sched_lambda = 0; // start with the longest lambda
                     int t = 0;
                     for (auto & lambda_time: lambda_timings) {
-                        if ((t++) % nb_threads == 0)
+                        if ((t++) % nb_threads_simulate == 0)
                             tot_time_best_sched_lambda += lambda_time;
                     }
 
@@ -551,8 +557,8 @@ void bcalm_1::execute (){
                     double best_theoretical_speedup =  global_wtime_lambda  / longest_lambda;
                     double actual_theoretical_speedup =  global_wtime_lambda  / tot_time_best_sched_lambda;
                     cout <<"                       best theoretical speedup: "<<  best_theoretical_speedup << "x" <<endl;
-                    if (nb_threads > 1)
-                        cout <<"     best theoretical speedup with "<< nb_threads<< " thread(s): "<<  actual_theoretical_speedup << "x" <<endl;
+                    if (nb_threads_simulate > 1)
+                        cout <<"     best theoretical speedup with "<< nb_threads_simulate << " thread(s): "<<  actual_theoretical_speedup << "x" <<endl;
 
                     weighted_best_theoretical_speedup_cumul += best_theoretical_speedup * wallclock_sb;
                     weighted_best_theoretical_speedup_sum_times                        += wallclock_sb;
@@ -631,7 +637,7 @@ void bcalm_1::execute (){
     cout<<"Max bucket : "<<maxBucket<<endl;
     cout<<"                 Wallclock time spent in parallel section : "<< global_wtime_parallel / unit << " secs"<<endl;
     cout<<"             Best theoretical speedup in parallel section : "<< weighted_best_theoretical_speedup << "x" <<endl;
-    cout<<"Best theoretical speedup in parallel section using " << nb_threads << " threads : "<< weighted_actual_theoretical_speedup << "x" <<endl;
+    cout<<"Best theoretical speedup in parallel section using " << nb_threads_simulate << " threads : "<< weighted_actual_theoretical_speedup << "x" <<endl;
     cout<<"             Sum of longest bucket compaction for each sb : "<< global_wtime_longest_lambda / unit << " secs"<<endl;
     cout<<"                       Sum of best scheduling for each sb : "<< global_wtime_best_sched / unit << " secs"<<endl;
 
