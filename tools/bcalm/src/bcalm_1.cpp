@@ -156,19 +156,13 @@ void put_into_glue(string seq, size_t minimizer, Glue & glue, Model& modelK1) {
 	//size_t b_pre_major = leftMin/numBucket;
 	//size_t b_suf_major = rightMin/numBucket;
 
-	const string keyofin = "CACATGTTCACACACACACACACACACACACACACACACACACACACACAC";
+	/*const string keyofin = "CACATGTTCACACACACACACACACACACACACACACACACACACACACAC";
 	if ((seq.find(keyofin) != std::string::npos) || (seq.find(reversecomplement(keyofin)) != std::string::npos)) {
 		cout << "In put or glue, we got " << tostring(e, e.seq) << endl;
 	}
+	*/
 
-	if((!e.lmark) && (!e.rmark))
-	{ 
-		glue.output(seq);
-	} 
-	else
-	{ /* put into glue */
-		glue.insert(e, true);
-	}
+	glue.insert(e, true);
 }
 
 
@@ -292,7 +286,7 @@ void bcalm_1::execute (){
 
     /**FOREACH SUPERBUCKET **/
     for(uint i(0);i<numBucket;++i){
-        cout<<'-'<<flush;
+        //cout<<'-'<<flush;
         if(superBuckets[i]!=NULL){
             auto start_flush_t=omp_get_wtime();
             superBuckets[i]->flush();
@@ -512,6 +506,7 @@ void bcalm_1::execute (){
     if (use_glueing) {
 		cout << "Final glue:\n" << glue.glueStorage.dump() << "*****\n";
     	glue.glueStorage.printMemStats();
+		cout << "Glue class took " << glue.getTime() << "seconds.\n";
 	}
 
     /* printing some timing stats */

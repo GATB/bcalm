@@ -64,12 +64,12 @@ class GlueStorage {
 			glueMap.set_deleted_key("");
 #endif
 		}
-		bool find (string key, GlueEntry & e1, GlueEntry & e2);
-		bool getFirst(GlueEntry & e1, GlueEntry & e2);
-		bool getNext(GlueEntry & e1, GlueEntry & e2); 
-		void insertAtKey(string key, GlueEntry e1, GlueEntry e2);
-		void insertAfterFind(GlueEntry e1, GlueEntry e2) { insertAtIt(findIt, e1, e2); } 
-		void insertAtCurIt(GlueEntry e1, GlueEntry e2) { insertAtIt(curIt, e1, e2); }
+		bool find (string key, GlueEntry & e);
+		//bool getFirst(GlueEntry & e1, GlueEntry & e2);
+		//bool getNext(GlueEntry & e1, GlueEntry & e2); 
+		//void insertAtCurIt(GlueEntry e1, GlueEntry e2) { insertAtIt(curIt, e1, e2); }
+		void insertAtKey(string key, GlueEntry e);
+		void insertAfterFind(GlueEntry e) { insertAtIt(findIt, e); } 
 		void cleanup();
 		void updateMemStats();
 		void printMemStats();
@@ -79,9 +79,9 @@ class GlueStorage {
 
 	private:
 #ifdef SPARSEHASH
-		typedef  sparse_hash_map<string, pair<string, string>> GlueMap; 
+		typedef  sparse_hash_map<string, string> GlueMap; 
 #else
-		typedef unordered_map<string, pair<string, string>> GlueMap;
+		typedef unordered_map<string, string> GlueMap;
 #endif
 		GlueMap glueMap;
 		GlueMap::iterator curIt; //iterator state used by getFirst and getNext
@@ -94,8 +94,8 @@ class GlueStorage {
 		size_t maxSize = 0;
 		size_t totSize = 0;
 
-		bool derefIt (GlueMap::const_iterator it, GlueEntry & e1, GlueEntry & e2);
-		void insertAtIt(GlueMap::iterator it, GlueEntry e1, GlueEntry e2);
+		bool derefIt (GlueMap::const_iterator it, GlueEntry & e);
+		void insertAtIt(GlueMap::iterator it, GlueEntry e);
 };
 
 
@@ -104,18 +104,32 @@ class Glue
     public:
 		GlueStorage glueStorage; //this should really be treated as private. It is only public to allow calling updateMemStats and such
 
-		Glue(size_t _kmerSize, BankFasta &out) : kmerSize(_kmerSize), out(out), debug(false), glueStorage(_kmerSize) { }
+		Glue(size_t _kmerSize, BankFasta &out) : kmerSize(_kmerSize), out(out), glueStorage(_kmerSize) { }
 		void insert(GlueEntry newEntry, bool process = false);
-		//void insertAndProcess(GlueEntry newEntry);
-		void output(string seq);
 		void glue();
+		
+		unsigned long getTime() { 
+			if (timerReferenceCount != 0) {
+				cout << "error in Glue::getTime(): timerReference count is " << timerReferenceCount << endl;
+				exit(1);
+			}
+			return totalTime.count();
+		};
 
 	private:
 		BankFasta out;
 		int kmerSize;
-		bool debug;
 
-		void insert_aux(GlueEntry newEntry, string key); 
-		void glueSingleEntry(GlueEntry query, GlueEntry match, string key = "");
+		std::chrono::system_clock::time_point startTime;
+		std::chrono::seconds totalTime;
+		int timerReferenceCount = 0;
+
+		void output(string seq);
+		void insert_aux(GlueEntry newEntry, string key, GlueEntry & glueResult); 
+		bool glueSingleEntry(GlueEntry query, GlueEntry match, string key, GlueEntry & glueResult);
+		void startTimer() { 
+			if (timerReferenceCount++ == 0) startTime =  chrono::system_clock::now(); 
+		};
+		void stopTimer();
 };
 
