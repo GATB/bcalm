@@ -200,6 +200,7 @@ void bcalm_1::execute (){
 
     /* compute traveller kmers by going through all partitions */
     unsigned long nbTravellerKmers = 0;
+    // TODO: this can probably be parallelized, using techniques from GATB-core
     unordered_map<size_t, set<pair<size_t, string> > > traveller_kmers;
     {
         Iterator<Count>* it = partition.iterator();
