@@ -37,10 +37,8 @@ typedef Kmer<SPAN>::ModelCanonical ModelCanon;
 typedef Kmer<SPAN>::ModelMinimizer <ModelCanon> Model;
 size_t kmerSize=31;
 size_t minSize=8;
-size_t numBucket=1<<minSize;
 size_t nb_threads=1;
 size_t nb_threads_simulate=1;
-bool original_algo = false, use_glueing = true;
 
 
 // timing-related variables
@@ -71,67 +69,20 @@ bcalm_1::bcalm_1 ()  : Tool ("bcalm_1"){
 	getParser()->push_front (new OptionOneParam ("-k", "kmer size",  false,"31"));
 	getParser()->push_front (new OptionOneParam ("-m", "minimizer size",  false,"8"));
 	getParser()->push_front (new OptionOneParam ("-abundance", "abundance threeshold",  false,"3"));
-	getParser()->push_front (new OptionOneParam ("-threads", "number of threads",  false,"2")); // todo: set to max, as in dsk
-    getParser()->push_front (new OptionNoParam ("-original", "original BCALM 1 algorithm, without reconciliation",  false));
-	getParser()->push_front (new OptionOneParam ("-threads-simulate", "(debug) number of threads to compute scheduling for",  false,"2"));
+	getParser()->push_front (new OptionOneParam ("-threads", "number of threads",  false, "1")); // todo: set to max, as in dsk
+	getParser()->push_front (new OptionOneParam ("-threads-simulate", "(debug) number of threads to compute scheduling for",  false,"1"));
 }
 
-
-// common to glue and non-glue
-void insertInto(vector<BankBinary*>& dests, bool isSuperBucket, size_t index, string seq)
+void insertInto(unordered_map<size_t, BankBinary*>& dests, bool isSuperBucket, size_t index, string seq)
 {
 	Sequence buffer (Data::ASCII);
 	buffer.getData().setRef ((char*)seq.c_str(), seq.size());
-	if(dests[index]==NULL){
+	if(dests.find(index)==dests.end()){
 		BankBinary* bb= new BankBinary((isSuperBucket?"SB":"B")+to_string(index));
 		dests[index]=bb;
 	}
 	dests[index]->insert(buffer);
 }
-
-// non-glue
-void buckerOrSuper(const string& tmp, size_t min, size_t minimizer,vector<BankBinary*>& superBuckets,vector<BankBinary*>& Buckets){
-	size_t prefix(minimizer/numBucket);
-	size_t Lprefix(min/numBucket);
-	if(Lprefix>prefix){
-		insertInto(superBuckets, true, Lprefix, tmp);
-	}else{
-		insertInto(Buckets, false, min%numBucket, tmp);
-	}
-}
-
-
-// non-glue
-void goodplace(string& seq, size_t minimizer,BankFasta& out,vector<BankBinary*>& superBuckets,vector<BankBinary*>& Buckets,Model& modelK1){
-	Model::Kmer kmmerBegin=modelK1.codeSeed(seq.substr(0,kmerSize-1).c_str(),Data::ASCII);
-	size_t leftMin(modelK1.getMinimizerValue(kmmerBegin.value()));
-	Model::Kmer kmmerEnd=modelK1.codeSeed(seq.substr(seq.size()-kmerSize+1,kmerSize-1).c_str(),Data::ASCII);
-	size_t rightMin(modelK1.getMinimizerValue(kmmerEnd.value()));
-
-    if(leftMin<=rightMin){
-		if(leftMin>minimizer){
-			buckerOrSuper(seq,leftMin,minimizer,superBuckets,Buckets);
-		}else{
-			if(rightMin>minimizer){
-				buckerOrSuper(seq,rightMin,minimizer,superBuckets,Buckets);
-			}else{ // leftmin <= minimizer and rightmin <= minimizer, means leftmin=rightmin=minimizer
-				Sequence s (Data::ASCII);
-				s.getData().setRef ((char*)seq.c_str(), seq.size());
-				out.insert(s);
-			}
-		}
-	}else{ // leftmin > rightmin
-		if(rightMin>minimizer){ // leftmin > rightmin > minimizer
-			buckerOrSuper(seq,rightMin,minimizer,superBuckets,Buckets);
-		}else{
-			if(leftMin>minimizer){ // leftmin > minimizer >= rightmin
-				buckerOrSuper(seq,leftMin,minimizer,superBuckets,Buckets);
-			} 
-			// else same as above, leftmin <= minimizer and rightmin <= minimizer
-		}
-	}
-}
-
 
 void put_into_glue(string seq, size_t minimizer, Glue & glue, Model& modelK1) {
 
@@ -141,15 +92,9 @@ void put_into_glue(string seq, size_t minimizer, Glue & glue, Model& modelK1) {
 	Model::Kmer kmmerEnd = modelK1.codeSeed(seq.substr(seq.size() - k + 1, k - 1).c_str(), Data::ASCII);
 	size_t rightMin(modelK1.getMinimizerValue(kmmerEnd.value()));
 
-	//size_t i(minimizer/numBucket);
-	//size_t j(minimizer%numBucket); // following notation from the ismb2015 paper
-
 	bool lmark = minimizer != leftMin;
 	bool rmark = minimizer != rightMin; 
 	GlueEntry e(seq, lmark, rmark, kmerSize) ;
-
-	//size_t b_pre_major = leftMin/numBucket;
-	//size_t b_suf_major = rightMin/numBucket;
 
 	/*const string keyofin = "CACATGTTCACACACACACACACACACACACACACACACACACACACACAC";
 	if ((seq.find(keyofin) != std::string::npos) || (seq.find(reversecomplement(keyofin)) != std::string::npos)) {
@@ -159,7 +104,6 @@ void put_into_glue(string seq, size_t minimizer, Glue & glue, Model& modelK1) {
 
 	glue.insert(e, true);
 }
-
 
 void bcalm_1::execute (){
     static char tableASCII[] = {'A', 'C', 'T', 'G'};
@@ -171,22 +115,19 @@ void bcalm_1::execute (){
     minSize=getInput()->getInt("-m");
     nb_threads = getInput()->getInt("-threads");
     nb_threads_simulate = getInput()->getInt("-threads-simulate");
-    original_algo = getParser()->saw("-original");
-    use_glueing = (!original_algo);
     
     if (nb_threads > nb_threads_simulate)
         nb_threads_simulate = nb_threads;
 
     Model model(kmerSize, minSize);
     Model modelK1(kmerSize-1, minSize);
-    numBucket = 1<<minSize;
 
     /** check if it's a tiny memory machine, e.g. ec2 micro, if so, limit memory during kmer counting (default is 1G) */
 #ifndef OSX
     struct sysinfo info;
     sysinfo(&info);
     int total_ram = (int)(((double)info.totalram*(double)info.mem_unit)/1024/1024);
-    printf("Total RAM: %d MB\n",total_ram);
+    cout << "Total RAM: " << total_ram << " MB\n";
 #else
     int total_ram = 128*1024;
 #endif
@@ -214,70 +155,78 @@ void bcalm_1::execute (){
     /** We set BankBinary buffer. */
     BankBinary::setBufferSize (1000);
 
-    vector<BankBinary*> superBuckets(numBucket);
     auto start_t=chrono::system_clock::now();
     auto start_part=chrono::system_clock::now();
     size_t maxBucket(0);
     unsigned long nbKmers(0);
 
-    /** partitioning into superbuckets **/
+    Storage* storage = StorageFactory(STORAGE_HDF5).load ( is_kmercounted ? inputFile.c_str() : "solidKmers.h5");
+
+    LOCAL (storage);
+    Group& dskGroup = storage->getGroup("dsk");
+    string nbPartitionsStrg = dskGroup.getProperty ("nb_partitions");
+    size_t nbPartitions = atol (nbPartitionsStrg.c_str());
+    typedef Kmer<SPAN>::Count Count;
+    Partition<Count>& partition = dskGroup.getPartition<Count> ("solid", nbPartitions);
+
+    /** We retrieve the minimizers distribution from the solid kmers storage. */
+    Repartitor repart;
+    repart.load (dskGroup);
+
+    auto minimizerMin = [&repart] (size_t a, size_t b)
     {
-        Storage* storage = StorageFactory(STORAGE_HDF5).load ( is_kmercounted ? inputFile.c_str() : "solidKmers.h5");
-        
-        LOCAL (storage);
-        Group& dskGroup = storage->getGroup("dsk");
-        string nbPartitionsStrg = dskGroup.getProperty ("nb_partitions");
-        size_t nbPartitions = atol (nbPartitionsStrg.c_str());
-        typedef Kmer<SPAN>::Count Count;
-        Partition<Count>& partition = dskGroup.getPartition<Count> ("solid", nbPartitions);
-        
-        /**PUT KMER IN SUPERBUCKET **/
-        //Here we read kmers, we want to read sequences TODO (R: more precisely.. we want the input to be sequences of arbitrary length? if so, why? input is always the result of dsk i.e. kmers in h5 format..)
+        // should replace with whatever minimizer order function we will use with ModelMinimizer
+        return (a <= b) ? a : b;
+    };
+
+    auto minimizerMax = [&repart] (size_t a, size_t b)
+    {
+        return (a <= b) ? b : a;
+    };
+
+    /*
+    // for some reason that code produces buggy minimizers; why??
+    // I'm keeping it here, because it was a really nasty bug, don't want to make it again. something wrong with getKmer() here?
+    Data data (Data::BINARY);
+    data.set ((char*) &current, kmerSize);
+    size_t leftMin(modelK1.getMinimizerValue(modelK1.getKmer(data,0).value()));
+    size_t rightMin(modelK1.getMinimizerValue(modelK1.getKmer(data,1).value()));
+    printf("minimizers for kmer %s: %d %d, k-1-mers: %s %s\n",model.toString(current).c_str(), leftMin, rightMin, modelK1.toString(modelK1.getKmer(data,0).value()).c_str(), modelK1.toString(modelK1.getKmer(data,1).value()).c_str());
+    */
+
+    /* now our vocabulary is: a "DSK partition" == a "partition" == a "super-bucket"; buckets remainwhat they are in bcalm-original*/
+    /* a travelling kmer is one that goes to two buckets from different superbuckets */
+
+    /* compute traveller kmers by going through all partitions */
+    unsigned long nbTravellerKmers = 0;
+    unordered_map<size_t, set<pair<size_t, string> > > traveller_kmers;
+    {
         Iterator<Count>* it = partition.iterator();
         LOCAL (it);
         for (it->first(); !it->isDone(); it->next()){
             nbKmers++;
             Kmer<SPAN>::Type current = it->item().value;
-            int minimizer=model.getMinimizerValue(current);
-
-            minimizer /= numBucket;
-
-            insertInto(superBuckets, true, minimizer, model.toString (current));
-            
-            /** in the parallel version, if the minimizers of the left and right (k-1)-mers
-                    are different, then we write to both buckets (actually here, superbuckets) */
-            if (use_glueing)
+            string seq = model.toString(current);
+            Model::Kmer kmmerBegin=modelK1.codeSeed(seq.substr(0,kmerSize-1).c_str(),Data::ASCII);
+            size_t leftMin(modelK1.getMinimizerValue(kmmerBegin.value()));
+            Model::Kmer kmmerEnd=modelK1.codeSeed(seq.substr(seq.size()-kmerSize+1,kmerSize-1).c_str(),Data::ASCII);
+            size_t rightMin(modelK1.getMinimizerValue(kmmerEnd.value()));
+            if (leftMin != rightMin)
             {
-                /*
-                 // for some reason that code produces buggy minimizers; why??
-                 // I'm keeping it here, because it was a really nasty bug, don't want to make it again. something wrong with getKmer() here?
-                Data data (Data::BINARY);
-                data.set ((char*) &current, kmerSize);
-                size_t leftMin(modelK1.getMinimizerValue(modelK1.getKmer(data,0).value()));
-                size_t rightMin(modelK1.getMinimizerValue(modelK1.getKmer(data,1).value()));
-                printf("minimizers for kmer %s: %d %d, k-1-mers: %s %s\n",model.toString(current).c_str(), leftMin, rightMin, modelK1.toString(modelK1.getKmer(data,0).value()).c_str(), modelK1.toString(modelK1.getKmer(data,1).value()).c_str());
-                */
-
-                string seq = model.toString(current);
-                Model::Kmer kmmerBegin=modelK1.codeSeed(seq.substr(0,kmerSize-1).c_str(),Data::ASCII);
-                size_t leftMin(modelK1.getMinimizerValue(kmmerBegin.value()));
-                Model::Kmer kmmerEnd=modelK1.codeSeed(seq.substr(seq.size()-kmerSize+1,kmerSize-1).c_str(),Data::ASCII);
-                size_t rightMin(modelK1.getMinimizerValue(kmmerEnd.value()));
-
-                if (leftMin != rightMin)
+                size_t max_minimizer = minimizerMax(leftMin, rightMin);
+                size_t min_minimizer = minimizerMin(leftMin, rightMin);
+                if (repart(max_minimizer) != repart(min_minimizer)) // might be in the same superbucket, in that case, don't insert, we'll take care of it when superbucket->bucket expansion
                 {
-                    size_t max_minimizer = std::max(leftMin, rightMin);
-                    max_minimizer /= numBucket;
-
-                    if (max_minimizer != minimizer) // might be in the same superbucket, in that case, don't insert, we'll take care of it when superbucket->bucket expansion
-                        insertInto(superBuckets, true, max_minimizer, model.toString (current));
+                    traveller_kmers[repart(max_minimizer)].insert(make_pair(max_minimizer,seq));
+                    nbTravellerKmers ++;
                 }
             }
         }
     }
+
     auto end_part=chrono::system_clock::now();
     auto waitedFor_part=end_part-start_part;
-    cout<<"Partitioned " << nbKmers << " solid kmers into " << numBucket << " major buckets in wall-clock "<<chrono::duration_cast<chrono::nanoseconds>(waitedFor_part).count() / unit <<" secs"<<endl;
+    cout<<"Loaded " << nbTravellerKmers << " traveller kmers from " << nbKmers << " solid kmers in wall-clock "<<chrono::duration_cast<chrono::nanoseconds>(waitedFor_part).count() / unit <<" secs"<<endl;
     
     Glue glue(kmerSize, out);
 
@@ -288,25 +237,100 @@ void bcalm_1::execute (){
     double weighted_actual_theoretical_speedup_sum_times = 0;
     double weighted_actual_theoretical_speedup = 0;
 
-
     auto start_buckets=chrono::system_clock::now();
 
-    /**FOREACH SUPERBUCKET **/
-    for(uint i(0);i<numBucket;++i){
-        cout<<'-'<<flush;
-        if(superBuckets[i]!=NULL){
-            auto start_flush_t=get_wtime();
-            superBuckets[i]->flush();
-            auto end_flush_t=get_wtime();
+    /** We create an iterator for progress information. */
+    Iterator<int>* itParts = this->createIterator (
+            new Range<int>::Iterator (0,nbPartitions-1), nbPartitions, "Iterating DSK partitions"
+            );
+    LOCAL (itParts);
 
-            atomic_double_add(global_wtime_flush_sb,diff_wtime(start_flush_t, end_flush_t));
+    /**FOREACH SUPERBUCKET (= partition) **/
+    for (itParts->first (); !itParts->isDone(); itParts->next())
+    {
+        /** Shortcut. */
+        size_t p = itParts->item();
+        
+        /** We retrieve an iterator on the Count objects of the pth partition. */
+        Iterator<Count>* itKmers = partition[p].iterator();
+        LOCAL (itKmers);
 
-            if(superBuckets[i]->getSize()>0){
-                auto start_createbucket_t=get_wtime();
-                vector<BankBinary*> Buckets(numBucket);
-           
-                /* expand a superbucket into buckets */ 
-                BankBinary::Iterator itBinary (*superBuckets[i]);
+        auto start_createbucket_t=get_wtime();
+        unordered_map<size_t, BankBinary*> Buckets;
+
+        size_t k = kmerSize;
+
+        auto insertIntoBucket = [&Buckets, &modelK1, &k, &repart](string seq, int p) {
+            Model::Kmer kmmerBegin = modelK1.codeSeed(seq.substr(0, k - 1).c_str(), Data::ASCII);
+            size_t leftMin(modelK1.getMinimizerValue(kmmerBegin.value()));
+            Model::Kmer kmmerEnd = modelK1.codeSeed(seq.substr(seq.size() - k + 1, k - 1).c_str(), Data::ASCII);
+            size_t rightMin(modelK1.getMinimizerValue(kmmerEnd.value()));
+
+            if (repart(leftMin) == p)
+                insertInto(Buckets, false, leftMin, seq);
+            if (leftMin != rightMin)
+            {
+                if (repart(rightMin) == p)
+                    insertInto(Buckets, false, rightMin, seq);
+            }
+        };
+
+        /* expand a superbucket into buckets */ 
+        for (itKmers->first(); !itKmers->isDone(); itKmers->next()) { 
+            nbKmers++;
+            Kmer<SPAN>::Type current = itKmers->item().value;
+            string seq = model.toString(current);
+            insertIntoBucket(seq, p);
+        }
+
+        /* also add travellers kmers from that superbucket to buckets */
+        for (auto itTravellerKmers = traveller_kmers[p].begin(); itTravellerKmers != traveller_kmers[p].end(); itTravellerKmers++) { 
+            string seq = (*itTravellerKmers).second;
+            insertInto(Buckets, false, (*itTravellerKmers).first, seq);
+        }
+
+
+        auto end_createbucket_t=get_wtime();
+        atomic_double_add(global_wtime_create_buckets, diff_wtime(start_createbucket_t, end_createbucket_t));
+
+#ifdef CXX11THREADS
+        std::vector<std::thread> threads;
+        moodycamel::ConcurrentQueue<std::pair<string, size_t> > glue_queue;
+        ThreadPool pool(nb_threads);
+#else
+        int glue_queue;//dummy
+#endif
+
+        // flush all buckets before spawning threads
+        for(auto bucket : Buckets)
+            Buckets[bucket.first]->flush();
+
+        std::vector<double> lambda_timings;
+        auto start_foreach_bucket_t=get_wtime();
+
+
+        /**FOREACH BUCKET **/
+        for(auto bucket : Buckets)
+        {
+            size_t actualMinimizer = bucket.first;
+
+            /* // code for iterating largest bucket
+               for (auto & test_bucket_str: test_bucket) {
+               string tmp = test_bucket_str;
+               string seq = tmp;
+               Model::Kmer kmmerBegin=modelK1.codeSeed(seq.substr(0,kmerSize-1).c_str(),Data::ASCII);
+               size_t leftMin(modelK1.getMinimizerValue(kmmerBegin.value()));
+               Model::Kmer kmmerEnd=modelK1.codeSeed(seq.substr(seq.size()-kmerSize+1,kmerSize-1).c_str(),Data::ASCII);
+               size_t rightMin(modelK1.getMinimizerValue(kmmerEnd.value()));
+               */
+
+            auto lambdaCompact = [&Buckets, actualMinimizer, bucket, &glue_queue, &modelK1, &maxBucket, &out, &glue, &lambda_timings, &repart]() {
+                //~ graph1 g(kmerSize);
+                /* add nodes to graph */
+                auto start_nodes_t=get_wtime();
+                BankBinary::Iterator itBinary (*(bucket.second));
+
+                graph2 g(kmerSize-1,actualMinimizer,minSize);
                 for (itBinary.first(); !itBinary.isDone(); itBinary.next()){
                     string tmp;
                     size_t leftMin(modelK1.getMinimizerValue(modelK1.getKmer(itBinary->getData(),0).value()));
@@ -318,337 +342,177 @@ void bcalm_1::execute (){
                         tmp.push_back(tableASCII[(b>>2)&3]);
                         tmp.push_back(tableASCII[(b>>0)&3]);
                     }
-                    tmp.resize(itBinary->getDataSize());
-                    
-                    if (use_glueing)
-                    { // with glue, it's simple: we write to both buckets if leftMin != rightMin
-                        if (leftMin / numBucket == i)
-                        {
-                            insertInto(Buckets, false, leftMin%numBucket, tmp);
-                        }
-                        if (leftMin != rightMin)
-                        {
-                            if (rightMin / numBucket == i)
-                            {
-                                insertInto(Buckets, false, rightMin%numBucket, tmp);
-                            }
-                        }
-                    }
-                    else
-                    {
-                        if(leftMin<=rightMin){
-                            if((leftMin/numBucket)==i){
-                                insertInto(Buckets, false, leftMin%numBucket, tmp);
-                            }else{
-                                insertInto(Buckets, false, rightMin%numBucket, tmp);
-                            }
-                        }else{
-                            if((rightMin/numBucket)==i){
-                                insertInto(Buckets, false, rightMin%numBucket, tmp);
-                            }else{
-                                insertInto(Buckets, false, leftMin%numBucket, tmp);
-                            }
-                        }
-                    }
-                } // end for itBinary
+                    tmp=tmp.substr(0,itBinary->getDataSize());
 
-                auto end_createbucket_t=get_wtime();
-                atomic_double_add(global_wtime_create_buckets, diff_wtime(start_createbucket_t, end_createbucket_t));
+                    g.addleftmin(leftMin);
+                    g.addrightmin(rightMin);
+                    g.addvertex(tmp);
 
-#ifdef CXX11THREADS
-                std::vector<std::thread> threads;
-                moodycamel::ConcurrentQueue<std::pair<string, size_t> > glue_queue;
-                ThreadPool pool(nb_threads);
-#else
-                int glue_queue;//dummy
-#endif
-
-
-                // parallel_for doesn't look good, it seems to statically partition the range
-                //tbb::parallel_for(4, 0, numBucket, ([&Buckets, &glue_queue, &i, &modelK1, &maxBucket, &superBuckets, &parallel, &out ](long j) {
-
-#if 0
-                // TEMPORARY CODE to preload largest bucket from a superbucket (useful to debug parallelism)
-                vector<string> test_bucket;
-                int j = 0, maxj = 0, maxsize = 0;
-                for(;j<numBucket;++j){
-                    if(Buckets[j]!=NULL){
-                        Buckets[j]->flush();
-                        if(Buckets[j]->getSize()>0){
-                            if (Buckets[j]->getSize() > maxsize)
-                            {
-                                maxsize = Buckets[j]->getSize();
-                                maxj = j;
-                            }
-                        }
-                    }
                 }
-                j= maxj;
-                BankBinary::Iterator itBinarytest (*Buckets[j]);
-                for (itBinarytest.first(); !itBinarytest.isDone(); itBinarytest.next()){
-                    string tmp;
-                    for (size_t i=0; i< (itBinarytest->getDataSize()+3)/4; i++){
-                        char b = (itBinarytest->getData()[i] & 0xFF) ;
-                        tmp.push_back(tableASCII[(b>>6)&3]);
-                        tmp.push_back(tableASCII[(b>>4)&3]);
-                        tmp.push_back(tableASCII[(b>>2)&3]);
-                        tmp.push_back(tableASCII[(b>>0)&3]);
-                    }
-                    tmp=tmp.substr(0,itBinarytest->getDataSize());
-                    test_bucket.push_back(tmp);
-                }
-#endif
+                auto end_nodes_t=get_wtime();
+                atomic_double_add(global_wtime_add_nodes, diff_wtime(start_nodes_t, end_nodes_t));
 
-                // flush all buckets before spawning threads
-                 for(uint j(0);j<numBucket;++j){
-                    if(Buckets[j]!=NULL){
-                        Buckets[j]->flush();
-                    }
-                 }
-                
-                std::vector<double> lambda_timings;
-                auto start_foreach_bucket_t=get_wtime();
+                /* compact graph*/
+                auto start_dbg=get_wtime();
+                g.debruijn();
+                //~ g.compressh(actualMinimizer);
+                g.compress2();
+                auto end_dbg=get_wtime();
+                atomic_double_add(global_wtime_compactions, diff_wtime(start_dbg, end_dbg));
 
- 
-                /**FOREACH BUCKET **/
-                for(uint j(0);j<numBucket;++j){
-                    if(Buckets[j]!=NULL){
-                        if(Buckets[j]->getSize()>0){
-
-/* // code for iterating largest bucket
-                                for (auto & test_bucket_str: test_bucket) {
-                                    string tmp = test_bucket_str;
-                                    string seq = tmp;
-                                    Model::Kmer kmmerBegin=modelK1.codeSeed(seq.substr(0,kmerSize-1).c_str(),Data::ASCII);
-                                    size_t leftMin(modelK1.getMinimizerValue(kmmerBegin.value()));
-                                    Model::Kmer kmmerEnd=modelK1.codeSeed(seq.substr(seq.size()-kmerSize+1,kmerSize-1).c_str(),Data::ASCII);
-                                    size_t rightMin(modelK1.getMinimizerValue(kmmerEnd.value()));
-*/
-
-
-                            auto lambdaCompact = [&Buckets, &glue_queue, &i, j, &modelK1, &maxBucket, &superBuckets, &out, &glue, &lambda_timings]() {
-                                //~ graph1 g(kmerSize);
-                                /* add nodes to graph */
-                                auto start_nodes_t=get_wtime();
-                                size_t actualMinimizer((i<<minSize)+j);
-                                graph2 g(kmerSize-1,actualMinimizer,minSize);
-                                BankBinary::Iterator itBinary (*Buckets[j]);
-                                for (itBinary.first(); !itBinary.isDone(); itBinary.next()){
-                                    string tmp;
-                                    size_t leftMin(modelK1.getMinimizerValue(modelK1.getKmer(itBinary->getData(),0).value()));
-                                    size_t rightMin(modelK1.getMinimizerValue(modelK1.getKmer(itBinary->getData(),itBinary->getData().size()-modelK1.getKmerSize()).value()));
-                                    for (size_t i=0; i< (itBinary->getDataSize()+3)/4; i++){
-                                        char b = (itBinary->getData()[i] & 0xFF) ;
-                                        tmp.push_back(tableASCII[(b>>6)&3]);
-                                        tmp.push_back(tableASCII[(b>>4)&3]);
-                                        tmp.push_back(tableASCII[(b>>2)&3]);
-                                        tmp.push_back(tableASCII[(b>>0)&3]);
-                                    }
-                                    tmp=tmp.substr(0,itBinary->getDataSize());
-
-                                    g.addleftmin(leftMin);
-                                    g.addrightmin(rightMin);
-                                    g.addvertex(tmp);
-
-                                }
-                                auto end_nodes_t=get_wtime();
-                                atomic_double_add(global_wtime_add_nodes, diff_wtime(start_nodes_t, end_nodes_t));
-
-                                /* compact graph*/
-                                auto start_dbg=get_wtime();
-                                g.debruijn();
-                                //~ g.compressh(actualMinimizer);
-                                g.compress2();
-                                auto end_dbg=get_wtime();
-                                atomic_double_add(global_wtime_compactions, diff_wtime(start_dbg, end_dbg));
-
-                                /* distribute nodes (to other buckets, or output, or glue) */
-                                auto start_cdistribution_t=get_wtime(); 
-                                for(uint32_t i(1);i<g.unitigs.size();++i){ // TODO: determine if i(1) is not a bug, why not i(0)?
-                                    if(g.unitigs[i].size()!=0){
-                                        if (use_glueing)
-                                        {
+                /* distribute nodes (to other buckets, or output, or glue) */
+                auto start_cdistribution_t=get_wtime(); 
+                for(uint32_t i(1);i<g.unitigs.size();++i){ // TODO: determine if i(1) is not a bug, why not i(0)?
+                    if(g.unitigs[i].size()!=0){
 #if defined CXX11THREADS
-                                            glue_queue.enqueue(make_pair<string, size_t>((string)(g.unitigs[i]), (size_t)actualMinimizer));
+                        glue_queue.enqueue(make_pair<string, size_t>((string)(g.unitigs[i]), (size_t)actualMinimizer));
 #else
-                                            put_into_glue(g.unitigs[i], actualMinimizer, glue, modelK1);
+                        put_into_glue(g.unitigs[i], actualMinimizer, glue, modelK1);
 #endif
-                                        }
-                                        else /* write to another bucket or output */
-                                        {
-                                            goodplace(g.unitigs[i],actualMinimizer,out,superBuckets,Buckets,modelK1);
-
-                                        }
-
-                                    }
-                                }
-                                auto end_cdistribution_t=get_wtime();
-                                atomic_double_add(global_wtime_cdistribution, diff_wtime(start_cdistribution_t, end_cdistribution_t));
-
-                                /* what was this code for? */ 
-                                //~ size_t node_index(0);
-                                //~ for(auto it(g.nodes.begin());it!=g.nodes.end();it++){
-                                //~ if(it->size()!=0)
-                                //~ {
-                                //~ int leftmin = g.leftmins[node_index];
-                                //~ int rightmin = g.rightmins[node_index];
-                                //~ goodplace(*it,leftmin,rightmin,actualMinimizer,out,numBucket,superBuckets,Buckets);
-                                //~ }
-                                //~ node_index++;
-                                //~ }
-                                size_t size(g.size());
-                                if(size>maxBucket){
-                                    maxBucket=size;
-                                }
-
-
-                                if (time_lambdas)
-                                {
-                                    auto time_lambda = diff_wtime(start_nodes_t, end_cdistribution_t);
-                                    atomic_double_add(global_wtime_lambda, time_lambda);
-                                    lambda_timing_mutex.lock();
-                                    lambda_timings.push_back(time_lambda);
-                                    lambda_timing_mutex.unlock();
-                                }
-
-                            }; // end lambda function 
-
-#ifdef CXX11THREADS
-                            /* let's not have one thread per bucket.. we pool them now */
-                            /*threads.push_back(
-                              std::thread(*/
-                            if (nb_threads > 1) 
-                                pool.enqueue(lambdaCompact); 
-                            else
-                                lambdaCompact();
-#else
-                            lambdaCompact();
-#endif
-                        } // end if bucket non empty
-
-                    } // end if bucket non null
-
-                } // end for each bucket
-
-#ifdef CXX11THREADS
-                //for ( auto& thread : threads ){ thread.join(); }
-                pool.join();
-#endif
-
-                /* compute and print timings */
-                {
-                    auto end_foreach_bucket_t=get_wtime();
-                    auto wallclock_sb = diff_wtime(start_foreach_bucket_t, end_foreach_bucket_t);
-                    atomic_double_add(global_wtime_foreach_bucket, wallclock_sb);
-                    atomic_double_add(global_wtime_parallel, wallclock_sb);
-
-                    if (time_lambdas)
-                    {
-                        std::sort(lambda_timings.begin(), lambda_timings.end());
-                        std::reverse(lambda_timings.begin(), lambda_timings.end());
-                        /* compute a theoretical, i think optimal, scheduling of lambda's using the current number of threads 
-                        */
-                        double tot_time_best_sched_lambda = 0; // start with the longest lambda
-                        int t = 0;
-                        for (auto & lambda_time: lambda_timings) {
-                            if ((t++) % nb_threads_simulate == 0)
-                                tot_time_best_sched_lambda += lambda_time;
-                        }
-
-                        double longest_lambda = lambda_timings.front();
-
-                        cout <<"\nIn this superbucket," <<endl;
-                        cout <<"                  sum of time spent in lambda's: "<< global_wtime_lambda / 1000000 <<" msecs" <<endl;
-                        cout <<"                                 longest lambda: "<< longest_lambda / 1000000 <<" msecs" <<endl;
-                        cout <<"         tot time of best scheduling of lambdas: "<< tot_time_best_sched_lambda / 1000000 <<" msecs" <<endl;
-                        double best_theoretical_speedup =  global_wtime_lambda  / longest_lambda;
-                        double actual_theoretical_speedup =  global_wtime_lambda  / tot_time_best_sched_lambda;
-                        cout <<"                       best theoretical speedup: "<<  best_theoretical_speedup << "x" <<endl;
-                        if (nb_threads_simulate > 1)
-                            cout <<"     best theoretical speedup with "<< nb_threads_simulate << " thread(s): "<<  actual_theoretical_speedup << "x" <<endl;
-
-                        weighted_best_theoretical_speedup_cumul += best_theoretical_speedup * wallclock_sb;
-                        weighted_best_theoretical_speedup_sum_times                        += wallclock_sb;
-                        weighted_best_theoretical_speedup = weighted_best_theoretical_speedup_cumul / weighted_best_theoretical_speedup_sum_times ;
-
-                        weighted_actual_theoretical_speedup_cumul += actual_theoretical_speedup * wallclock_sb;
-                        weighted_actual_theoretical_speedup_sum_times                        += wallclock_sb;
-                        weighted_actual_theoretical_speedup = weighted_actual_theoretical_speedup_cumul / weighted_actual_theoretical_speedup_sum_times ;
-                        atomic_double_add(global_wtime_longest_lambda, longest_lambda);
-                        atomic_double_add(global_wtime_best_sched, tot_time_best_sched_lambda);
-                        global_wtime_lambda = 0;
                     }
                 }
+                auto end_cdistribution_t=get_wtime();
+                atomic_double_add(global_wtime_cdistribution, diff_wtime(start_cdistribution_t, end_cdistribution_t));
 
-                /* cleaning up */
-                {
-                    for(uint j(0);j<numBucket;++j){
-                        if(Buckets[j]!=NULL){
-                            delete(Buckets[j]);
-                            remove(("B"+to_string(j)).c_str());
-                        }
-                    }
-                    delete(superBuckets[i]);
-                    remove(("SB"+to_string(i)).c_str());
+                size_t size(g.size());
+                if(size>maxBucket){
+                    maxBucket=size;
                 }
 
-                // do the gluing at the end of each superbucket
-                if (use_glueing) {
-                    auto start_glue_t=get_wtime();
+
+                if (time_lambdas)
+                {
+                    auto time_lambda = diff_wtime(start_nodes_t, end_cdistribution_t);
+                    atomic_double_add(global_wtime_lambda, time_lambda);
+                    lambda_timing_mutex.lock();
+                    lambda_timings.push_back(time_lambda);
+                    lambda_timing_mutex.unlock();
+                }
+
+            }; // end lambda function 
 
 #ifdef CXX11THREADS
-                    // put everything into the glue
-                    std::pair<string, size_t> glue_elt;
-                    while (glue_queue.try_dequeue(glue_elt))
-                    {
-                        put_into_glue(glue_elt.first, glue_elt.second, glue, modelK1);
-                    }
+            /* let's not have one thread per bucket.. we pool them now */
+            /*threads.push_back(
+              std::thread(*/
+            if (nb_threads > 1) 
+                pool.enqueue(lambdaCompact); 
+            else
+                lambdaCompact();
+#else
+            lambdaCompact();
+#endif
+        } // end for each bucket
+
+#ifdef CXX11THREADS
+        //for ( auto& thread : threads ){ thread.join(); }
+        pool.join();
 #endif
 
-					glue.glueStorage.updateMemStats();
-					glue.glue();
+        /* compute and print timings */
+        auto end_foreach_bucket_t=get_wtime();
+        {
+            auto wallclock_sb = diff_wtime(start_foreach_bucket_t, end_foreach_bucket_t);
+            atomic_double_add(global_wtime_foreach_bucket, wallclock_sb);
+            atomic_double_add(global_wtime_parallel, wallclock_sb);
 
-                    auto end_glue_t=get_wtime();
-                    atomic_double_add(global_wtime_glue,  diff_wtime(start_glue_t, end_glue_t));
- 
-				} // end if parallel
-            } // end if superbucket non empty
-        } // end if superbucket non null
-    } // end foreach superbucket
-	
-    if (use_glueing) {
-		cout << "Final glue:\n" << glue.glueStorage.dump() << "*****\n";
-    	glue.glueStorage.printMemStats();
-		cout << "Glue class took " << glue.getTime() << "seconds.\n";
-	}
+            if (time_lambdas)
+            {
+                std::sort(lambda_timings.begin(), lambda_timings.end());
+                std::reverse(lambda_timings.begin(), lambda_timings.end());
+                /* compute a theoretical, i think optimal, scheduling of lambda's using the current number of threads 
+                */
+                double tot_time_best_sched_lambda = 0; // start with the longest lambda
+                int t = 0;
+                for (auto & lambda_time: lambda_timings) {
+                    if ((t++) % nb_threads_simulate == 0)
+                        tot_time_best_sched_lambda += lambda_time;
+                }
 
-    /* printing some timing stats */
-    auto end_t=chrono::system_clock::now();
-    cout<<"Buckets compaction and gluing           : "<<chrono::duration_cast<chrono::nanoseconds>(end_t - start_buckets).count() / unit<<" secs"<<endl;
-    cout<<"Within that, \n";
-    cout <<"     creating buckets from superbuckets: "<< global_wtime_create_buckets / unit <<" secs"<<endl;
-    cout <<"      bucket compaction (except gluing): "<< global_wtime_foreach_bucket / unit <<" secs" <<endl;
-    cout <<"     within that, \n";
-    cout <<"                       flushing superbuckets: "<< global_wtime_flush_sb / unit <<" secs" <<endl;
-    cout <<"                   adding nodes to subgraphs: "<< global_wtime_add_nodes / unit <<" secs" <<endl;
-    cout <<"     subgraphs constructions and compactions: "<< global_wtime_compactions / unit <<" secs"<<endl;
-    cout <<"              compacted nodes redistribution: "<< global_wtime_cdistribution / unit <<" secs"<<endl;
-    cout <<"\nglueing: "<< global_wtime_glue / unit <<" secs"<<endl;
-    double sum = global_wtime_glue + global_wtime_cdistribution + global_wtime_compactions + global_wtime_add_nodes + global_wtime_flush_sb + global_wtime_create_buckets;
-    cout<<"Sum of the above fine-grained timings: "<< sum / unit <<" secs"<<endl;
-    cout<<"Discrepancy between sum of fine-grained timings and total wallclock of buckets compactions step: "<< (chrono::duration_cast<chrono::nanoseconds>(end_t-start_buckets).count() - sum ) / unit <<" secs"<<endl;
-    cout<<"BCALM total wallclock (incl kmer counting): "<<chrono::duration_cast<chrono::nanoseconds>(end_t-start_t).count() / unit <<" secs"<<endl;
-    cout<<"Max bucket : "<<maxBucket<<endl;
-    if (time_lambdas)
-    {
-        cout<<"\n                 Wallclock time spent in parallel section : "<< global_wtime_parallel / unit << " secs"<<endl;
-        cout<<"             Best theoretical speedup in parallel section : "<< weighted_best_theoretical_speedup << "x" <<endl;
-        cout<<"Best theoretical speedup in parallel section using " << nb_threads_simulate << " threads : "<< weighted_actual_theoretical_speedup << "x" <<endl;
-        cout<<"             Sum of longest bucket compaction for each sb : "<< global_wtime_longest_lambda / unit << " secs"<<endl;
-        cout<<"                       Sum of best scheduling for each sb : "<< global_wtime_best_sched / unit << " secs"<<endl;
+                double longest_lambda = lambda_timings.front();
+
+                cout <<"\nIn this superbucket," <<endl;
+                cout <<"                  sum of time spent in lambda's: "<< global_wtime_lambda / 1000000 <<" msecs" <<endl;
+                cout <<"                                 longest lambda: "<< longest_lambda / 1000000 <<" msecs" <<endl;
+                cout <<"         tot time of best scheduling of lambdas: "<< tot_time_best_sched_lambda / 1000000 <<" msecs" <<endl;
+                double best_theoretical_speedup =  global_wtime_lambda  / longest_lambda;
+                double actual_theoretical_speedup =  global_wtime_lambda  / tot_time_best_sched_lambda;
+                cout <<"                       best theoretical speedup: "<<  best_theoretical_speedup << "x" <<endl;
+                if (nb_threads_simulate > 1)
+                    cout <<"     best theoretical speedup with "<< nb_threads_simulate << " thread(s): "<<  actual_theoretical_speedup << "x" <<endl;
+
+                weighted_best_theoretical_speedup_cumul += best_theoretical_speedup * wallclock_sb;
+                weighted_best_theoretical_speedup_sum_times                        += wallclock_sb;
+                weighted_best_theoretical_speedup = weighted_best_theoretical_speedup_cumul / weighted_best_theoretical_speedup_sum_times ;
+
+                weighted_actual_theoretical_speedup_cumul += actual_theoretical_speedup * wallclock_sb;
+                weighted_actual_theoretical_speedup_sum_times                        += wallclock_sb;
+                weighted_actual_theoretical_speedup = weighted_actual_theoretical_speedup_cumul / weighted_actual_theoretical_speedup_sum_times ;
+                atomic_double_add(global_wtime_longest_lambda, longest_lambda);
+                atomic_double_add(global_wtime_best_sched, tot_time_best_sched_lambda);
+                global_wtime_lambda = 0;
+            }
+        }
+
+        /* cleaning up */
+        for(auto bucket : Buckets)
+        {
+            size_t j = bucket.first;
+            delete(Buckets[j]);
+            remove(("B"+to_string(j)).c_str());
+        }
+
+        // do the gluing at the end of each superbucket
+        auto start_glue_t=get_wtime();
+
+#ifdef CXX11THREADS
+        // put everything into the glue
+        std::pair<string, size_t> glue_elt;
+        while (glue_queue.try_dequeue(glue_elt))
+        {
+            put_into_glue(glue_elt.first, glue_elt.second, glue, modelK1);
+        }
+#endif
+
+        glue.glueStorage.updateMemStats();
+        glue.glue();
+
+        auto end_glue_t=get_wtime();
+        atomic_double_add(global_wtime_glue,  diff_wtime(start_glue_t, end_glue_t));
+
+        } // end iteration superbuckets
+
+        cout << "Final glue:\n" << glue.glueStorage.dump() << "*****\n";
+        glue.glueStorage.printMemStats();
+        cout << "Glue class took " << glue.getTime() / unit << "seconds.\n";
+
+        /* printing some timing stats */
+        auto end_t=chrono::system_clock::now();
+        cout<<"Buckets compaction and gluing           : "<<chrono::duration_cast<chrono::nanoseconds>(end_t - start_buckets).count() / unit<<" secs"<<endl;
+        cout<<"Within that, \n";
+        cout <<"     creating buckets from superbuckets: "<< global_wtime_create_buckets / unit <<" secs"<<endl;
+        cout <<"      bucket compaction (except gluing): "<< global_wtime_foreach_bucket / unit <<" secs" <<endl;
+        cout <<"     within that, \n";
+        cout <<"                       flushing superbuckets: "<< global_wtime_flush_sb / unit <<" secs" <<endl;
+        cout <<"                   adding nodes to subgraphs: "<< global_wtime_add_nodes / unit <<" secs" <<endl;
+        cout <<"     subgraphs constructions and compactions: "<< global_wtime_compactions / unit <<" secs"<<endl;
+        cout <<"              compacted nodes redistribution: "<< global_wtime_cdistribution / unit <<" secs"<<endl;
+        cout <<"\nglueing: "<< global_wtime_glue / unit <<" secs"<<endl;
+        double sum = global_wtime_glue + global_wtime_cdistribution + global_wtime_compactions + global_wtime_add_nodes + global_wtime_flush_sb + global_wtime_create_buckets;
+        cout<<"Sum of the above fine-grained timings: "<< sum / unit <<" secs"<<endl;
+        cout<<"Discrepancy between sum of fine-grained timings and total wallclock of buckets compactions step: "<< (chrono::duration_cast<chrono::nanoseconds>(end_t-start_buckets).count() - sum ) / unit <<" secs"<<endl;
+        cout<<"BCALM total wallclock (incl kmer counting): "<<chrono::duration_cast<chrono::nanoseconds>(end_t-start_t).count() / unit <<" secs"<<endl;
+        cout<<"Max bucket : "<<maxBucket<<endl;
+        if (time_lambdas)
+        {
+            cout<<"\n                 Wallclock time spent in parallel section : "<< global_wtime_parallel / unit << " secs"<<endl;
+            cout<<"             Best theoretical speedup in parallel section : "<< weighted_best_theoretical_speedup << "x" <<endl;
+            cout<<"Best theoretical speedup in parallel section using " << nb_threads_simulate << " threads : "<< weighted_actual_theoretical_speedup << "x" <<endl;
+            cout<<"             Sum of longest bucket compaction for each sb : "<< global_wtime_longest_lambda / unit << " secs"<<endl;
+            cout<<"                       Sum of best scheduling for each sb : "<< global_wtime_best_sched / unit << " secs"<<endl;
+        }
+
     }
-
-}
 
 
 
