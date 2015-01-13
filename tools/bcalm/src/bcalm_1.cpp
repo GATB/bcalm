@@ -247,17 +247,30 @@ void bcalm_1::execute (){
     Glue glue(kmerSize, out);
     bool keep_glueing = true;
     bool parallel_glue = true;
+    unsigned long nbGlueInserts = 0;
 
 #ifdef CXX11THREADS
     moodycamel::ConcurrentQueue<std::pair<string, size_t> > glue_queue;
-    auto lambdaGlue = [&glue_queue, &glue, &modelK1, &keep_glueing]() {
+    auto lambdaGlue = [&glue_queue, &glue, &modelK1, &keep_glueing, &nbGlueInserts]() {
         std::pair<string, size_t> glue_elt;
-            printf("'im trying\n");
-        while (glue_queue.try_dequeue(glue_elt) && keep_glueing)
+        cout << "Glue thread START\n";
+        while (keep_glueing)
         {
-            put_into_glue(glue_elt.first, glue_elt.second, glue, modelK1);
+            while (glue_queue.try_dequeue(glue_elt))
+            {
+                put_into_glue(glue_elt.first, glue_elt.second, glue, modelK1);
+                nbGlueInserts++;
+
+                // update stats and cleanup queue every 1M inserts
+                if (nbGlueInserts % 1000000 == 0)
+                {
+                    glue.glueStorage.updateMemStats();
+                    glue.glue();
+                }
+            }
         }
-            printf("'I GIVE UP\n");
+        cout << "Glue thread END\n";
+        glue.glue();  // final cleanup
     };
     std::thread *glue_thread;
     if (parallel_glue)
@@ -500,10 +513,6 @@ void bcalm_1::execute (){
         if (!parallel_glue)
         {
             lambdaGlue();
-
-            // todo: don't know when to do this in the glue thread. maybe send some sort of signal, or do it periodically
-            glue.glueStorage.updateMemStats();
-            glue.glue(); 
         }
 
 
@@ -512,7 +521,9 @@ void bcalm_1::execute (){
         // stop the glue thread
         keep_glueing = false;
         if (parallel_glue)
+        {
             glue_thread->join();
+        }
 
         cout << "Final glue:\n" << glue.glueStorage.dump() << "*****\n";
         glue.glueStorage.printMemStats();
