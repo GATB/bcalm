@@ -11,6 +11,7 @@
 #include <sys/sysinfo.h> // to determine system memory
 #endif
 
+#define TWOBITGLUEHASH 
 //#define SPARSEHASH 
 #ifdef SPARSEHASH
 #include <sparsehash/sparse_hash_map>
@@ -22,17 +23,19 @@ using namespace std;
 string reversecomplement(const string& dna); // code taken from TakeABreak
 string debug_highlight(string s, string motif);
 
+#ifdef TWOBITGLUEHASH
+typedef vector<uint8_t> RawEntry;
+#else
+typedef string RawEntry;
+#endif
+
 //class to represent an entry in GlueStorage
 class GlueEntry {
 	public:
 
 		GlueEntry() : seq(""), lmark(false), rmark(false), kmerSize(-1) { };
-		GlueEntry(string raw, size_t _kmerSize) : kmerSize(_kmerSize) {
-			seq = raw.substr(0, raw.length() - 2);
-			lmark = raw.at(raw.length() - 2);
-			rmark = raw.at(raw.length() - 1);
-		}
 		GlueEntry(string _seq, bool _lmark, bool _rmark, size_t _kmerSize) : seq(_seq), lmark(_lmark), rmark(_rmark), kmerSize(_kmerSize) { };
+		GlueEntry(RawEntry raw, size_t _kmerSize);
 
 		string getSeq()   { return seq;   };
 		bool getLmark()   { return lmark; }; 
@@ -41,13 +44,7 @@ class GlueEntry {
 		string getRkmer() { return seq.substr(seq.length() - kmerSize, kmerSize);  };
 		bool isEmpty()    { return seq == ""; };
 
-		string getRaw() {
-			string retval;
-			retval = seq;
-			retval.push_back(lmark);
-			retval.push_back(rmark);
-			return retval;
-		}
+		RawEntry getRaw();
 
 		void revComp() {
 			seq = reversecomplement(seq);
@@ -102,9 +99,9 @@ class GlueStorage {
 
 	private:
 #ifdef SPARSEHASH
-		typedef  sparse_hash_map<string, string> GlueMap; 
+		typedef  sparse_hash_map<string, RawEntry> GlueMap; 
 #else
-		typedef unordered_map<string, string> GlueMap;
+		typedef unordered_map<string, RawEntry> GlueMap;
 #endif
 		GlueMap glueMap;
 		GlueMap::iterator curIt; //iterator state used by getFirst and getNext
@@ -127,7 +124,18 @@ class Glue
     public:
 		GlueStorage glueStorage; //this should really be treated as private. It is only public to allow calling updateMemStats and such
 
-		Glue(size_t _kmerSize, BankFasta &out) : kmerSize(_kmerSize), out(out), glueStorage(_kmerSize) { }
+		Glue(size_t _kmerSize, BankFasta &out) : kmerSize(_kmerSize), out(out), glueStorage(_kmerSize) {
+#ifdef TWOBITGLUEHASH 
+			cout << "Glue: using TWOBITBLUEHASH.\n";
+#else
+			cout << "Glue: using a string hash.\n";
+#endif
+#ifdef SPARSEHASH
+			cout << "Glue: using SPARSEHASH.\n";
+#else
+			cout << "Glue: using unordered_map.\n";
+#endif
+		}
 		void insert(GlueEntry newEntry, bool process = false);
 		void glue();
 		

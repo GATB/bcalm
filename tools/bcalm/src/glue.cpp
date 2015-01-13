@@ -39,7 +39,18 @@ string add_commas(T num) {
 	return retval;
 }
 
-
+/*
+ //print vector of T
+template<class T>
+ostream & operator << (ostream & out, const vector<T> & v) {
+	out << v.size() << '\t';
+	if (v.size() != 0) {
+		out << int(v[0]);
+		for (int i = 1; i < v.size(); i++) out << '\t' << int(v[i]);
+	}
+	return out;
+}
+*/
 
 string reversecomplement(const string& dna) // code taken from TakeABreak
 {
@@ -64,6 +75,12 @@ string rcnorm ( string seq ) {
 	return std::min (seq, reversecomplement(seq));
 }
 
+char bits2char (bool leftbit, bool rightbit) {
+	if (leftbit == 0 && rightbit == 0) return 'A';
+	else if (leftbit == 0 && rightbit == 1) return 'C';
+	else if (leftbit == 1 && rightbit == 0) return 'G';
+	else return 'T';
+}
 
 /* nifty function to highlight a substring for printing to terminal */
 string debug_highlight(string s, string motif)
@@ -88,6 +105,110 @@ string tostring(GlueEntry e, string key) {
 	return out.str();
 }
 
+GlueEntry::GlueEntry(RawEntry raw, size_t _kmerSize){
+	kmerSize = _kmerSize;
+	seq = "";
+#ifdef TWOBITGLUEHASH
+
+	//convert encoded string raw to a binary string bits
+	RawEntry bits;
+	for (int i = 0; i < raw.size(); i++) {
+		bitset<8> byte(int(raw[i]));
+		string bits_aux = byte.to_string();
+		transform(bits_aux.begin(), bits_aux.end(), bits_aux.begin(),
+				          bind2nd(std::minus<int>(), '0')); 
+		bits.insert(bits.end(), bits_aux.begin(), bits_aux.end()); // += bits_aux2;
+	}
+	//cout << "Constructor extracted bits: \nbits: " << bits << ".\n";
+	if (bits.size() != raw.size() * 8) {
+		cout << "fail in GlueEntry::GlueEntry bit conversion.\n";
+		exit(1);
+	}
+
+	lmark = bits[0];
+	rmark = bits[1];
+	
+	seq = "";
+	int leftoverbits = 2 * ( 2 * bits[2] + bits[3]); //to represent how many bits are to be read from the last byte: 00 = 0 bits, 01 = 2 bits, 10 = 4 bits, 11 = 6 bits
+	if (leftoverbits == 0) leftoverbits = 8;
+	for (int i = 4; i < bits.size() - 8 + leftoverbits; i += 2) {
+		seq.push_back(bits2char(bits[i], bits[i+1]));
+	}
+#else
+	seq = raw.substr(0, raw.size() - 2);
+	lmark = raw.at(raw.length() - 2);
+	rmark = raw.at(raw.length() - 1);
+#endif
+}
+
+
+uint8_t bits2byte (RawEntry bits, int start) {
+	return  
+	1 * bits[start + 7] +  
+	2 * bits[start + 6] + 
+	4 * bits[start + 5] + 
+	8 * bits[start + 4] + 
+	16 * bits[start + 3] + 
+	32 * bits[start + 2] + 
+	64 * bits[start + 1] + 
+	128 * bits[start];
+}
+
+
+RawEntry GlueEntry::getRaw() {
+#ifdef TWOBITGLUEHASH
+	//cout << "Entering getRaw with: " << tostring(*this, "CCCCC") << ".\n";
+	int rawLengthBits = 0;
+	rawLengthBits += 2; //to represent the left and right mark
+	rawLengthBits += 2; //to represent how many bits are to be read from the last byte: 00 = 0 bits, 01 = 2 bits, 10 = 4 bits, 11 = 6 bits
+	rawLengthBits += (seq.length() * 2); //to represent the sequence
+	int leftoverbits = rawLengthBits - ((rawLengthBits / 8) * 8); 
+	int rawLengthBytes = (rawLengthBits + 7.99) / 8;
+	RawEntry bits(rawLengthBytes * 8, 0);
+	bits[0] = int(lmark);
+	bits[1] = int(rmark);
+	if (leftoverbits == 0) {
+		bits[2] = 0; bits[3] = 0;
+	} else if (leftoverbits == 2) {
+		bits[2] = 0; bits[3] = 1;
+	} else if (leftoverbits == 4) {
+		bits[2] = 1; bits[3] = 0;
+	} else if (leftoverbits == 6) {
+		bits[2] = 1; bits[3] = 1;
+	} else {
+		cout << "GlueEntry::getRaw(): Unexpected leftover bits: " << leftoverbits << ".\n";
+		exit(1);
+	}
+	for (int i = 0; i < seq.length(); i++) {
+		if ((seq[i] == 'A') || (seq[i] == 'C')) {
+			bits[4 + 2*i] = 0;
+		} else {
+			bits[4 + 2*i] = 1;
+		}
+		if ((seq[i] == 'A') || (seq[i] == 'G')) {
+			bits[4 + 2*i + 1] = 0;
+		} else {
+			bits[4 + 2*i + 1] = 1;
+		}
+	}
+	//encode bits in a 2bit compacted string.
+	//string raw(rawLengthBytes, 0);
+	RawEntry raw;
+	for (int i = 0; i < bits.size(); i += 8) {
+		raw.push_back(bits2byte(bits, i));
+	}
+	//cout << "bits: " << bits << ".\n";
+	return raw;
+
+#else
+	string raw;
+	raw = seq;
+	raw.push_back(lmark);
+	raw.push_back(rmark);
+#endif
+
+	return raw;
+}
 
 
 string GlueStorage::dump() { 
@@ -209,6 +330,16 @@ void Glue::insert_aux(GlueEntry newEntry, string key, GlueEntry & glueResult) {
 
 
 void Glue::insert(GlueEntry e, bool process) {
+	
+	/* testing code 
+	string str;
+	while (cin >> str) {
+		GlueEntry en(str, false, false, 2);
+		RawEntry raw = en.getRaw();
+		cout << tostring(en, "Z") << endl << raw << endl << tostring(GlueEntry(raw,2), "Z") << endl;
+	}
+	*/
+
 	startTimer();
 	bool oldGlueDebug = glueDebug;
 	if (process == false) {
@@ -225,20 +356,6 @@ void Glue::insert(GlueEntry e, bool process) {
 		cout << "insert\t" << tostring(e,"") << endl;
 
 	GlueEntry insRes;
-
-	/*
-	if (!e.rmark && !e.lmark) {
-		output(e.seq);
-	} 
-	if (e.rmark) {
-		insert_aux(e, e.rkmer, insRes);
-	}
-	else {
-		if (e.lmark) {
-			insert_aux(e, e.lkmer, insRes);
-		}
-	}
-	*/
 
 	if (!e.getRmark() && !e.getLmark()) {
 		output(e.getSeq());
@@ -264,7 +381,6 @@ void Glue::insert(GlueEntry e, bool process) {
 
 	stopTimer();
 }
-
 
 void GlueStorage::cleanup() {
 	//GlueEntry e("bla", false, true, kmerSize);
@@ -332,66 +448,4 @@ void GlueStorage::printMemStats() {
 			<< "b avg size: " << add_commas(totSize / numDataPoints) << "b\n";
 	}
 }
-
-
-
-
-/* 
- * class to support compact representation of a glueentry, as should be stored in memory
- * this version will support a binary representation
- * NOT ACTIVE YET
- *
-class GlueEntryCompactBinary{
-	public:
-		const static int MAX_SIZE = 1000;
-		bool raw[MAX_SIZE];
-		int rawLen;
-
-		GlueEntryCompact(bool * _raw, int _rawLen) : rawLen(_rawLen) { 
-			for (int i = 0; i < rawLen; i++) {
-				raw[i] = _raw[i];
-			}
-		}
-
-		GlueEntryCompact(string seq, bool leftmark, bool rightmark) {
-			rawLen = seq.length() * 2 + 2;
-			for (int i = 0; i < seq.length(); i++) {
-				if ((seq[i] == 'A') || (seq[i] == 'C')) {
-					raw[2*i] = 0;
-				} else {
-					raw[2*i] = 1;
-				}
-				if ((seq[i] == 'A') || (seq[i] == 'G')) {
-					raw[2*i + 1] = 0;
-				} else {
-					raw[2*i + 1] = 1;
-				}
-			}
-			raw[seq.length() * 2] = leftmark;
-			raw[seq.length() * 2 + 1] = rightmark;
-		}
-
-
-		char bits2char (bool leftbit, bool rightbit) {
-			if (leftbit == 0 && rightbit == 0) return 'A';
-			else if (leftbit == 0 && rightbit == 1) return 'C';
-			else if (leftbit == 1 && rightbit == 0) return 'G';
-			else return 'T';
-		}
-
-
-		GlueEntry getEntry() {
-			GlueEntry entry;
-			for (int  i = 0; i < rawLen - 2; i += 2) {
-				entry.seq.push_back(bits2char(raw[i], raw[i+1]));
-			}
-			entry.lkmer = entry.seq.substr(0,k);
-			entry.rkmer = entry.seq.substr(entry.seq.length() - k, k);
-			entry.lmark = raw[rawLen - 2];
-			entry.rmark = raw[rawLen - 1];
-		}
-};
-*/
-
-
 
