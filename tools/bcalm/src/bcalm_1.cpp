@@ -1,4 +1,3 @@
-
 #include <assert.h>
 #include <bcalm_1.hpp>
 #include <glue.hpp>
@@ -13,18 +12,13 @@
 #include <sys/sysinfo.h> // to determine system memory
 #endif
 
-
-#define CXX11THREADS // let's enable that by default. for now, just comment this line if your gcc version is not high enough
-#ifdef CXX11THREADS
- #include <thread>
- #include <atomic>
- #include <../../../thirdparty/concurrentqueue.h>
- #include "../../../thirdparty/ThreadPool.h"
-#endif
+#include <thread>
+#include <atomic>
+#include <../../../thirdparty/concurrentqueue.h>
+#include "../../../thirdparty/ThreadPool.h"
 
 #define get_wtime() chrono::system_clock::now() 
 #define diff_wtime(x,y) chrono::duration_cast<chrono::nanoseconds>(y - x).count() 
-
 
 using namespace std;
 
@@ -43,14 +37,13 @@ size_t nb_threads_simulate=1;
 
 // timing-related variables
 
-#ifdef CXX11THREADS
 void atomic_double_add(std::atomic<double> &d1, double d2) {
       double current = d1.load();
         while (!d1.compare_exchange_weak(current, current + d2))
                 ;
 }
 typedef std::atomic<double> atomic_double;
-#else
+#if 0
 #define atomic_double_add(d1,d2) d1 += d2;
 typedef double atomic_double;
 #endif
@@ -269,7 +262,6 @@ void bcalm_1::execute (){
     bool parallel_glue = true;
     unsigned long nbGlueInserts = 0;
 
-#ifdef CXX11THREADS
     moodycamel::ConcurrentQueue<std::pair<string, size_t> > glue_queue;
     auto lambdaGlue = [&glue_queue, &glue, &modelK1, &keep_glueing, &nbGlueInserts]() {
         std::pair<string, size_t> glue_elt;
@@ -297,8 +289,6 @@ void bcalm_1::execute (){
     {
         glue_thread = new std::thread (lambdaGlue);
     }
-#endif
-
 
     double weighted_best_theoretical_speedup_cumul = 0;
     double weighted_best_theoretical_speedup_sum_times = 0;
@@ -365,11 +355,7 @@ void bcalm_1::execute (){
         auto end_createbucket_t=get_wtime();
         atomic_double_add(global_wtime_create_buckets, diff_wtime(start_createbucket_t, end_createbucket_t));
 
-#ifdef CXX11THREADS
         ThreadPool pool(nb_threads);
-#else
-        int glue_queue;//dummy
-#endif
 
         // flush all buckets before spawning threads
         for(auto bucket : Buckets)
@@ -384,18 +370,7 @@ void bcalm_1::execute (){
         {
             size_t actualMinimizer = bucket.first;
 
-            /* // code for iterating largest bucket
-               for (auto & test_bucket_str: test_bucket) {
-               string tmp = test_bucket_str;
-               string seq = tmp;
-               Model::Kmer kmmerBegin=modelK1.codeSeed(seq.substr(0,kmerSize-1).c_str(),Data::ASCII);
-               size_t leftMin(modelK1.getMinimizerValue(kmmerBegin.value()));
-               Model::Kmer kmmerEnd=modelK1.codeSeed(seq.substr(seq.size()-kmerSize+1,kmerSize-1).c_str(),Data::ASCII);
-               size_t rightMin(modelK1.getMinimizerValue(kmmerEnd.value()));
-               */
-
             auto lambdaCompact = [&Buckets, actualMinimizer, bucket, &glue_queue, &modelK1, &maxBucket, &out, &glue, &lambda_timings, &repart]() {
-                //~ graph1 g(kmerSize);
                 /* add nodes to graph */
                 auto start_nodes_t=get_wtime();
                 BankBinary::Iterator itBinary (*(bucket.second));
@@ -424,9 +399,10 @@ void bcalm_1::execute (){
 
                 /* compact graph*/
                 auto start_dbg=get_wtime();
+
                 g.debruijn();
-                //~ g.compressh(actualMinimizer);
                 g.compress2();
+
                 auto end_dbg=get_wtime();
                 atomic_double_add(global_wtime_compactions, diff_wtime(start_dbg, end_dbg));
 
@@ -434,11 +410,7 @@ void bcalm_1::execute (){
                 auto start_cdistribution_t=get_wtime(); 
                 for(uint32_t i(1);i<g.unitigs.size();++i){ // TODO: determine if i(1) is not a bug, why not i(0)?
                     if(g.unitigs[i].size()!=0){
-#if defined CXX11THREADS
                         glue_queue.enqueue(make_pair<string, size_t>((string)(g.unitigs[i]), (size_t)actualMinimizer));
-#else
-                        put_into_glue(g.unitigs[i], actualMinimizer, glue, modelK1);
-#endif
                     }
                 }
                 auto end_cdistribution_t=get_wtime();
@@ -460,22 +432,14 @@ void bcalm_1::execute (){
 
             }; // end lambda function 
 
-#ifdef CXX11THREADS
-            /* let's not have one thread per bucket.. we pool them now */
-            /*threads.push_back(
-              std::thread(*/
             if (nb_threads > 1) 
                 pool.enqueue(lambdaCompact); 
             else
                 lambdaCompact();
-#else
-            lambdaCompact();
-#endif
+
         } // end for each bucket
 
-#ifdef CXX11THREADS
         pool.join();
-#endif
 
         /* compute and print timings */
         auto end_foreach_bucket_t=get_wtime();
