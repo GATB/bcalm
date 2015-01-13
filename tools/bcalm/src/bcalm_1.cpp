@@ -187,6 +187,8 @@ void bcalm_1::execute (){
 
     Model model(kmerSize, minSize, Kmer<SPAN>::ComparatorMinimizerFrequency(), freq_order);
     Model modelK1(kmerSize-1, minSize,  Kmer<SPAN>::ComparatorMinimizerFrequency(), freq_order);
+    Model modelK2(kmerSize-2, minSize,  Kmer<SPAN>::ComparatorMinimizerFrequency(), freq_order);
+    Model modelM(minSize, minSize,  Kmer<SPAN>::ComparatorMinimizerFrequency(), freq_order);
 
     auto minimizerMin = [&repart, &model] (size_t a, size_t b)
     {
@@ -215,7 +217,8 @@ void bcalm_1::execute (){
     /* compute traveller kmers by going through all partitions */
     unsigned long nbTravellerKmers = 0;
     // TODO: this can probably be parallelized, using techniques from GATB-core
-    unordered_map<size_t, set<pair<size_t, string> > > traveller_kmers;
+    vector<set<pair<size_t, string> > > traveller_kmers;
+    traveller_kmers.resize(nbPartitions);
     {
         Iterator<Count>* it = partition.iterator();
         LOCAL (it);
@@ -223,10 +226,24 @@ void bcalm_1::execute (){
             nbKmers++;
             Kmer<SPAN>::Type current = it->item().value;
             string seq = model.toString(current);
-            Model::Kmer kmmerBegin=modelK1.codeSeed(seq.substr(0,kmerSize-1).c_str(),Data::ASCII);
+            /* // not faster.. yet it feels like it could be
+               Model::Kmer firstMmer=modelM.codeSeed(seq.substr(0,minSize).c_str(),Data::ASCII);
+               size_t firstMin(modelM.getMinimizerValue(firstMmer.value()));
+               Model::Kmer middleMer=modelK2.codeSeed(seq.substr(1,kmerSize-2).c_str(),Data::ASCII);
+               size_t middleMin(modelK2.getMinimizerValue(middleMer.value()));
+               Model::Kmer lastMmer=modelM.codeSeed(seq.substr(seq.size()-minSize,minSize).c_str(),Data::ASCII);
+               size_t lastMin(modelM.getMinimizerValue(lastMmer.value()));
+
+               size_t leftMin = minimizerMin(firstMin, middleMin);
+               size_t rightMin = minimizerMin(middleMin, lastMin);
+               */
+
+            int k = kmerSize;
+            Model::Kmer kmmerBegin = modelK1.codeSeed(seq.substr(0, k - 1).c_str(), Data::ASCII);
             size_t leftMin(modelK1.getMinimizerValue(kmmerBegin.value()));
-            Model::Kmer kmmerEnd=modelK1.codeSeed(seq.substr(seq.size()-kmerSize+1,kmerSize-1).c_str(),Data::ASCII);
+            Model::Kmer kmmerEnd = modelK1.codeSeed(seq.substr(seq.size() - k + 1, k - 1).c_str(), Data::ASCII);
             size_t rightMin(modelK1.getMinimizerValue(kmmerEnd.value()));
+            
             if (leftMin != rightMin)
             {
                 size_t max_minimizer = minimizerMax(leftMin, rightMin);
