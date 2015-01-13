@@ -72,6 +72,7 @@ bcalm_1::bcalm_1 ()  : Tool ("bcalm_1"){
 	getParser()->push_front (new OptionOneParam ("-threads", "number of threads",  false, "1")); // todo: set to max, as in dsk
 	getParser()->push_front (new OptionOneParam ("-threads-simulate", "(debug) number of threads to compute scheduling for",  false,"1"));
 	getParser()->push_front (new OptionOneParam ("-minimizer-type", "use lexicographical minimizers (0) or frequency based (1)",  false,"1"));
+	getParser()->push_front (new OptionOneParam ("-dsk-memory", "max memory for dsk (MB)", false, "1000"));
 }
 
 void insertInto(unordered_map<size_t, BankBinary*>& dests, bool isSuperBucket, size_t index, string seq)
@@ -122,6 +123,7 @@ void bcalm_1::execute (){
     nb_threads = getInput()->getInt("-threads");
     nb_threads_simulate = getInput()->getInt("-threads-simulate");
     int minimizer_type = getInput()->getInt("-minimizer-type");
+    int dsk_memory = getInput()->getInt("-dsk-memory");
     
     if (nb_threads > nb_threads_simulate)
         nb_threads_simulate = nb_threads;
@@ -135,7 +137,8 @@ void bcalm_1::execute (){
 #else
     int total_ram = 128*1024;
 #endif
-    const char * memory_limit = (total_ram < 1500 ? "-max-memory 500" : "");
+    if (total_ram < 1500)
+        dsk_memory = 500;
 
     bool is_kmercounted = inputFile.substr(inputFile.size()-2,2) == "h5";
 
@@ -145,7 +148,7 @@ void bcalm_1::execute (){
 
         if (!is_kmercounted)
         {
-            Graph graph = Graph::create ("-in %s -kmer-size %d  -bloom none -out solidKmers.h5  -abundance-min %d -verbose 1 -minimizer-type %d %s", inputFile.c_str(), kmerSize, abundance, minimizer_type, memory_limit);
+            Graph graph = Graph::create ("-in %s -kmer-size %d  -bloom none -out solidKmers.h5  -abundance-min %d -verbose 1 -minimizer-type %d -max-memory %d", inputFile.c_str(), kmerSize, abundance, minimizer_type, dsk_memory);
         }
     }
     auto end_kc=chrono::system_clock::now();
