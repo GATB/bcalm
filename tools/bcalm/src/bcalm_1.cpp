@@ -168,6 +168,7 @@ void bcalm_1::execute (){
     size_t nbPartitions = atol (nbPartitionsStrg.c_str());
     typedef Kmer<SPAN>::Count Count;
     Partition<Count>& partition = dskGroup.getPartition<Count> ("solid", nbPartitions);
+    cout << "DSK created " << nbPartitions << " partitions" << endl;
 
     /** We retrieve the minimizers distribution from the solid kmers storage. */
     Repartitor repart;
@@ -199,6 +200,7 @@ void bcalm_1::execute (){
 
     /* compute traveller kmers by going through all partitions */
     unsigned long nbTravellerKmers = 0;
+    // TODO: this can probably be parallelized, using techniques from GATB-core
     unordered_map<size_t, set<pair<size_t, string> > > traveller_kmers;
     {
         Iterator<Count>* it = partition.iterator();
@@ -431,7 +433,7 @@ void bcalm_1::execute (){
 
                 double longest_lambda = lambda_timings.front();
 
-                cout <<"\nIn this superbucket," <<endl;
+                cout <<"\nIn this superbucket (containing " << Buckets.size() << " buckets)," <<endl;
                 cout <<"                  sum of time spent in lambda's: "<< global_wtime_lambda / 1000000 <<" msecs" <<endl;
                 cout <<"                                 longest lambda: "<< longest_lambda / 1000000 <<" msecs" <<endl;
                 cout <<"         tot time of best scheduling of lambdas: "<< tot_time_best_sched_lambda / 1000000 <<" msecs" <<endl;
