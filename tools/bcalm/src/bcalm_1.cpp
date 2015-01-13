@@ -71,6 +71,7 @@ bcalm_1::bcalm_1 ()  : Tool ("bcalm_1"){
 	getParser()->push_front (new OptionOneParam ("-abundance", "abundance threeshold",  false,"3"));
 	getParser()->push_front (new OptionOneParam ("-threads", "number of threads",  false, "1")); // todo: set to max, as in dsk
 	getParser()->push_front (new OptionOneParam ("-threads-simulate", "(debug) number of threads to compute scheduling for",  false,"1"));
+	getParser()->push_front (new OptionOneParam ("-minimizer-type", "use lexicographical minimizers (0) or frequency based (1)",  false,"1"));
 }
 
 void insertInto(unordered_map<size_t, BankBinary*>& dests, bool isSuperBucket, size_t index, string seq)
@@ -115,19 +116,17 @@ void bcalm_1::execute (){
     minSize=getInput()->getInt("-m");
     nb_threads = getInput()->getInt("-threads");
     nb_threads_simulate = getInput()->getInt("-threads-simulate");
+    int minimizer_type = getInput()->getInt("-minimizer-type");
     
     if (nb_threads > nb_threads_simulate)
         nb_threads_simulate = nb_threads;
-
-    Model model(kmerSize, minSize);
-    Model modelK1(kmerSize-1, minSize);
 
     /** check if it's a tiny memory machine, e.g. ec2 micro, if so, limit memory during kmer counting (default is 1G) */
 #ifndef OSX
     struct sysinfo info;
     sysinfo(&info);
     int total_ram = (int)(((double)info.totalram*(double)info.mem_unit)/1024/1024);
-    cout << "Total RAM: " << total_ram << " MB\n";
+    cout << "\nTotal RAM: " << total_ram << " MB\n";
 #else
     int total_ram = 128*1024;
 #endif
@@ -141,7 +140,7 @@ void bcalm_1::execute (){
 
         if (!is_kmercounted)
         {
-            Graph graph = Graph::create ("-in %s -kmer-size %d  -bloom none -out solidKmers.h5  -abundance-min %d -verbose 1 %s", inputFile.c_str(), kmerSize, abundance, memory_limit);
+            Graph graph = Graph::create ("-in %s -kmer-size %d  -bloom none -out solidKmers.h5  -abundance-min %d -verbose 1 -minimizer-type %d %s", inputFile.c_str(), kmerSize, abundance, minimizer_type, memory_limit);
         }
     }
     auto end_kc=chrono::system_clock::now();
@@ -174,15 +173,25 @@ void bcalm_1::execute (){
     Repartitor repart;
     repart.load (dskGroup);
 
-    auto minimizerMin = [&repart] (size_t a, size_t b)
+    /* Retrieve frequency of minimizers;
+     * actually only used in minimizerMin and minimizerMax */
+    u_int64_t rg = ((u_int64_t)1 << (2*minSize));
+    uint32_t *freq_order = new uint32_t[rg];
+    Storage::istream is (dskGroup, "minimFrequency");
+    is.read ((char*)freq_order, sizeof(uint32_t) * rg);
+
+    Model model(kmerSize, minSize, Kmer<SPAN>::ComparatorMinimizerFrequency(), freq_order);
+    Model modelK1(kmerSize-1, minSize,  Kmer<SPAN>::ComparatorMinimizerFrequency(), freq_order);
+
+    auto minimizerMin = [&repart, &model] (size_t a, size_t b)
     {
         // should replace with whatever minimizer order function we will use with ModelMinimizer
-        return (a <= b) ? a : b;
+        return (model.compareIntMinimizers(a,b)) ? a : b;
     };
 
-    auto minimizerMax = [&repart] (size_t a, size_t b)
+    auto minimizerMax = [&repart, &model] (size_t a, size_t b)
     {
-        return (a <= b) ? b : a;
+        return (model.compareIntMinimizers(a,b)) ? b : a;
     };
 
     /*
@@ -256,6 +265,8 @@ void bcalm_1::execute (){
         /** We retrieve an iterator on the Count objects of the pth partition. */
         Iterator<Count>* itKmers = partition[p].iterator();
         LOCAL (itKmers);
+
+        cout << "\nPartition " << p << " has " << partition[p].getNbItems() << " kmers" << endl;
 
         auto start_createbucket_t=get_wtime();
         unordered_map<size_t, BankBinary*> Buckets;
@@ -381,7 +392,6 @@ void bcalm_1::execute (){
                     maxBucket=size;
                 }
 
-
                 if (time_lambdas)
                 {
                     auto time_lambda = diff_wtime(start_nodes_t, end_cdistribution_t);
@@ -407,7 +417,6 @@ void bcalm_1::execute (){
         } // end for each bucket
 
 #ifdef CXX11THREADS
-        //for ( auto& thread : threads ){ thread.join(); }
         pool.join();
 #endif
 
