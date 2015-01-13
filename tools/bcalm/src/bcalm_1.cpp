@@ -433,7 +433,7 @@ void bcalm_1::execute (){
 
                 double longest_lambda = lambda_timings.front();
 
-                cout <<"\nIn this superbucket," <<endl;
+                cout <<"\nIn this superbucket (containing " << Buckets.size() << " buckets)," <<endl;
                 cout <<"                  sum of time spent in lambda's: "<< global_wtime_lambda / 1000000 <<" msecs" <<endl;
                 cout <<"                                 longest lambda: "<< longest_lambda / 1000000 <<" msecs" <<endl;
                 cout <<"         tot time of best scheduling of lambdas: "<< tot_time_best_sched_lambda / 1000000 <<" msecs" <<endl;
