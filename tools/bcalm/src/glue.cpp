@@ -420,7 +420,7 @@ void Glue::output(string seq)
 void Glue::stopTimer() { 
 	if (--timerReferenceCount == 0) {
 		auto endTime = chrono::system_clock::now();
-		totalTime += chrono::duration_cast<chrono::seconds>(endTime - startTime);
+		totalTime += chrono::duration_cast<chrono::microseconds>(endTime - startTime);
 	}
 }
 

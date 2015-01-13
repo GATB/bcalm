@@ -103,7 +103,12 @@ void put_into_glue(string seq, size_t minimizer, Glue & glue, Model& modelK1) {
 	}
 	*/
 
+    auto start_glue_t=get_wtime();
+
 	glue.insert(e, true);
+
+    auto end_glue_t=get_wtime();
+    atomic_double_add(global_wtime_glue,  diff_wtime(start_glue_t, end_glue_t));
 }
 
 void bcalm_1::execute (){
@@ -240,6 +245,27 @@ void bcalm_1::execute (){
     cout<<"Loaded " << nbTravellerKmers << " traveller kmers from " << nbKmers << " solid kmers in wall-clock "<<chrono::duration_cast<chrono::nanoseconds>(waitedFor_part).count() / unit <<" secs"<<endl;
     
     Glue glue(kmerSize, out);
+    bool keep_glueing = true;
+    bool parallel_glue = true;
+
+#ifdef CXX11THREADS
+    moodycamel::ConcurrentQueue<std::pair<string, size_t> > glue_queue;
+    auto lambdaGlue = [&glue_queue, &glue, &modelK1, &keep_glueing]() {
+        std::pair<string, size_t> glue_elt;
+            printf("'im trying\n");
+        while (glue_queue.try_dequeue(glue_elt) && keep_glueing)
+        {
+            put_into_glue(glue_elt.first, glue_elt.second, glue, modelK1);
+        }
+            printf("'I GIVE UP\n");
+    };
+    std::thread *glue_thread;
+    if (parallel_glue)
+    {
+        glue_thread = new std::thread (lambdaGlue);
+    }
+#endif
+
 
     double weighted_best_theoretical_speedup_cumul = 0;
     double weighted_best_theoretical_speedup_sum_times = 0;
@@ -261,7 +287,7 @@ void bcalm_1::execute (){
     {
         /** Shortcut. */
         size_t p = itParts->item();
-        
+
         /** We retrieve an iterator on the Count objects of the pth partition. */
         Iterator<Count>* itKmers = partition[p].iterator();
         LOCAL (itKmers);
@@ -307,8 +333,6 @@ void bcalm_1::execute (){
         atomic_double_add(global_wtime_create_buckets, diff_wtime(start_createbucket_t, end_createbucket_t));
 
 #ifdef CXX11THREADS
-        std::vector<std::thread> threads;
-        moodycamel::ConcurrentQueue<std::pair<string, size_t> > glue_queue;
         ThreadPool pool(nb_threads);
 #else
         int glue_queue;//dummy
@@ -473,29 +497,26 @@ void bcalm_1::execute (){
             remove(("B"+to_string(j)).c_str());
         }
 
-        // do the gluing at the end of each superbucket
-        auto start_glue_t=get_wtime();
-
-#ifdef CXX11THREADS
-        // put everything into the glue
-        std::pair<string, size_t> glue_elt;
-        while (glue_queue.try_dequeue(glue_elt))
+        if (!parallel_glue)
         {
-            put_into_glue(glue_elt.first, glue_elt.second, glue, modelK1);
+            lambdaGlue();
+
+            // todo: don't know when to do this in the glue thread. maybe send some sort of signal, or do it periodically
+            glue.glueStorage.updateMemStats();
+            glue.glue(); 
         }
-#endif
 
-        glue.glueStorage.updateMemStats();
-        glue.glue();
-
-        auto end_glue_t=get_wtime();
-        atomic_double_add(global_wtime_glue,  diff_wtime(start_glue_t, end_glue_t));
 
         } // end iteration superbuckets
 
+        // stop the glue thread
+        keep_glueing = false;
+        if (parallel_glue)
+            glue_thread->join();
+
         cout << "Final glue:\n" << glue.glueStorage.dump() << "*****\n";
         glue.glueStorage.printMemStats();
-        cout << "Glue class took " << glue.getTime() / unit << "seconds.\n";
+        cout << "Glue class took " << glue.getTime() / 1000000 << " seconds.\n";
 
         /* printing some timing stats */
         auto end_t=chrono::system_clock::now();

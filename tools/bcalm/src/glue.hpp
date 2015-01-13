@@ -158,7 +158,7 @@ class Glue
 
 		//timing code
 		std::chrono::system_clock::time_point startTime;
-		std::chrono::seconds totalTime;
+		std::chrono::microseconds totalTime;
 		int timerReferenceCount = 0;
 		void startTimer() { 
 			if (timerReferenceCount++ == 0) startTime =  chrono::system_clock::now(); 
