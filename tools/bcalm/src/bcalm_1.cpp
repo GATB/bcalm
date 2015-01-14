@@ -51,7 +51,7 @@ typedef double atomic_double;
 atomic_double global_wtime_compactions (0), global_wtime_cdistribution (0), global_wtime_add_nodes (0), global_wtime_create_buckets (0), global_wtime_glue (0), global_wtime_foreach_bucket (0), global_wtime_flush_sb (0), global_wtime_lambda (0), global_wtime_parallel (0), global_wtime_longest_lambda (0), global_wtime_best_sched(0);
 
 bool time_lambdas = true;
-std::mutex lambda_timing_mutex;
+std::mutex lambda_timing_mutex, active_minimizers_mutex;
 
 
 /********************************************************************************/
@@ -295,10 +295,17 @@ void bcalm_1::execute (){
             bucket_queues[minimizer].enqueue(std::make_tuple(seq,leftmin,rightmin));
 
             if (active)
-                active_minimizers.insert(minimizer);
+            {
+                if (active_minimizers.find(minimizer) == active_minimizers.end())
+                { 
+                    active_minimizers_mutex.lock();
+                    active_minimizers.insert(minimizer);
+                    active_minimizers_mutex.unlock();
+                }
+            }
         };
 
-        auto insertIntoQueues = [&minimizerMax, &minimizerMin, &add_to_bucket_queue, &bucket_queues, &modelK1, &k, &repart](string seq, int p) {
+        auto insertIntoQueues = [p, &minimizerMax, &minimizerMin, &add_to_bucket_queue, &bucket_queues, &modelK1, &k, &repart](string seq) {
             Model::Kmer kmmerBegin = modelK1.codeSeed(seq.substr(0, k - 1).c_str(), Data::ASCII);
             size_t leftMin(modelK1.getMinimizerValue(kmmerBegin.value()));
             Model::Kmer kmmerEnd = modelK1.codeSeed(seq.substr(seq.size() - k + 1, k - 1).c_str(), Data::ASCII);
@@ -334,14 +341,22 @@ void bcalm_1::execute (){
 
         auto start_createbucket_t=get_wtime();
 
-        /* expand a superbucket by inserting kmers into queues */ 
-        // TODO looks like we can do that in parallel using GATB dispatch, but then, be careful how you update active_minimizers (i think that's all you need to be careful about)
-        for (itKmers->first(); !itKmers->isDone(); itKmers->next()) { 
-            nbKmers++;
-            Kmer<SPAN>::Type current = itKmers->item().value;
+        auto iteratePartition = [&insertIntoQueues, &model](Count item) {
+            Kmer<SPAN>::Type current = item.value;
             string seq = model.toString(current);
-            insertIntoQueues(seq, p);
-        }
+            insertIntoQueues(seq);
+        };
+
+        /* expand a superbucket by inserting kmers into queues */ 
+        getDispatcher()->iterate (itKmers, iteratePartition);
+ 
+        // serial version
+       // for (itKmers->first(); !itKmers->isDone(); itKmers->next()) { 
+            //nbKmers++;
+/*            Kmer<SPAN>::Type current = itKmers->item().value;
+            string seq = model.toString(current);
+            insertIntoQueues(seq, p);*/
+        //}
 
         auto end_createbucket_t=get_wtime();
         atomic_double_add(global_wtime_create_buckets, diff_wtime(start_createbucket_t, end_createbucket_t));

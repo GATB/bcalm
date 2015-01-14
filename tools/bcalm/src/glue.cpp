@@ -348,13 +348,13 @@ void Glue::insert(GlueEntry e, bool process) {
 	}
 
 	
-	if ((e.getSeq().find(key_of_interest) != std::string::npos) || (e.getSeq().find(reversecomplement(key_of_interest)) != std::string::npos)) {
+/*	if ((e.getSeq().find(key_of_interest) != std::string::npos) || (e.getSeq().find(reversecomplement(key_of_interest)) != std::string::npos)) {
 		glueDebug = true;
 	}
 
 	if (glueDebug) 
 		cout << "insert\t" << tostring(e,"") << endl;
-
+*/
 	GlueEntry insRes;
 
 	if (!e.getRmark() && !e.getLmark()) {
