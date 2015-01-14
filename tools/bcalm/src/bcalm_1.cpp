@@ -319,12 +319,16 @@ void bcalm_1::execute (){
                 {
                     /* I call that a "traveller kmer" */
                     add_to_bucket_queue(max_minimizer, seq, leftMin, rightMin, false);
+
+                    // sanity check
+                    if (repart(max_minimizer) < repart(min_minimizer))
+                    {                printf("wtf? traveller kmer\n");                exit(1);            }
                 }
             }
 
             // sanity check
             if (repart(leftMin) != p && repart(rightMin) != p)
-            {                printf("wtf?\n");                exit(1);            }
+            {                printf("wtf? repart bucket\n");                exit(1);            }
 
         };
 
