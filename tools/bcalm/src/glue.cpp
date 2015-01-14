@@ -21,7 +21,27 @@ using google::sparse_hash_map;
 string key_of_interest = "somestringthatwillneveroccur";
 //string key_of_interest = "GATGTGTTTGTCGTGTTCGCGATCGCCACGGCATCGGTTAGACTGCTAACC";
 bool glueDebug = false;
+bool weWantSpeed = false;
 using namespace std;
+
+uint8_t byteLookupTable[256][7] = {{'A', 'A', 'A', 'A', '0', '0', '0'}, {'A', 'A', 'A', 'C', '0', '0', '0'}, {'A', 'A', 'A', 'G', '0', '0', '0'}, {'A', 'A', 'A', 'T', '0', '0', '0'}, {'A', 'A', 'C', 'A', '0', '0', '0'}, {'A', 'A', 'C', 'C', '0', '0', '0'}, {'A', 'A', 'C', 'G', '0', '0', '0'}, {'A', 'A', 'C', 'T', '0', '0', '0'}, {'A', 'A', 'G', 'A', '0', '0', '0'}, {'A', 'A', 'G', 'C', '0', '0', '0'}, {'A', 'A', 'G', 'G', '0', '0', '0'}, {'A', 'A', 'G', 'T', '0', '0', '0'}, {'A', 'A', 'T', 'A', '0', '0', '0'}, {'A', 'A', 'T', 'C', '0', '0', '0'}, {'A', 'A', 'T', 'G', '0', '0', '0'}, {'A', 'A', 'T', 'T', '0', '0', '0'}, {'A', 'C', 'A', 'A', '0', '0', '2'}, {'A', 'C', 'A', 'C', '0', '0', '2'}, {'A', 'C', 'A', 'G', '0', '0', '2'}, {'A', 'C', 'A', 'T', '0', '0', '2'}, {'A', 'C', 'C', 'A', '0', '0', '2'}, {'A', 'C', 'C', 'C', '0', '0', '2'}, {'A', 'C', 'C', 'G', '0', '0', '2'}, {'A', 'C', 'C', 'T', '0', '0', '2'}, {'A', 'C', 'G', 'A', '0', '0', '2'}, {'A', 'C', 'G', 'C', '0', '0', '2'}, {'A', 'C', 'G', 'G', '0', '0', '2'}, {'A', 'C', 'G', 'T', '0', '0', '2'}, {'A', 'C', 'T', 'A', '0', '0', '2'}, {'A', 'C', 'T', 'C', '0', '0', '2'}, {'A', 'C', 'T', 'G', '0', '0', '2'}, {'A', 'C', 'T', 'T', '0', '0', '2'}, {'A', 'G', 'A', 'A', '0', '0', '4'}, {'A', 'G', 'A', 'C', '0', '0', '4'}, {'A', 'G', 'A', 'G', '0', '0', '4'}, {'A', 'G', 'A', 'T', '0', '0', '4'}, {'A', 'G', 'C', 'A', '0', '0', '4'}, {'A', 'G', 'C', 'C', '0', '0', '4'}, {'A', 'G', 'C', 'G', '0', '0', '4'}, {'A', 'G', 'C', 'T', '0', '0', '4'}, {'A', 'G', 'G', 'A', '0', '0', '4'}, {'A', 'G', 'G', 'C', '0', '0', '4'}, {'A', 'G', 'G', 'G', '0', '0', '4'}, {'A', 'G', 'G', 'T', '0', '0', '4'}, {'A', 'G', 'T', 'A', '0', '0', '4'}, {'A', 'G', 'T', 'C', '0', '0', '4'}, {'A', 'G', 'T', 'G', '0', '0', '4'}, {'A', 'G', 'T', 'T', '0', '0', '4'}, {'A', 'T', 'A', 'A', '0', '0', '6'}, {'A', 'T', 'A', 'C', '0', '0', '6'}, {'A', 'T', 'A', 'G', '0', '0', '6'}, {'A', 'T', 'A', 'T', '0', '0', '6'}, {'A', 'T', 'C', 'A', '0', '0', '6'}, {'A', 'T', 'C', 'C', '0', '0', '6'}, {'A', 'T', 'C', 'G', '0', '0', '6'}, {'A', 'T', 'C', 'T', '0', '0', '6'}, {'A', 'T', 'G', 'A', '0', '0', '6'}, {'A', 'T', 'G', 'C', '0', '0', '6'}, {'A', 'T', 'G', 'G', '0', '0', '6'}, {'A', 'T', 'G', 'T', '0', '0', '6'}, {'A', 'T', 'T', 'A', '0', '0', '6'}, {'A', 'T', 'T', 'C', '0', '0', '6'}, {'A', 'T', 'T', 'G', '0', '0', '6'}, {'A', 'T', 'T', 'T', '0', '0', '6'}, {'C', 'A', 'A', 'A', '0', '1', '0'}, {'C', 'A', 'A', 'C', '0', '1', '0'}, {'C', 'A', 'A', 'G', '0', '1', '0'}, {'C', 'A', 'A', 'T', '0', '1', '0'}, {'C', 'A', 'C', 'A', '0', '1', '0'}, {'C', 'A', 'C', 'C', '0', '1', '0'}, {'C', 'A', 'C', 'G', '0', '1', '0'}, {'C', 'A', 'C', 'T', '0', '1', '0'}, {'C', 'A', 'G', 'A', '0', '1', '0'}, {'C', 'A', 'G', 'C', '0', '1', '0'}, {'C', 'A', 'G', 'G', '0', '1', '0'}, {'C', 'A', 'G', 'T', '0', '1', '0'}, {'C', 'A', 'T', 'A', '0', '1', '0'}, {'C', 'A', 'T', 'C', '0', '1', '0'}, {'C', 'A', 'T', 'G', '0', '1', '0'}, {'C', 'A', 'T', 'T', '0', '1', '0'}, {'C', 'C', 'A', 'A', '0', '1', '2'}, {'C', 'C', 'A', 'C', '0', '1', '2'}, {'C', 'C', 'A', 'G', '0', '1', '2'}, {'C', 'C', 'A', 'T', '0', '1', '2'}, {'C', 'C', 'C', 'A', '0', '1', '2'}, {'C', 'C', 'C', 'C', '0', '1', '2'}, {'C', 'C', 'C', 'G', '0', '1', '2'}, {'C', 'C', 'C', 'T', '0', '1', '2'}, {'C', 'C', 'G', 'A', '0', '1', '2'}, {'C', 'C', 'G', 'C', '0', '1', '2'}, {'C', 'C', 'G', 'G', '0', '1', '2'}, {'C', 'C', 'G', 'T', '0', '1', '2'}, {'C', 'C', 'T', 'A', '0', '1', '2'}, {'C', 'C', 'T', 'C', '0', '1', '2'}, {'C', 'C', 'T', 'G', '0', '1', '2'}, {'C', 'C', 'T', 'T', '0', '1', '2'}, {'C', 'G', 'A', 'A', '0', '1', '4'}, {'C', 'G', 'A', 'C', '0', '1', '4'}, {'C', 'G', 'A', 'G', '0', '1', '4'}, {'C', 'G', 'A', 'T', '0', '1', '4'}, {'C', 'G', 'C', 'A', '0', '1', '4'}, {'C', 'G', 'C', 'C', '0', '1', '4'}, {'C', 'G', 'C', 'G', '0', '1', '4'}, {'C', 'G', 'C', 'T', '0', '1', '4'}, {'C', 'G', 'G', 'A', '0', '1', '4'}, {'C', 'G', 'G', 'C', '0', '1', '4'}, {'C', 'G', 'G', 'G', '0', '1', '4'}, {'C', 'G', 'G', 'T', '0', '1', '4'}, {'C', 'G', 'T', 'A', '0', '1', '4'}, {'C', 'G', 'T', 'C', '0', '1', '4'}, {'C', 'G', 'T', 'G', '0', '1', '4'}, {'C', 'G', 'T', 'T', '0', '1', '4'}, {'C', 'T', 'A', 'A', '0', '1', '6'}, {'C', 'T', 'A', 'C', '0', '1', '6'}, {'C', 'T', 'A', 'G', '0', '1', '6'}, {'C', 'T', 'A', 'T', '0', '1', '6'}, {'C', 'T', 'C', 'A', '0', '1', '6'}, {'C', 'T', 'C', 'C', '0', '1', '6'}, {'C', 'T', 'C', 'G', '0', '1', '6'}, {'C', 'T', 'C', 'T', '0', '1', '6'}, {'C', 'T', 'G', 'A', '0', '1', '6'}, {'C', 'T', 'G', 'C', '0', '1', '6'}, {'C', 'T', 'G', 'G', '0', '1', '6'}, {'C', 'T', 'G', 'T', '0', '1', '6'}, {'C', 'T', 'T', 'A', '0', '1', '6'}, {'C', 'T', 'T', 'C', '0', '1', '6'}, {'C', 'T', 'T', 'G', '0', '1', '6'}, {'C', 'T', 'T', 'T', '0', '1', '6'}, {'G', 'A', 'A', 'A', '1', '0', '0'}, {'G', 'A', 'A', 'C', '1', '0', '0'}, {'G', 'A', 'A', 'G', '1', '0', '0'}, {'G', 'A', 'A', 'T', '1', '0', '0'}, {'G', 'A', 'C', 'A', '1', '0', '0'}, {'G', 'A', 'C', 'C', '1', '0', '0'}, {'G', 'A', 'C', 'G', '1', '0', '0'}, {'G', 'A', 'C', 'T', '1', '0', '0'}, {'G', 'A', 'G', 'A', '1', '0', '0'}, {'G', 'A', 'G', 'C', '1', '0', '0'}, {'G', 'A', 'G', 'G', '1', '0', '0'}, {'G', 'A', 'G', 'T', '1', '0', '0'}, {'G', 'A', 'T', 'A', '1', '0', '0'}, {'G', 'A', 'T', 'C', '1', '0', '0'}, {'G', 'A', 'T', 'G', '1', '0', '0'}, {'G', 'A', 'T', 'T', '1', '0', '0'}, {'G', 'C', 'A', 'A', '1', '0', '2'}, {'G', 'C', 'A', 'C', '1', '0', '2'}, {'G', 'C', 'A', 'G', '1', '0', '2'}, {'G', 'C', 'A', 'T', '1', '0', '2'}, {'G', 'C', 'C', 'A', '1', '0', '2'}, {'G', 'C', 'C', 'C', '1', '0', '2'}, {'G', 'C', 'C', 'G', '1', '0', '2'}, {'G', 'C', 'C', 'T', '1', '0', '2'}, {'G', 'C', 'G', 'A', '1', '0', '2'}, {'G', 'C', 'G', 'C', '1', '0', '2'}, {'G', 'C', 'G', 'G', '1', '0', '2'}, {'G', 'C', 'G', 'T', '1', '0', '2'}, {'G', 'C', 'T', 'A', '1', '0', '2'}, {'G', 'C', 'T', 'C', '1', '0', '2'}, {'G', 'C', 'T', 'G', '1', '0', '2'}, {'G', 'C', 'T', 'T', '1', '0', '2'}, {'G', 'G', 'A', 'A', '1', '0', '4'}, {'G', 'G', 'A', 'C', '1', '0', '4'}, {'G', 'G', 'A', 'G', '1', '0', '4'}, {'G', 'G', 'A', 'T', '1', '0', '4'}, {'G', 'G', 'C', 'A', '1', '0', '4'}, {'G', 'G', 'C', 'C', '1', '0', '4'}, {'G', 'G', 'C', 'G', '1', '0', '4'}, {'G', 'G', 'C', 'T', '1', '0', '4'}, {'G', 'G', 'G', 'A', '1', '0', '4'}, {'G', 'G', 'G', 'C', '1', '0', '4'}, {'G', 'G', 'G', 'G', '1', '0', '4'}, {'G', 'G', 'G', 'T', '1', '0', '4'}, {'G', 'G', 'T', 'A', '1', '0', '4'}, {'G', 'G', 'T', 'C', '1', '0', '4'}, {'G', 'G', 'T', 'G', '1', '0', '4'}, {'G', 'G', 'T', 'T', '1', '0', '4'}, {'G', 'T', 'A', 'A', '1', '0', '6'}, {'G', 'T', 'A', 'C', '1', '0', '6'}, {'G', 'T', 'A', 'G', '1', '0', '6'}, {'G', 'T', 'A', 'T', '1', '0', '6'}, {'G', 'T', 'C', 'A', '1', '0', '6'}, {'G', 'T', 'C', 'C', '1', '0', '6'}, {'G', 'T', 'C', 'G', '1', '0', '6'}, {'G', 'T', 'C', 'T', '1', '0', '6'}, {'G', 'T', 'G', 'A', '1', '0', '6'}, {'G', 'T', 'G', 'C', '1', '0', '6'}, {'G', 'T', 'G', 'G', '1', '0', '6'}, {'G', 'T', 'G', 'T', '1', '0', '6'}, {'G', 'T', 'T', 'A', '1', '0', '6'}, {'G', 'T', 'T', 'C', '1', '0', '6'}, {'G', 'T', 'T', 'G', '1', '0', '6'}, {'G', 'T', 'T', 'T', '1', '0', '6'}, {'T', 'A', 'A', 'A', '1', '1', '0'}, {'T', 'A', 'A', 'C', '1', '1', '0'}, {'T', 'A', 'A', 'G', '1', '1', '0'}, {'T', 'A', 'A', 'T', '1', '1', '0'}, {'T', 'A', 'C', 'A', '1', '1', '0'}, {'T', 'A', 'C', 'C', '1', '1', '0'}, {'T', 'A', 'C', 'G', '1', '1', '0'}, {'T', 'A', 'C', 'T', '1', '1', '0'}, {'T', 'A', 'G', 'A', '1', '1', '0'}, {'T', 'A', 'G', 'C', '1', '1', '0'}, {'T', 'A', 'G', 'G', '1', '1', '0'}, {'T', 'A', 'G', 'T', '1', '1', '0'}, {'T', 'A', 'T', 'A', '1', '1', '0'}, {'T', 'A', 'T', 'C', '1', '1', '0'}, {'T', 'A', 'T', 'G', '1', '1', '0'}, {'T', 'A', 'T', 'T', '1', '1', '0'}, {'T', 'C', 'A', 'A', '1', '1', '2'}, {'T', 'C', 'A', 'C', '1', '1', '2'}, {'T', 'C', 'A', 'G', '1', '1', '2'}, {'T', 'C', 'A', 'T', '1', '1', '2'}, {'T', 'C', 'C', 'A', '1', '1', '2'}, {'T', 'C', 'C', 'C', '1', '1', '2'}, {'T', 'C', 'C', 'G', '1', '1', '2'}, {'T', 'C', 'C', 'T', '1', '1', '2'}, {'T', 'C', 'G', 'A', '1', '1', '2'}, {'T', 'C', 'G', 'C', '1', '1', '2'}, {'T', 'C', 'G', 'G', '1', '1', '2'}, {'T', 'C', 'G', 'T', '1', '1', '2'}, {'T', 'C', 'T', 'A', '1', '1', '2'}, {'T', 'C', 'T', 'C', '1', '1', '2'}, {'T', 'C', 'T', 'G', '1', '1', '2'}, {'T', 'C', 'T', 'T', '1', '1', '2'}, {'T', 'G', 'A', 'A', '1', '1', '4'}, {'T', 'G', 'A', 'C', '1', '1', '4'}, {'T', 'G', 'A', 'G', '1', '1', '4'}, {'T', 'G', 'A', 'T', '1', '1', '4'}, {'T', 'G', 'C', 'A', '1', '1', '4'}, {'T', 'G', 'C', 'C', '1', '1', '4'}, {'T', 'G', 'C', 'G', '1', '1', '4'}, {'T', 'G', 'C', 'T', '1', '1', '4'}, {'T', 'G', 'G', 'A', '1', '1', '4'}, {'T', 'G', 'G', 'C', '1', '1', '4'}, {'T', 'G', 'G', 'G', '1', '1', '4'}, {'T', 'G', 'G', 'T', '1', '1', '4'}, {'T', 'G', 'T', 'A', '1', '1', '4'}, {'T', 'G', 'T', 'C', '1', '1', '4'}, {'T', 'G', 'T', 'G', '1', '1', '4'}, {'T', 'G', 'T', 'T', '1', '1', '4'}, {'T', 'T', 'A', 'A', '1', '1', '6'}, {'T', 'T', 'A', 'C', '1', '1', '6'}, {'T', 'T', 'A', 'G', '1', '1', '6'}, {'T', 'T', 'A', 'T', '1', '1', '6'}, {'T', 'T', 'C', 'A', '1', '1', '6'}, {'T', 'T', 'C', 'C', '1', '1', '6'}, {'T', 'T', 'C', 'G', '1', '1', '6'}, {'T', 'T', 'C', 'T', '1', '1', '6'}, {'T', 'T', 'G', 'A', '1', '1', '6'}, {'T', 'T', 'G', 'C', '1', '1', '6'}, {'T', 'T', 'G', 'G', '1', '1', '6'}, {'T', 'T', 'G', 'T', '1', '1', '6'}, {'T', 'T', 'T', 'A', '1', '1', '6'}, {'T', 'T', 'T', 'C', '1', '1', '6'}, {'T', 'T', 'T', 'G', '1', '1', '6'}, {'T', 'T', 'T', 'T', '1', '1', '6'}};
+
+uint8_t bits2byteTable[2][2][2][2][2][2][2][2] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80, 81, 82, 83, 84, 85, 86, 87, 88, 89, 90, 91, 92, 93, 94, 95, 96, 97, 98, 99, 100, 101, 102, 103, 104, 105, 106, 107, 108, 109, 110, 111, 112, 113, 114, 115, 116, 117, 118, 119, 120, 121, 122, 123, 124, 125, 126, 127, 128, 129, 130, 131, 132, 133, 134, 135, 136, 137, 138, 139, 140, 141, 142, 143, 144, 145, 146, 147, 148, 149, 150, 151, 152, 153, 154, 155, 156, 157, 158, 159, 160, 161, 162, 163, 164, 165, 166, 167, 168, 169, 170, 171, 172, 173, 174, 175, 176, 177, 178, 179, 180, 181, 182, 183, 184, 185, 186, 187, 188, 189, 190, 191, 192, 193, 194, 195, 196, 197, 198, 199, 200, 201, 202, 203, 204, 205, 206, 207, 208, 209, 210, 211, 212, 213, 214, 215, 216, 217, 218, 219, 220, 221, 222, 223, 224, 225, 226, 227, 228, 229, 230, 231, 232, 233, 234, 235, 236, 237, 238, 239, 240, 241, 242, 243, 244, 245, 246, 247, 248, 249, 250, 251, 252, 253, 254, 255};
+
+/*uint8_t bits2byte (RawEntry bits, int start) {
+	return  
+		1 * bits[start + 7] +  
+		2 * bits[start + 6] + 
+		4 * bits[start + 5] + 
+		8 * bits[start + 4] + 
+		16 * bits[start + 3] + 
+		32 * bits[start + 2] + 
+		64 * bits[start + 1] + 
+		128 * bits[start];
+}*/
+
+
+
 
 template<typename T>
 string add_commas(T num) {
@@ -39,7 +59,7 @@ string add_commas(T num) {
 	return retval;
 }
 
-/*
+
  //print vector of T
 template<class T>
 ostream & operator << (ostream & out, const vector<T> & v) {
@@ -50,44 +70,55 @@ ostream & operator << (ostream & out, const vector<T> & v) {
 	}
 	return out;
 }
-*/
 
-string reversecomplement(const string& dna) // code taken from TakeABreak
-{
-	string revComp= "";
+char revcomp (char s) {
+	if (s == 'A') return 'T';
+	else if (s == 'C') return 'G';
+	else if (s == 'G') return 'C';
+	else if (s == 'T') return 'A';
+	else if (s == 'a') return 't';
+	else if (s == 'c') return 'g';
+	else if (s == 'g') return 'c';
+	else if (s == 't') return 'a';
+	return 'X';
+}
 
-	for (string::const_reverse_iterator it = dna.rbegin(); it != dna.rend(); it++) {
-		switch(*it) {
-			case 'a' :                revComp += "t";                break;
-			case 't' :                revComp += "a";                break;
-			case 'c' :                revComp += "g";                break;
-			case 'g' :                revComp += "c";                break;
-			case 'A' :                revComp += "T";                break;
-			case 'T' :                revComp += "A";                break;
-			case 'C' :                revComp += "G";                break;
-			case 'G' :                revComp += "C";                break;
+string revcomp (string &s) {
+	string rc;
+	for (int i = s.length() - 1; i >= 0; i--) rc += revcomp(s[i]);
+	return rc;
+}
+
+//this short-circuits the computation as soon as the difference is found
+string rcnorm (string &s) {
+	string rc;
+	for (int i = 0; i < s.length(); i++) {
+		char c = revcomp(s[s.length() - 1 - i]);
+		if (s[i] < c) {
+			return s;
+		} else if (s[i] > c) {
+			return revcomp(s);
 		}
 	}
-    return revComp;
+	return revcomp(s);
 }
 
-string rcnorm ( string seq ) {
-	return std::min (seq, reversecomplement(seq));
-}
+//string rcnorm ( string seq ) { return std::min (seq, reversecomplement(seq)); }
 
-char bits2char (bool leftbit, bool rightbit) {
+/*char bits2char (bool leftbit, bool rightbit) {
 	if (leftbit == 0 && rightbit == 0) return 'A';
 	else if (leftbit == 0 && rightbit == 1) return 'C';
 	else if (leftbit == 1 && rightbit == 0) return 'G';
 	else return 'T';
 }
+*/
 
 /* nifty function to highlight a substring for printing to terminal */
 string debug_highlight(string s, string motif)
 {
     size_t pos = s.find(motif);
     if (pos == string::npos)
-        pos = s.find(reversecomplement(motif));
+        pos = s.find(revcomp(motif));
     if (pos == string::npos)
     {
         return s;
@@ -107,33 +138,64 @@ string tostring(GlueEntry e, string key) {
 
 GlueEntry::GlueEntry(RawEntry raw, size_t _kmerSize){
 	kmerSize = _kmerSize;
-	seq = "";
 #ifdef TWOBITGLUEHASH
 
-	//convert encoded string raw to a binary string bits
-	RawEntry bits;
-	for (int i = 0; i < raw.size(); i++) {
-		bitset<8> byte(int(raw[i]));
-		string bits_aux = byte.to_string();
-		transform(bits_aux.begin(), bits_aux.end(), bits_aux.begin(),
-				          bind2nd(std::minus<int>(), '0')); 
-		bits.insert(bits.end(), bits_aux.begin(), bits_aux.end()); // += bits_aux2;
-	}
-	//cout << "Constructor extracted bits: \nbits: " << bits << ".\n";
-	if (bits.size() != raw.size() * 8) {
-		cout << "fail in GlueEntry::GlueEntry bit conversion.\n";
-		exit(1);
-	}
+	//cout << "GlueEntry constructor got raw = " << raw << ".\n";
+	uint8_t * vals = byteLookupTable[raw[0]];
+	//cout << vals[0] << vals[1] << vals[2] << vals[3] << vals[4] << vals[5] << vals[6] << "\t:" << seq << ":" << endl; 
+	lmark = vals[4] - '0';
+	rmark = vals[5] - '0';
+	int leftoverbits = vals[6] - '0';
 
-	lmark = bits[0];
-	rmark = bits[1];
-	
-	seq = "";
-	int leftoverbits = 2 * ( 2 * bits[2] + bits[3]); //to represent how many bits are to be read from the last byte: 00 = 0 bits, 01 = 2 bits, 10 = 4 bits, 11 = 6 bits
-	if (leftoverbits == 0) leftoverbits = 8;
-	for (int i = 4; i < bits.size() - 8 + leftoverbits; i += 2) {
-		seq.push_back(bits2char(bits[i], bits[i+1]));
+	int seqLen;
+	if (leftoverbits == 0) {
+		seqLen = raw.size() * 4 - 2;
+	} else {
+		seqLen = raw.size() * 4 - 2 - (4 - (leftoverbits / 2));
 	}
+	seq.resize(seqLen);
+
+	int seqCounter = 0;
+	if (raw.size() == 1) {
+		if (leftoverbits == 0) {
+			seq[seqCounter++] = vals[2];
+			seq[seqCounter++] = vals[3];
+			//seq.push_back(vals[2]); seq.push_back(vals[3]);
+		} else if (leftoverbits == 6) {
+			seq[seqCounter++] = vals[2];
+			//seq.push_back(vals[2]);
+		} 
+	} else {
+		seq[seqCounter++] = vals[2];
+		seq[seqCounter++] = vals[3];
+		for (int i = 1; i < raw.size() - 1; i++) {
+			vals =  byteLookupTable[raw[i]];
+			seq[seqCounter++] = vals[0];
+			seq[seqCounter++] = vals[1];
+			seq[seqCounter++] = vals[2];
+			seq[seqCounter++] = vals[3];
+		}
+
+		vals =  byteLookupTable[raw[raw.size() - 1]];
+		if (leftoverbits == 0) {
+			seq[seqCounter++] = vals[0];
+			seq[seqCounter++] = vals[1];
+			seq[seqCounter++] = vals[2];
+			seq[seqCounter++] = vals[3];
+		} else if (leftoverbits == 6) {
+			seq[seqCounter++] = vals[0];
+			seq[seqCounter++] = vals[1];
+			seq[seqCounter++] = vals[2];
+		} else if (leftoverbits == 4) {
+			seq[seqCounter++] = vals[0];
+			seq[seqCounter++] = vals[1];
+		} else if (leftoverbits == 2) {
+			seq[seqCounter++] = vals[0];
+		}
+
+	}
+	//cout << "Constructor put togegher: " << seq << ".\n";
+
 #else
 	seq = raw.substr(0, raw.size() - 2);
 	lmark = raw.at(raw.length() - 2);
@@ -142,17 +204,6 @@ GlueEntry::GlueEntry(RawEntry raw, size_t _kmerSize){
 }
 
 
-uint8_t bits2byte (RawEntry bits, int start) {
-	return  
-	1 * bits[start + 7] +  
-	2 * bits[start + 6] + 
-	4 * bits[start + 5] + 
-	8 * bits[start + 4] + 
-	16 * bits[start + 3] + 
-	32 * bits[start + 2] + 
-	64 * bits[start + 1] + 
-	128 * bits[start];
-}
 
 
 RawEntry GlueEntry::getRaw() {
@@ -164,9 +215,9 @@ RawEntry GlueEntry::getRaw() {
 	rawLengthBits += (seq.length() * 2); //to represent the sequence
 	int leftoverbits = rawLengthBits - ((rawLengthBits / 8) * 8); 
 	int rawLengthBytes = (rawLengthBits + 7.99) / 8;
-	RawEntry bits(rawLengthBytes * 8, 0);
-	bits[0] = int(lmark);
-	bits[1] = int(rmark);
+	vector<uint8_t> bits(rawLengthBytes * 8, 0);
+	bits[0] = lmark;
+	bits[1] = rmark;
 	if (leftoverbits == 0) {
 		bits[2] = 0; bits[3] = 0;
 	} else if (leftoverbits == 2) {
@@ -192,10 +243,9 @@ RawEntry GlueEntry::getRaw() {
 		}
 	}
 	//encode bits in a 2bit compacted string.
-	//string raw(rawLengthBytes, 0);
 	RawEntry raw;
 	for (int i = 0; i < bits.size(); i += 8) {
-		raw.push_back(bits2byte(bits, i));
+		raw.push_back(bits2byteTable[bits[i]][bits[i+1]][bits[i+2]][bits[i+3]][bits[i+4]][bits[i+5]][bits[i+6]][bits[i+7]]);
 	}
 	//cout << "bits: " << bits << ".\n";
 	return raw;
@@ -260,84 +310,78 @@ void GlueStorage::insertAtIt(GlueMap::iterator it, GlueEntry e) {
 void Glue::glueSingleEntry(GlueEntry query, GlueEntry match, string key, GlueEntry & glueResult) {
 	glueResult = GlueEntry();
 	
-	if (!match.getLmark()  || (query.getRkmer() != match.getLkmer()) || (query.getRkmer() != key)) {
-		std::swap(query, match);
+	if (weWantSpeed) { //this disables the error check, meaning that if there is some bug in the program that causes query and match to be non-gluable, the program will not terminate and will continue
+		if (match.getLmark()  && (query.getRkmer() == match.getLkmer()) && (query.getRkmer() == key)) {
+			string gluedStr = query.getSeq() + match.getSeq().substr(kmerSize, match.getSeq().size() - kmerSize);
+			glueResult = GlueEntry(gluedStr, query.getLmark(), match.getRmark(), kmerSize);
+		} else {
+			string gluedStr = match.getSeq() + query.getSeq().substr(kmerSize, query.getSeq().size() - kmerSize);
+			glueResult = GlueEntry(gluedStr, match.getLmark(), query.getRmark(), kmerSize);
+		}
+	} else{
+		if (match.getLmark()  && (query.getRkmer() == match.getLkmer()) && (query.getRkmer() == key)) {
+			string gluedStr = query.getSeq() + match.getSeq().substr(kmerSize, match.getSeq().size() - kmerSize);
+			glueResult = GlueEntry(gluedStr, query.getLmark(), match.getRmark(), kmerSize);
+		} else if (query.getLmark()  && (match.getRkmer() == query.getLkmer()) && (match.getRkmer() == key)) {
+			string gluedStr = match.getSeq() + query.getSeq().substr(kmerSize, query.getSeq().size() - kmerSize);
+			glueResult = GlueEntry(gluedStr, match.getLmark(), query.getRmark(), kmerSize);
+		} else {
+			cout << "glueSingleEntry received non-gluable input:\n";
+			cout << "  query: " << tostring(query, key) << endl;
+			cout << "  match: " << tostring(match, key) << endl;
+			exit(1);
+		}
 	}
-
-	if (!(match.getLmark() && (query.getRkmer() == match.getLkmer()) && (query.getRkmer() == key)) ) {
-		cout << "glueSingleEntry received non-gluable input:\n";
-		cout << "  query: " << tostring(query, key) << endl;
-		cout << "  match: " << tostring(match, key) << endl;
-		exit(1);
-	}
-
-	string gluedStr = query.getSeq() + match.getSeq().substr(kmerSize, match.getSeq().size() - kmerSize);
-	glueResult = GlueEntry(gluedStr, query.getLmark(), match.getRmark(), kmerSize);
+	
 }
 
 
-bool Glue::check_if_empty(GlueEntry newEntry, string key) {
+//returns true if inserted
+bool Glue::insert_aux(GlueEntry newEntry, string key, GlueEntry & glueResult, bool onlyInsertIfFull) { 
 	GlueEntry e;
 
-	if (key.compare(reversecomplement(key)) >= 0) {
+	string key_norm = rcnorm(key);
+	if (key != key_norm) {
 		newEntry.revComp();
-		key = reversecomplement(key);
-	}
-
-	if (!glueStorage.find(key, e)) {
-		return true;
-	} else if (e.isEmpty()) {
-		return true;
-	}
-	return false;
-}
-
-
-/*void Glue::write2hash(string key, GlueEntry e) {
-	//auto tag = tagSystem.createTag(e);
-	//glueStorage.insertAtKey(key, tag);
-	glueStorage.insertAtKey(key, e);
-}
-*/
-
-void Glue::insert_aux(GlueEntry newEntry, string key, GlueEntry & glueResult) { 
-	GlueEntry e;
-
-	if (key.compare(reversecomplement(key)) >= 0) {
-		newEntry.revComp();
-		key = reversecomplement(key);
 	}
 
 	//if (key == key_of_interest)  cout << key << "\tinsert_aux\t" << tostring(newEntry, key)  << "\tprior\t" << glueStorage.dump(key, false) << "\t";
-	if (glueDebug) cout << key << "\tinsert_aux\t" << tostring(newEntry, key)  << "\tprior\t" << glueStorage.dump(key, false) << "\t";
+	if (glueDebug) cout << key_norm << "\tinsert_aux\t" << tostring(newEntry, key_norm)  << "\tprior\t" << glueStorage.dump(key_norm, false) << "\t";
 
-	if (!glueStorage.find(key, e)) {
-		glueStorage.insertAtKey(key, newEntry);
+	if (!glueStorage.find(key_norm, e)) {
+		if (onlyInsertIfFull) return false;
+		glueStorage.insertAtKey(key_norm, newEntry);
 	} else {
 		if (e.isEmpty()) {
-			glueStorage.insertAtKey(key, newEntry);
+			if (onlyInsertIfFull) return false;
+			glueStorage.insertAfterFind(newEntry);
+			//glueStorage.insertAtKey(key_norm, newEntry);
 		} else {
 			//Looks like we need to do a glue!
 			glueResult = GlueEntry();
-			glueSingleEntry(e, newEntry, key, glueResult); //glue the two strings
-			glueStorage.insertAtKey(key, GlueEntry()); //clear entry
+			glueSingleEntry(e, newEntry, key_norm, glueResult); //glue the two strings
+			glueStorage.insertAfterFind(GlueEntry()); //clear entry
+			//glueStorage.insertAtKey(key_norm, GlueEntry()); //clear entry
 		}
 	}
+	return true; 
+
 	//if (key == key_of_interest) cout << "after\t" << glueStorage.dump(key,false ) << endl;
-	if (glueDebug) cout << "after\t" << glueStorage.dump(key,false ) << endl;
+	if (glueDebug) cout << "after\t" << glueStorage.dump(key_norm,false ) << endl;
 
 }
 
 
 void Glue::insert(GlueEntry e, bool process) {
 	
-	/* testing code 
+	/* for testing:
 	string str;
 	while (cin >> str) {
-		GlueEntry en(str, false, false, 2);
+		GlueEntry en(str, true, true, 2);
 		RawEntry raw = en.getRaw();
 		cout << tostring(en, "Z") << endl << raw << endl << tostring(GlueEntry(raw,2), "Z") << endl;
 	}
+	return; 	
 	*/
 
 	startTimer();
@@ -348,13 +392,11 @@ void Glue::insert(GlueEntry e, bool process) {
 	}
 
 	
-/*	if ((e.getSeq().find(key_of_interest) != std::string::npos) || (e.getSeq().find(reversecomplement(key_of_interest)) != std::string::npos)) {
-		glueDebug = true;
-	}
+	//if ((e.getSeq().find(key_of_interest) != std::string::npos) || (e.getSeq().find(reversecomplement(key_of_interest)) != std::string::npos))  glueDebug = true; 
 
 	if (glueDebug) 
 		cout << "insert\t" << tostring(e,"") << endl;
-*/
+
 	GlueEntry insRes;
 
 	if (!e.getRmark() && !e.getLmark()) {
@@ -367,9 +409,7 @@ void Glue::insert(GlueEntry e, bool process) {
 		//pick one that is not empty
 		//this is not necessary for correctness, picking an arbitrary one will do
 		//but picking a non-empty one may force glues to happen sooner rather later, preventing build-ups of long sequential chains
-		if (!check_if_empty(e, e.getRkmer())) {
-			insert_aux(e, e.getRkmer(), insRes);
-		} else {
+		if (!insert_aux(e, e.getRkmer(), insRes, true)) {
 			insert_aux(e, e.getLkmer(), insRes);
 		}
 	}

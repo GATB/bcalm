@@ -20,7 +20,8 @@ using google::sparse_hash_map;
 
 using namespace std;
 
-string reversecomplement(const string& dna); // code taken from TakeABreak
+string revcomp (string &s);
+//string reversecomplement(const string& dna); // code taken from TakeABreak
 string debug_highlight(string s, string motif);
 
 #ifdef TWOBITGLUEHASH
@@ -47,7 +48,7 @@ class GlueEntry {
 		RawEntry getRaw();
 
 		void revComp() {
-			seq = reversecomplement(seq);
+			seq = revcomp(seq);
 			std::swap(lmark, rmark);
 		}
 
@@ -152,7 +153,7 @@ class Glue
 		int kmerSize;
 
 		void output(string seq);
-		void insert_aux(GlueEntry newEntry, string key, GlueEntry & glueResult); 
+		bool insert_aux(GlueEntry newEntry, string key, GlueEntry & glueResult, bool onlyCheckIfEmpty = false);
 		void glueSingleEntry(GlueEntry query, GlueEntry match, string key, GlueEntry & glueResult);
 		bool check_if_empty(GlueEntry newEntry, string key);
 
