@@ -47,8 +47,6 @@ bool adjacent (const string& node1,const  string& node2,int k);
 
 string readn(ifstream *file,uint64_t n);
 
-int chartoint(char c);
-
 string minimalsub(const string &w, const int &p,const int &k);
 
 string minimalsub2(const string &w, const int &p,const int &k);

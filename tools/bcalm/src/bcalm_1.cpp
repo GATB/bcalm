@@ -270,6 +270,9 @@ void bcalm_1::execute (){
      *
      */
 
+    std::vector<std::set<size_t>> active_minimizers;
+    active_minimizers.resize(nbPartitions);
+
     /* now our vocabulary is: a "DSK partition" == a "partition" == a "super-bucket"; buckets remainwhat they are in bcalm-original*/
     /* a travelling kmer is one that goes to two buckets from different superbuckets */
 
@@ -288,20 +291,15 @@ void bcalm_1::execute (){
 
         size_t k = kmerSize;
 
-        std::set<size_t> active_minimizers;
-
-        auto add_to_bucket_queue = [&active_minimizers, &bucket_queues](size_t minimizer, string seq, size_t leftmin, size_t rightmin, bool active)
+        auto add_to_bucket_queue = [&active_minimizers, &bucket_queues](size_t minimizer, string seq, size_t leftmin, size_t rightmin, int p)
         {
             bucket_queues[minimizer].enqueue(std::make_tuple(seq,leftmin,rightmin));
 
-            if (active)
-            {
-                if (active_minimizers.find(minimizer) == active_minimizers.end())
-                { 
-                    active_minimizers_mutex.lock();
-                    active_minimizers.insert(minimizer);
-                    active_minimizers_mutex.unlock();
-                }
+            if (active_minimizers[p].find(minimizer) == active_minimizers[p].end())
+            { 
+                active_minimizers_mutex.lock();
+                active_minimizers[p].insert(minimizer);
+                active_minimizers_mutex.unlock();
             }
         };
 
@@ -312,12 +310,12 @@ void bcalm_1::execute (){
             size_t rightMin(modelK1.getMinimizerValue(kmmerEnd.value()));
 
             if (repart(leftMin) == p)
-                add_to_bucket_queue(leftMin, seq, leftMin, rightMin, true);
+                add_to_bucket_queue(leftMin, seq, leftMin, rightMin, p);
 
             if (leftMin != rightMin)
             {
                 if (repart(rightMin) == p)
-                    add_to_bucket_queue(rightMin, seq, leftMin, rightMin, true);
+                    add_to_bucket_queue(rightMin, seq, leftMin, rightMin, p);
 
                 // handle traveller kmers
                 size_t max_minimizer = minimizerMax(leftMin, rightMin);
@@ -325,7 +323,7 @@ void bcalm_1::execute (){
                 if (repart(max_minimizer) != repart(min_minimizer)) 
                 {
                     /* I call that a "traveller kmer" */
-                    add_to_bucket_queue(max_minimizer, seq, leftMin, rightMin, false);
+                    add_to_bucket_queue(max_minimizer, seq, leftMin, rightMin, repart(max_minimizer));
 
                     // sanity check
                     if (repart(max_minimizer) < repart(min_minimizer))
@@ -351,12 +349,13 @@ void bcalm_1::execute (){
         getDispatcher()->iterate (itKmers, iteratePartition);
  
         // serial version
-       // for (itKmers->first(); !itKmers->isDone(); itKmers->next()) { 
-            //nbKmers++;
-/*            Kmer<SPAN>::Type current = itKmers->item().value;
+        /*for (itKmers->first(); !itKmers->isDone(); itKmers->next()) { 
+            nbKmers++;
+            Kmer<SPAN>::Type current = itKmers->item().value;
             string seq = model.toString(current);
-            insertIntoQueues(seq, p);*/
-        //}
+            insertIntoQueues(seq);
+        }*/
+
 
         auto end_createbucket_t=get_wtime();
         atomic_double_add(global_wtime_create_buckets, diff_wtime(start_createbucket_t, end_createbucket_t));
@@ -367,7 +366,7 @@ void bcalm_1::execute (){
         auto start_foreach_bucket_t=get_wtime();
 
         /**FOREACH BUCKET **/
-        for(auto actualMinimizer : active_minimizers)
+        for(auto actualMinimizer : active_minimizers[p])
         {
             auto lambdaCompact = [&bucket_queues, actualMinimizer, &glue_queue, &maxBucket, &lambda_timings, &repart]() {
                 /* add nodes to graph */
@@ -496,6 +495,17 @@ void bcalm_1::execute (){
     if (parallel_glue)
     {
         glue_thread->join();
+    }
+     
+    for (int minimizer = 0; minimizer < rg; minimizer++)
+    {
+        if  (bucket_queues[minimizer].size_approx() != 0)
+        {
+            printf("WARNING! bucket %d still has non-processed %d elements\n", minimizer, bucket_queues[minimizer].size_approx() );
+            std::tuple<string,size_t,size_t> bucket_elt;
+            while (bucket_queues[minimizer].try_dequeue(bucket_elt))
+                printf("    %s leftmin %d rightmin %d repartleft %d repartright %d repartmin %d\n", std::get<0>(bucket_elt).c_str(), std::get<1>(bucket_elt), std::get<2>(bucket_elt), repart(std::get<1>(bucket_elt)), repart(std::get<2>(bucket_elt)), repart(minimizer));
+        }
     }
 
     cout << "Final glue:\n" << glue.glueStorage.dump() << "*****\n";

@@ -291,7 +291,7 @@ bool adjacent(const string& node1,const  string& node2,int k){
 	//~ }
 //~ }
 
-int chartoint(char c){
+static inline int chartoint(char c){
 	switch(c){
 		case 'A':
 		return 0;
@@ -308,7 +308,7 @@ int chartoint(char c){
 	}
 }
 
-char complement(char c){
+static inline char complement(char c){
 	switch(c){
 		case 'a':
 		return 't';
@@ -1049,6 +1049,7 @@ uint32_t graph2::goBeg(uint32_t i){
 
 
 void graph2::debruijn(){
+    return; // we don't do anything in here anymore
 	for(uint32_t i=1;i<unitigs.size();++i){
 
 	}
