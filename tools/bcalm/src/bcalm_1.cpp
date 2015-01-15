@@ -362,7 +362,7 @@ void bcalm_1::execute (){
                 /* add nodes to graph */
                 auto start_nodes_t=get_wtime();
 
-                graph3 g(kmerSize-1,actualMinimizer,minSize);
+                graph2 g(kmerSize-1,actualMinimizer,minSize);
 
                 std::tuple<string,size_t,size_t> bucket_elt;
                 while (bucket_queues[actualMinimizer].try_dequeue(bucket_elt))
