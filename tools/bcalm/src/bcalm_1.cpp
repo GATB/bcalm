@@ -200,7 +200,7 @@ void bcalm_1::execute (){
 
     Glue glue(kmerSize, out);
     bool keep_glueing = true;
-    bool parallel_glue = true;
+    bool parallel_glue = (nb_threads > 1);
     unsigned long nbGlueInserts = 0;
 
     moodycamel::ConcurrentQueue<std::pair<string, size_t> > glue_queue;
@@ -349,7 +349,7 @@ void bcalm_1::execute (){
         auto end_createbucket_t=get_wtime();
         atomic_double_add(global_wtime_create_buckets, diff_wtime(start_createbucket_t, end_createbucket_t));
 
-        ThreadPool pool(nb_threads);
+        ThreadPool pool(nb_threads - 1);
 
         std::vector<double> lambda_timings;
         auto start_foreach_bucket_t=get_wtime();
