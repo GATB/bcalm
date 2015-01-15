@@ -69,16 +69,6 @@ bcalm_1::bcalm_1 ()  : Tool ("bcalm_1"){
 	getParser()->push_front (new OptionOneParam ("-dsk-memory", "max memory for dsk (MB)", false, "1000"));
 }
 
-void insertInto(unordered_map<size_t, BankBinary*>& dests, bool isSuperBucket, size_t index, string seq)
-{
-	Sequence buffer (Data::ASCII);
-	buffer.getData().setRef ((char*)seq.c_str(), seq.size());
-	if(dests.find(index)==dests.end()){
-		BankBinary* bb= new BankBinary((isSuperBucket?"SB":"B")+to_string(index));
-		dests[index]=bb;
-	}
-	dests[index]->insert(buffer);
-}
 
 void put_into_glue(string seq, size_t minimizer, Glue & glue, Model& modelK1) {
 
@@ -398,7 +388,7 @@ void bcalm_1::execute (){
 
                 /* distribute nodes (to other buckets, or output, or glue) */
                 auto start_cdistribution_t=get_wtime(); 
-                for(uint32_t i(1);i<g.unitigs.size();++i){ // TODO: determine if i(1) is not a bug, why not i(0)?
+                for(uint32_t i(1);i<g.unitigs.size();++i){
                     if(g.unitigs[i].size()!=0){
                         glue_queue.enqueue(make_pair<string, size_t>((string)(g.unitigs[i]), (size_t)actualMinimizer));
                     }
@@ -430,6 +420,9 @@ void bcalm_1::execute (){
         } // end for each bucket
 
         pool.join();
+        
+        if (partition[p].getNbItems() == 0)
+            continue; // no stats to print here
 
         /* compute and print timings */
         auto end_foreach_bucket_t=get_wtime();
