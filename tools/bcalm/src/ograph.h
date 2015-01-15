@@ -75,7 +75,7 @@ class graph1
 	public:
 		uint32_t n;
 		int k;
-		vector<string> nodes;
+		vector<string> unitigs;
 		vector<int> leftmins;
 		vector<int> rightmins;
 		unordered_multimap<uint64_t,uint32_t> map;
@@ -86,7 +86,7 @@ class graph1
 		{
 			k=ni;
 			n=1;
-			nodes.push_back("");
+			unitigs.push_back("");
 			leftmins.push_back(-1);
 			rightmins.push_back(-1);
 		}
@@ -107,6 +107,7 @@ class graph1
 		void compact(uint64_t nodeindice,uint64_t with, unsigned char type);
 		void reverse(int64_t with);
 		void look(const uint64_t nodeindice, const string& min);
+		uint32_t size();
 };
 
 

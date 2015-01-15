@@ -361,7 +361,8 @@ void bcalm_1::execute (){
                 /* add nodes to graph */
                 auto start_nodes_t=get_wtime();
 
-                graph2 g(kmerSize-1,actualMinimizer,minSize);
+                //graph2 g(kmerSize-1,actualMinimizer,minSize);
+                graph1 g(kmerSize);
 
                 std::tuple<string,size_t,size_t> bucket_elt;
                 while (bucket_queues[actualMinimizer].try_dequeue(bucket_elt))
@@ -380,7 +381,8 @@ void bcalm_1::execute (){
                 auto start_dbg=get_wtime();
 
                 g.debruijn();
-                g.compress();
+                //g.compress();
+                g.compressh(actualMinimizer);
 
                 auto end_dbg=get_wtime();
                 atomic_double_add(global_wtime_compactions, diff_wtime(start_dbg, end_dbg));

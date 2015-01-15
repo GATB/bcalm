@@ -350,8 +350,8 @@ uint64_t string2intmin(const string& str){
 
 void graph1::addvertex(const string& str){
 	n++;
-	nodes.push_back(str);
-	uint32_t i(nodes.size()-1);
+	unitigs.push_back(str);
+	uint32_t i(unitigs.size()-1);
 	uint64_t key(getkey(str));
 	uint64_t keyrc(getkeyrevc(str));
 	map.insert({key,i});
@@ -371,26 +371,26 @@ void graph1::debruijn(){
 	string node,kmmer,kmmerr;
 	uint64_t key,keyrc;
 	for(uint64_t i(1);i<n;i++){
-		node=nodes[i];
+		node=unitigs[i];
 		key=stringtoint(node.substr(node.size()-k+1,k-1));
 		keyrc=stringtointc(node.substr(0,k-1));
 		auto it(map.equal_range(key));
 		for(auto j(it.first);j!=it.second;j++){
 			//if k>32 collision can occur
-			if(adjacent(node,nodes[j->second],k)){
+			if(adjacent(node,unitigs[j->second],k)){
 				neighbor[i].add(j->second,1);
 				neighbor[j->second].add(i,4);
 			}
 		}
 		it=(maprev.equal_range(key));
 		for(auto j(it.first);j!=it.second;j++)
-			if(adjacent(node,reversecompletment(nodes[j->second]),k)){
+			if(adjacent(node,reversecompletment(unitigs[j->second]),k)){
 				neighbor[i].add(j->second,2);
 				neighbor[j->second].add(i,2);
 			}
 		it=(map.equal_range(keyrc));
 		for(auto j(it.first);j!=it.second;j++)
-			if(adjacent(reversecompletment(node),nodes[j->second],k)){
+			if(adjacent(reversecompletment(node),unitigs[j->second],k)){
 				neighbor[i].add(j->second,3);
 				neighbor[j->second].add(i,3);
 			}
@@ -414,7 +414,7 @@ bool accordtomin(int min, int left_or_right_min){
 uint64_t graph1::becompacted(uint64_t nodeindice, int min, unsigned char *type){
 
 	*type=0;
-	string node=nodes[nodeindice];
+	string node=unitigs[nodeindice];
 
 	if(node.empty())
 		return 0;
@@ -457,10 +457,10 @@ uint64_t graph1::becompacted(uint64_t nodeindice, int min, unsigned char *type){
 }
 
 void graph1::reverse(int64_t with){
-	string newnode(nodes[with]);
+	string newnode(unitigs[with]);
 	int64_t indice,type;
 	if(newnode>(reversecompletment(newnode))){
-		nodes[with]=reversecompletment(newnode);
+		unitigs[with]=reversecompletment(newnode);
 
         int temp = leftmins[with];
         leftmins[with] = rightmins[with];
@@ -504,7 +504,7 @@ void graph1::reverse(int64_t with){
 
 
 void graph1::compact(uint64_t nodeindice,uint64_t with, unsigned char c){
-	string newnode,node(nodes[nodeindice]),son(nodes[with]);
+	string newnode,node(unitigs[nodeindice]),son(unitigs[with]);
 	uint64_t indice;
 	if(nodeindice==with || node.empty() || son.empty())
 		return;
@@ -512,8 +512,8 @@ void graph1::compact(uint64_t nodeindice,uint64_t with, unsigned char c){
 	switch(c){
 		case 1:
 		newnode=node+son.substr(k-1);
-		nodes[nodeindice]="";
-		nodes[with]=newnode;
+		unitigs[nodeindice]="";
+		unitigs[with]=newnode;
 
         leftmins[with] = leftmins[nodeindice];
         //rightmins[with] = rightmins[with];
@@ -538,8 +538,8 @@ void graph1::compact(uint64_t nodeindice,uint64_t with, unsigned char c){
 
 		case 2:
 		newnode=node+reversecompletment(son).substr(k-1);
-		nodes[nodeindice]="";
-		nodes[with]=newnode;
+		unitigs[nodeindice]="";
+		unitigs[with]=newnode;
 
         rightmins[with] = leftmins[with];
         leftmins[with] = leftmins[nodeindice];
@@ -575,8 +575,8 @@ void graph1::compact(uint64_t nodeindice,uint64_t with, unsigned char c){
 
 		case 3:
 		newnode=reversecompletment(node)+son.substr(k-1);
-		nodes[nodeindice]="";
-		nodes[with]=newnode;
+		unitigs[nodeindice]="";
+		unitigs[with]=newnode;
 
         leftmins[with] = rightmins[nodeindice];
         //rightmins[with] = rightmins[with];
@@ -601,8 +601,8 @@ void graph1::compact(uint64_t nodeindice,uint64_t with, unsigned char c){
 
 		case 4:
 		newnode=son+node.substr(k-1);
-		nodes[nodeindice]="";
-		nodes[with]=newnode;
+		unitigs[nodeindice]="";
+		unitigs[with]=newnode;
 
         // leftmins[with] = leftmins[with];
         rightmins[with] = rightmins[nodeindice];
@@ -674,7 +674,7 @@ void graph1::importg(const char *name){
 
 int graph1::weight(){
 	int res(0);
-	for(auto k(nodes.begin());k!=nodes.end();k++)
+	for(auto k(unitigs.begin());k!=unitigs.end();k++)
 		res+=k->size();
 	return res;
 }
@@ -685,7 +685,7 @@ void graph1::print(const char *name){
 	ofstream fichier(name, ios::out | ios::trunc);
 	if(fichier)
 		for(uint64_t i(1);i<n;i++){
-			string s(nodes[i]);
+			string s(unitigs[i]);
 			if(s!="")
 				fichier<<s<<";"<<endl;
 		}
@@ -696,7 +696,7 @@ void graph1::printedges(const char *name){
 	if(fichier){
 		fichier << "digraph test {" <<endl;
 		for(uint64_t i(1);i<n;i++){
-			string s(nodes[i]);
+			string s(unitigs[i]);
 			if(s!=""){
 				fichier<<s<<";"<<endl;
 				//~ auto v=neighbor[i].son;
@@ -1318,6 +1318,10 @@ void graph2::debruijn(){
 	for(uint32_t i=1;i<unitigs.size();++i){
 
 	}
+}
+
+uint32_t graph1::size(){
+	return unitigs.size();
 }
 
 uint32_t graph2::size(){
