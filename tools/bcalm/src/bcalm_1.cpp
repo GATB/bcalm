@@ -132,7 +132,7 @@ void bcalm_1::execute (){
 
         if (!is_kmercounted)
         {
-            Graph graph = Graph::create ("-in %s -kmer-size %d  -bloom none -out solidKmers.h5  -abundance-min %d -verbose 1 -minimizer-type %d -max-memory %d", inputFile.c_str(), kmerSize, abundance, minimizer_type, dsk_memory);
+            Graph graph = Graph::create ("-in %s -kmer-size %d -minimizer-size %d  -bloom none -out solidKmers.h5  -abundance-min %d -verbose 1 -minimizer-type %d -max-memory %d", inputFile.c_str(), kmerSize, minSize, abundance, minimizer_type, dsk_memory);
         }
     }
     auto end_kc=chrono::system_clock::now();
