@@ -63,7 +63,6 @@ bcalm_1::bcalm_1 ()  : Tool ("bcalm_1"){
 	getParser()->add (new OptionOneParam ("-k", "kmer size",  false,"31"));
 	getParser()->add (new OptionOneParam ("-m", "minimizer size",  false,"8"));
 	getParser()->add (new OptionOneParam ("-abundance", "abundance threeshold",  false,"3"));
-	getParser()->add (new OptionOneParam ("-threads", "number of threads",  false, "1")); // todo: set to max, as in dsk
 	getParser()->add (new OptionOneParam ("-threads-simulate", "(debug) number of threads to compute scheduling for",  false,"1"));
 	getParser()->add (new OptionOneParam ("-minimizer-type", "use lexicographical minimizers (0) or frequency based (1)",  false,"1"));
 	getParser()->add (new OptionOneParam ("-dsk-memory", "max memory for dsk (MB)", false, "1000"));
@@ -104,7 +103,7 @@ void bcalm_1::execute (){
     kmerSize=getInput()->getInt("-k");
     size_t abundance=getInput()->getInt("-abundance");
     minSize=getInput()->getInt("-m");
-    nb_threads = getInput()->getInt("-threads");
+    nb_threads = getInput()->getInt("-nb-cores");
     nb_threads_simulate = getInput()->getInt("-threads-simulate");
     int minimizer_type = getInput()->getInt("-minimizer-type");
     int dsk_memory = getInput()->getInt("-dsk-memory");
