@@ -216,7 +216,7 @@ void bcalm_1::execute (){
                 nbGlueInserts++;
 
                 // update stats and cleanup queue every 1M inserts
-                if (nbGlueInserts % 1000000 == 0)
+                if (nbGlueInserts % 100000 == 0)
                 {
                     glue.glueStorage.updateMemStats();
                     glue.glue();
@@ -520,7 +520,7 @@ void bcalm_1::execute (){
     double sum = global_wtime_glue + global_wtime_cdistribution + global_wtime_compactions + global_wtime_add_nodes + global_wtime_flush_sb + global_wtime_create_buckets;
     cout<<"Sum of the above fine-grained timings: "<< sum / unit <<" secs"<<endl;
     cout<<"Discrepancy between sum of fine-grained timings and total wallclock of buckets compactions step: "<< (chrono::duration_cast<chrono::nanoseconds>(end_t-start_buckets).count() - sum ) / unit <<" secs"<<endl;
-    cout<<"BCALM total wallclock (incl kmer counting): "<<chrono::duration_cast<chrono::nanoseconds>(end_t-start_t).count() / unit <<" secs"<<endl;
+    cout<<"BCALM total wallclock (excl kmer counting): "<<chrono::duration_cast<chrono::nanoseconds>(end_t-start_t).count() / unit <<" secs"<<endl;
     cout<<"Max bucket : "<<maxBucket<<endl;
     if (time_lambdas)
     {
