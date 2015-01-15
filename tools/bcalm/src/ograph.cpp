@@ -963,103 +963,172 @@ void graph2::addvertex(const string& unitig){
 
 bool kmerIndiceCompare(kmerIndice a ,kmerIndice b) { return a.kmmer < b.kmmer; }
 
-void graph3::debruijn(){
-	sort(left.begin(),left.end(),kmerIndiceCompare);
-	sort(right.begin(),right.end(),kmerIndiceCompare);
-	size_t iL(0),iR(0);
-	kmerIndice kL,kR;
-	while(iL<left.size() && iR<right.size()){
-		kL=left[iL];
-		kR=right[iR];
-		if(kL.kmmer==kR.kmmer){
-			bool go(true);
-			if(left[iL+1].kmmer==kL.kmmer){
-				++iL;
-				go=false;
-				while(left[iL+1].kmmer==kL.kmmer){++iL;}
-			}
-			if(right[iR+1].kmmer==kR.kmmer){
-				++iR;
-				go=false;
-				while(right[iR+1].kmmer==kR.kmmer){++iR;}
-			}
-			if(go){
-				kmer2Indice k2i;
-				k2i.indiceL=iL;
-				k2i.indiceR=iR;
-				++iL;
-				++iR;
-			}
-		}else{
-			if(kL.kmmer<kR.kmmer){
-				++iL;
-				while(left[iL+1].kmmer==kL.kmmer){++iL;}
-			}else{
-				++iR;
-				while(right[iR+1].kmmer==kR.kmmer){++iR;}
-			}
-		}
-	}
+//~ void graph3::debruijn2(){
+	//~ sort(left.begin(),left.end(),kmerIndiceCompare);
+	//~ sort(right.begin(),right.end(),kmerIndiceCompare);
+	//~ size_t iL(0),iR(0);
+	//~ kmerIndice kL,kR;
+	//~ while(iL<left.size() && iR<right.size()){
+		//~ kL=left[iL];
+		//~ kR=right[iR];
+		//~ if(kL.kmmer==kR.kmmer){
+			//~ bool go(true);
+			//~ if(left[iL+1].kmmer==kL.kmmer){
+				//~ ++iL;
+				//~ go=false;
+				//~ while(left[iL+1].kmmer==kL.kmmer){++iL;}
+			//~ }
+			//~ if(right[iR+1].kmmer==kR.kmmer){
+				//~ ++iR;
+				//~ go=false;
+				//~ while(right[iR+1].kmmer==kR.kmmer){++iR;}
+			//~ }
+			//~ if(go){
+				//~ kmer2Indice k2i;
+				//~ k2i.indiceL=iL;
+				//~ k2i.indiceR=iR;
+				//~ ++iL;
+				//~ ++iR;
+			//~ }
+		//~ }else{
+			//~ if(kL.kmmer<kR.kmmer){
+				//~ ++iL;
+				//~ while(left[iL+1].kmmer==kL.kmmer){++iL;}
+			//~ }else{
+				//~ ++iR;
+				//~ while(right[iR+1].kmmer==kR.kmmer){++iR;}
+			//~ }
+		//~ }
+	//~ }
+//~ }
+
+
+bool isNumber(const string& str){
+	switch (str[0]){
+	case 'a': return false;
+		break;
+	case 'c': return false;
+		break;
+	case 'g': return false;
+		break;
+	case 't': return false;
+		break;
+	case 'A': return false;
+		break;
+	case 'C': return false;
+		break;
+	case 'G': return false;
+		break;
+	case 'T': return false;
+		break;
+	default: return true;
+}
 }
 
 
 
-string graph3::compaction(uint32_t iL, uint32_t iR){
+void graph3::compaction(uint32_t iL, uint32_t iR){
+	//~ cout<<"COMP"<<endl;
 	string seq1(unitigs[iL]),seq2(unitigs[iR]);
     size_t s1(seq1.size()),s2(seq2.size());
-    if(s1==0){return seq2;}
-    if(s2==0){return seq1;}
+    
+    //~ cin.get();
+    bool b1(isNumber(seq1)),b2(isNumber(seq2));
+    if(b1 && b2){
+		compaction(stoi(seq1),stoi(seq2));
+		return;
+	}
+    if(b1){
+		compaction(stoi(seq1),iR);
+		return;
+	}
+	if(b2){
+		compaction(iL,stoi(seq2));
+		return;
+	}
 
     string rc2(reversecompletment(seq2));
     string rc1(reversecompletment(seq1));
    
-   
-    //~ if(seq1.substr(0,k)==seq2.substr(s2-k,k)){
-        //~ return seq2+seq1.substr(k);
-    //~ }else{
-        //~ if(rc2.substr(s2-k,k)==seq1.substr(0,k)){
-            //~ return rc2+seq1.substr(k);
-        //~ }
-    //~ }
-   
+    if(seq1.substr(0,k)==seq2.substr(s2-k,k)){
+		unitigs[iL]=seq2+seq1.substr(k);
+		unitigs[iR]=to_string(iL);
+        return;
+    }else{
+        if(rc2.substr(s2-k,k)==seq1.substr(0,k)){
+		unitigs[iL]=rc2+seq1.substr(k);
+		unitigs[iR]=to_string(iL);
+		return;
+        }
+    }
+
     if(seq2.substr(0,k)==seq1.substr(s1-k,k)){
-        return seq1+seq2.substr(k);
+        unitigs[iL]=seq1+seq2.substr(k);
+		unitigs[iR]=to_string(iL);
+		return;
     }else{
         if(rc1.substr(s1-k,k)==seq2.substr(0,k)){
-            return rc1+seq2.substr(k);
+			unitigs[iL]=rc1+seq2.substr(k);
+			unitigs[iR]=to_string(iL);
+			return;
         }
     }
-   
+    
     if(rc1.substr(0,k)==seq2.substr(s2-k,k)){
-            return seq2+rc1.substr(k);
+            unitigs[iL]=seq2+rc1.substr(k);
+			unitigs[iR]=to_string(iL);
+			return;
     }else{
         if(rc2.substr(s2-k,k)==rc1.substr(0,k)){
-            return rc2+rc1.substr(k);
+            unitigs[iL]=rc2+rc1.substr(k);
+			unitigs[iR]=to_string(iL);
+			return;
         }
     }
-   
-    //~ if(rc2.substr(0,k)==seq1.substr(s1-k,k)){
-        //~ return seq1+rc2.substr(k);
-    //~ }else{
-        //~ if(rc1.substr(s1-k,k)==rc2.substr(0,k)){
-            //~ return rc1+rc2.substr(k);
-        //~ }
-    //~ }
-    return seq1;
+
+    if(rc2.substr(0,k)==seq1.substr(s1-k,k)){
+        unitigs[iL]=seq1+rc2.substr(k);
+		unitigs[iR]=to_string(iL);
+		return;
+    }else{
+        if(rc1.substr(s1-k,k)==rc2.substr(0,k)){
+            unitigs[iL]=rc1+rc2.substr(k);
+			unitigs[iR]=to_string(iL);
+			return;
+        }
+    }
+    cout<<"WUT"<<endl;
+    cout<<"+"<<seq1<<"+ +"<<seq2<<"+"<<endl;
+    cin.get();
 }
 
 
-void graph3::debruijn2(){
+
+void graph3::debruijn(){
 	sort(left.begin(),left.end(),kmerIndiceCompare);
 	sort(right.begin(),right.end(),kmerIndiceCompare);
+	
+	
+	//~ for(size_t i(0);i<left.size();++i){
+		//~ cout<<left[i].kmmer<<" ";
+	//~ }
+	//~ cout<<endl<<endl;
+	//~ for(size_t i(0);i<right.size();++i){
+		//~ cout<<right[i].kmmer<<" ";
+	//~ }
+	
+	
 	kmerIndice kL,kR;
 	while(left.size()!=0 && right.size()!=0){
 		kL=left.back();
-		left.pop_back();
 		kR=right.back();
-		right.pop_back();
+		//~ cout<<"go"<<endl;
+		//~ cout<<kL.kmmer<<endl;
+		//~ cout<<kR.kmmer<<endl;
 		if(kL.kmmer==kR.kmmer){
 			bool go(true);
+			left.pop_back();
+			right.pop_back();
 			if(left.back().kmmer==kL.kmmer){
 				left.pop_back();
 				go=false;
@@ -1068,36 +1137,51 @@ void graph3::debruijn2(){
 			if(right.back().kmmer==kL.kmmer){
 				right.pop_back();
 				go=false;
-				while(right.back().kmmer==kL.kmmer){right.pop_back();}
+				while(right.back().kmmer==kR.kmmer){right.pop_back();}
 			}
 			if(go){
 				kmer2Indice k2i;
 				k2i.indiceL=kL.indice;
 				k2i.indiceR=kR.indice;
 				compactions.push_back(k2i);
-				left.pop_back();
-				right.pop_back();
+				
+				
+				//~ cout<<"compaction"<<kL.kmmer<<endl;
+				
+				
 			}
 		}else{
-			if(kL.kmmer<kR.kmmer){
+			if(kL.kmmer>kR.kmmer){
 				left.pop_back();
 				while(left.back().kmmer==kL.kmmer){left.pop_back();}
 			}else{
 				right.pop_back();
-				while(right.back().kmmer==kL.kmmer){right.pop_back();}
+				while(right.back().kmmer==kR.kmmer){right.pop_back();}
 			}
 		}
 	}
+	left={};
+	right={};
+	
+	
+	//~ cin.get();
 }
 
 void graph3::compress(){
+	//~ cout<<"go"<<endl;
 	for(size_t i(0);i<compactions.size();++i){
-		kmer2Indice k2i;
+		kmer2Indice k2i(compactions[i]);
 		uint32_t iL(k2i.indiceL);
 		uint32_t iR(k2i.indiceR);
-		unitigs[iR]=compaction(iL,iR);
-		unitigs[iL]="";
+		compaction(iL,iR);
 	}
+	
+	for(size_t i(0);i<unitigs.size();++i){
+		if(isNumber(unitigs[i])){
+			unitigs[i]="";
+		}
+	}
+	//~ cout<<"goend"<<endl;
 }
 
 void graph3::addvertex(const string& unitig){
@@ -1109,8 +1193,13 @@ void graph3::addvertex(const string& unitig){
 		uint64_t leftKmer2(stringtointc(beg));
 		kmerIndice ki;
 		ki.indice=i;
-		ki.kmmer=min(leftKmer1,leftKmer2);
-		left.push_back(ki);
+		if(leftKmer1<leftKmer2){
+			ki.kmmer=leftKmer1;
+			left.push_back(ki);
+		}else{
+			ki.kmmer=leftKmer2;
+			right.push_back(ki);
+		}
 	}
 
 	if(rightmins[i]){
@@ -1119,8 +1208,13 @@ void graph3::addvertex(const string& unitig){
 		uint64_t rightKmer2(stringtointc(end));
 		kmerIndice ki;
 		ki.indice=i;
-		ki.kmmer=min(rightKmer1,rightKmer2);
-		right.push_back(ki);
+		if(rightKmer1<rightKmer2){
+			ki.kmmer=rightKmer1;
+			right.push_back(ki);
+		}else{
+			ki.kmmer=rightKmer2;
+			left.push_back(ki);
+		}
 	}
 }
 
@@ -1156,7 +1250,6 @@ void graph2::addrightmin(int min){
 	}
 }
 
-
 uint32_t graph2::leftUnique(uint64_t i){
 	if(left2unitig.count(i)>0){
 		//~ return(left2unitig.at(i));
@@ -1164,7 +1257,6 @@ uint32_t graph2::leftUnique(uint64_t i){
 	}
 	return 0;
 }
-
 
 uint32_t graph2::rightUnique(uint64_t i){
 	if(right2unitig.count(i)>0){
@@ -1221,8 +1313,6 @@ uint32_t graph2::goBeg(uint32_t i){
 	return 0;
 }
 
-
-
 void graph2::debruijn(){
     return; // we don't do anything in here anymore
 	for(uint32_t i=1;i<unitigs.size();++i){
@@ -1230,86 +1320,15 @@ void graph2::debruijn(){
 	}
 }
 
-//~ void graph2::debruijn(){
-	//~ for(uint32_t i=1;i<unitigs.size();++i){
-		//~ if(leftmins[i]){
-			//~ string beg(unitigs[i].substr(0,k));
-			//~ uint64_t leftKmer1(stringtoint(beg));
-			//~ uint64_t leftKmer2(stringtointc(beg));
-			//~ if(leftKmer1<leftKmer2){
-				//~ if(multiple.count(leftKmer1)==0){
-					//~ if(left2unitig.count(leftKmer1)>0){
-						//~ left2unitig.erase(leftKmer1);
-						//~ multiple.insert(leftKmer1);
-					//~ }else{
-						//~ left2unitig[leftKmer1]=i;
-					//~ }
-				//~ }
-			//~ }else{
-				//~ if(multiple.count(leftKmer2)==0){
-					//~ if(right2unitig.count(leftKmer2)>0){
-						//~ right2unitig.erase(leftKmer2);
-						//~ multiple.insert(leftKmer2);
-					//~ }else{
-						//~ right2unitig[leftKmer2]=i;
-					//~ }
-				//~ }
-			//~ }
-		//~ }
-		//~ 
-		//~ if(rightmins[i]){
-			//~ string end(unitigs[i].substr(unitigs[i].size()-k,k));
-			//~ uint64_t rightKmer1(stringtoint(end));
-			//~ uint64_t rightKmer2(stringtointc(end));
-			//~ if(rightKmer1<rightKmer2){
-				//~ if(multiple.count(rightKmer1)==0){
-					//~ if(right2unitig.count(rightKmer1)>0){
-						//~ right2unitig.erase(rightKmer1);
-						//~ multiple.insert(rightKmer1);
-					//~ }else{
-						//~ right2unitig[rightKmer1]=i;
-					//~ }
-				//~ }
-			//~ }else{
-				//~ if(multiple.count(rightKmer2)==0){
-					//~ if(left2unitig.count(rightKmer2)>0){
-						//~ left2unitig.erase(rightKmer2);
-						//~ multiple.insert(rightKmer2);
-					//~ }else{
-						//~ left2unitig[rightKmer2]=i;
-					//~ }
-				//~ }
-			//~ }
-		//~ }
-	//~ }
-//~ }
-
-
-//~ void graph2::compress(){
-	//~ for(uint32_t i=1;i<unitigs.size();++i){
-		//~ if(usedUnitigs.count(i)==0){
-			//~ uint32_t next(goEnd(i));
-			//~ if(next!=0){
-				//~ if(goBeg(i)==0){
-					//~ chainCompaction(i,unitigs[i],next);
-				//~ }
-			//~ }
-			//~ else{
-				//~ next=goBeg(i);
-				//~ if(next!=0){
-					//~ chainCompaction(i,unitigs[i],next);
-				//~ }
-			//~ }
-		//~ }
-	//~ }
-	//~ 
-//~ }
-
 uint32_t graph2::size(){
 	return unitigs.size();
 }
 
-void graph2::compress2(){
+uint32_t graph3::size(){
+	return unitigs.size();
+}
+
+void graph2::compress(){
 	for(uint32_t i=1;i<unitigs.size();++i){
 		if(unitigs[i].size()!=0){
 			uint32_t next(goEnd(i));
@@ -1327,62 +1346,6 @@ void graph2::compress2(){
 		}
 	}
 }
-
-
-
-//~ void graph2::chainCompaction(uint32_t i, string unitig, uint32_t next){
-	//~ usedUnitigs.insert(i);
-	//~ uint32_t last(next);
-	//~ string chain(compaction(unitig,unitigs[next],k));
-	//~ while(chain!=unitig){
-		//~ unitig=chain;
-		//~ last=next;
-		//~ usedUnitigs.insert(next);
-		//~ next=goEnd(next);
-		//~ if(next!=0 and usedUnitigs.count(next)==0){
-			//~ chain=compaction2(unitig,unitigs[next],k);
-		//~ }else{
-			//~ next=last;
-			//~ next=goBeg(next);
-			//~ if(next!=0 and usedUnitigs.count(next)==0){
-				//~ chain=compaction2(unitig,unitigs[next],k);
-			//~ }
-		//~ }
-	//~ }
-	//~ if(getRepresent(unitigs[i])<=getRepresent(unitigs[last])){
-		//~ if(getRepresent(chain.substr(0,k))==getRepresent(unitigs[last].substr(0,k))){
-			//~ leftmins[i]=leftmins[last];
-		//~ }
-		//~ if(getRepresent(chain.substr(chain.size()-k,k))==getRepresent(unitigs[last].substr(unitigs[last].size()-k,k))){
-			//~ rightmins[i]=rightmins[last];
-		//~ }
-		
-		//~ leftmins[i]=minimiserrc(chain.substr(0,k),minsize);
-		//~ rightmins[i]=minimiserrc(chain.substr(chain.size()-k,k),minsize);
-		//~ unitigs[i]=chain;
-		//~ usedUnitigs.erase(i);
-//~ 
-		//~ 
-	//~ }
-	//~ else{
-		//~ #pragma omp critical(u)
-		//~ {
-			//~ unitigs[last]=chain;
-		//~ }
-		//~ #pragma omp critical(used)
-		//~ {
-			//~ usedUnitigs.erase(last);
-		//~ }
-		//~ #pragma omp critical(l)
-		//~ {
-			//~ leftmins[last]=minimiserrc(chain.substr(0,k),minsize);
-		//~ }
-		//~ #pragma omp critical(r)
-		//~ {
-			//~ rightmins[last]=minimiserrc(chain.substr(chain.size()-k,k),minsize);
-		//~ }
-	//~ }
-//~ }
 
 void graph2::chainCompaction2(uint32_t i, string unitig, uint32_t next){
 	unordered_set<uint32_t> LocalusedUnitigs;

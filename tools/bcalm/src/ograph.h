@@ -131,7 +131,6 @@ class graph2
 		void addrightmin(int mini);
 		void debruijn();
 		void compress();
-		void compress2();
 		void print();
 		void chainCompaction(uint32_t i,string unitig, uint32_t next);
 		void chainCompaction2(uint32_t i,string unitig, uint32_t next);
@@ -185,9 +184,8 @@ class graph3
 		void addleftmin(int mini);
 		void addrightmin(int mini);
 		void debruijn();
-		void debruijn2();
 		void compress();
-		string compaction(uint32_t iR, uint32_t iL);
+		void compaction(uint32_t iR, uint32_t iL);
 		void print();
 		uint32_t leftUnique(uint64_t);
 		uint32_t rightUnique(uint64_t);
@@ -200,9 +198,6 @@ class graph3
 			minsize=size;
 			k=ka;
 			minimizer=min;
-			unitigs.push_back("");
-			leftmins.push_back(-1);
-			rightmins.push_back(-1);
 		}
 };
 
