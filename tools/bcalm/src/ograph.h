@@ -155,4 +155,55 @@ class graph2
 		}
 };
 
+
+struct kmerIndice{
+	uint64_t kmmer;
+	uint32_t indice;
+};
+
+struct kmer2Indice{
+	uint32_t indiceL;
+	uint32_t indiceR;
+};
+
+
+
+class graph3
+{
+	public:
+		uint k;
+		uint minimizer;
+		uint minsize;
+		vector<string> unitigs;
+		vector<bool> leftmins;
+		vector<bool> rightmins;
+		vector<kmerIndice> left;
+		vector<kmerIndice> right;
+		vector<kmer2Indice> compactions;
+		
+		void addvertex(const string& str);
+		void addleftmin(int mini);
+		void addrightmin(int mini);
+		void debruijn();
+		void debruijn2();
+		void compress();
+		string compaction(uint32_t iR, uint32_t iL);
+		void print();
+		uint32_t leftUnique(uint64_t);
+		uint32_t rightUnique(uint64_t);
+		uint32_t goBeg(uint32_t i);
+		uint32_t goEnd(uint32_t i);
+		uint32_t size();
+		
+		graph3(uint ka, uint min,uint size)
+		{
+			minsize=size;
+			k=ka;
+			minimizer=min;
+			unitigs.push_back("");
+			leftmins.push_back(-1);
+			rightmins.push_back(-1);
+		}
+};
+
 #endif

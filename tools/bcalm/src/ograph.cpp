@@ -959,10 +959,186 @@ void graph2::addvertex(const string& unitig){
 			}
 		}
 	}
-
-	//~ weight+=unitig.size();
 }
 
+bool kmerIndiceCompare(kmerIndice a ,kmerIndice b) { return a.kmmer < b.kmmer; }
+
+void graph3::debruijn(){
+	sort(left.begin(),left.end(),kmerIndiceCompare);
+	sort(right.begin(),right.end(),kmerIndiceCompare);
+	size_t iL(0),iR(0);
+	kmerIndice kL,kR;
+	while(iL<left.size() && iR<right.size()){
+		kL=left[iL];
+		kR=right[iR];
+		if(kL.kmmer==kR.kmmer){
+			bool go(true);
+			if(left[iL+1].kmmer==kL.kmmer){
+				++iL;
+				go=false;
+				while(left[iL+1].kmmer==kL.kmmer){++iL;}
+			}
+			if(right[iR+1].kmmer==kR.kmmer){
+				++iR;
+				go=false;
+				while(right[iR+1].kmmer==kR.kmmer){++iR;}
+			}
+			if(go){
+				kmer2Indice k2i;
+				k2i.indiceL=iL;
+				k2i.indiceR=iR;
+				++iL;
+				++iR;
+			}
+		}else{
+			if(kL.kmmer<kR.kmmer){
+				++iL;
+				while(left[iL+1].kmmer==kL.kmmer){++iL;}
+			}else{
+				++iR;
+				while(right[iR+1].kmmer==kR.kmmer){++iR;}
+			}
+		}
+	}
+}
+
+
+
+string graph3::compaction(uint32_t iL, uint32_t iR){
+	string seq1(unitigs[iL]),seq2(unitigs[iR]);
+    size_t s1(seq1.size()),s2(seq2.size());
+    if(s1==0){return seq2;}
+    if(s2==0){return seq1;}
+
+    string rc2(reversecompletment(seq2));
+    string rc1(reversecompletment(seq1));
+   
+   
+    //~ if(seq1.substr(0,k)==seq2.substr(s2-k,k)){
+        //~ return seq2+seq1.substr(k);
+    //~ }else{
+        //~ if(rc2.substr(s2-k,k)==seq1.substr(0,k)){
+            //~ return rc2+seq1.substr(k);
+        //~ }
+    //~ }
+   
+    if(seq2.substr(0,k)==seq1.substr(s1-k,k)){
+        return seq1+seq2.substr(k);
+    }else{
+        if(rc1.substr(s1-k,k)==seq2.substr(0,k)){
+            return rc1+seq2.substr(k);
+        }
+    }
+   
+    if(rc1.substr(0,k)==seq2.substr(s2-k,k)){
+            return seq2+rc1.substr(k);
+    }else{
+        if(rc2.substr(s2-k,k)==rc1.substr(0,k)){
+            return rc2+rc1.substr(k);
+        }
+    }
+   
+    //~ if(rc2.substr(0,k)==seq1.substr(s1-k,k)){
+        //~ return seq1+rc2.substr(k);
+    //~ }else{
+        //~ if(rc1.substr(s1-k,k)==rc2.substr(0,k)){
+            //~ return rc1+rc2.substr(k);
+        //~ }
+    //~ }
+    return seq1;
+}
+
+
+void graph3::debruijn2(){
+	sort(left.begin(),left.end(),kmerIndiceCompare);
+	sort(right.begin(),right.end(),kmerIndiceCompare);
+	kmerIndice kL,kR;
+	while(left.size()!=0 && right.size()!=0){
+		kL=left.back();
+		left.pop_back();
+		kR=right.back();
+		right.pop_back();
+		if(kL.kmmer==kR.kmmer){
+			bool go(true);
+			if(left.back().kmmer==kL.kmmer){
+				left.pop_back();
+				go=false;
+				while(left.back().kmmer==kL.kmmer){left.pop_back();}
+			}
+			if(right.back().kmmer==kL.kmmer){
+				right.pop_back();
+				go=false;
+				while(right.back().kmmer==kL.kmmer){right.pop_back();}
+			}
+			if(go){
+				kmer2Indice k2i;
+				k2i.indiceL=kL.indice;
+				k2i.indiceR=kR.indice;
+				compactions.push_back(k2i);
+				left.pop_back();
+				right.pop_back();
+			}
+		}else{
+			if(kL.kmmer<kR.kmmer){
+				left.pop_back();
+				while(left.back().kmmer==kL.kmmer){left.pop_back();}
+			}else{
+				right.pop_back();
+				while(right.back().kmmer==kL.kmmer){right.pop_back();}
+			}
+		}
+	}
+}
+
+void graph3::compress(){
+	for(size_t i(0);i<compactions.size();++i){
+		kmer2Indice k2i;
+		uint32_t iL(k2i.indiceL);
+		uint32_t iR(k2i.indiceR);
+		unitigs[iR]=compaction(iL,iR);
+		unitigs[iL]="";
+	}
+}
+
+void graph3::addvertex(const string& unitig){
+	unitigs.push_back(unitig);
+	size_t i=unitigs.size()-1;
+	if(leftmins[i]){
+		string beg(unitigs[i].substr(0,k));
+		uint64_t leftKmer1(stringtoint(beg));
+		uint64_t leftKmer2(stringtointc(beg));
+		kmerIndice ki;
+		ki.indice=i;
+		ki.kmmer=min(leftKmer1,leftKmer2);
+		left.push_back(ki);
+	}
+
+	if(rightmins[i]){
+		string end(unitigs[i].substr(unitigs[i].size()-k,k));
+		uint64_t rightKmer1(stringtoint(end));
+		uint64_t rightKmer2(stringtointc(end));
+		kmerIndice ki;
+		ki.indice=i;
+		ki.kmmer=min(rightKmer1,rightKmer2);
+		right.push_back(ki);
+	}
+}
+
+void graph3::addleftmin(int min){
+	if(min==minimizer){
+		leftmins.push_back(true);
+	}else{
+		leftmins.push_back(false);
+	}
+}
+
+void graph3::addrightmin(int min){
+	if(min==minimizer){
+		rightmins.push_back(true);
+	}else{
+		rightmins.push_back(false);
+	}
+}
 
 void graph2::addleftmin(int min){
 	if(min==minimizer){
@@ -971,7 +1147,6 @@ void graph2::addleftmin(int min){
 		leftmins.push_back(false);
 	}
 }
-
 
 void graph2::addrightmin(int min){
 	if(min==minimizer){
