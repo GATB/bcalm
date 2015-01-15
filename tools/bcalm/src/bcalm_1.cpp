@@ -58,15 +58,15 @@ std::mutex lambda_timing_mutex, active_minimizers_mutex;
 
 
 bcalm_1::bcalm_1 ()  : Tool ("bcalm_1"){
-	getParser()->push_front (new OptionOneParam ("-in", "input file",  true));
-	getParser()->push_front (new OptionOneParam ("-out", "output file",  false,"out.fa"));
-	getParser()->push_front (new OptionOneParam ("-k", "kmer size",  false,"31"));
-	getParser()->push_front (new OptionOneParam ("-m", "minimizer size",  false,"8"));
-	getParser()->push_front (new OptionOneParam ("-abundance", "abundance threeshold",  false,"3"));
-	getParser()->push_front (new OptionOneParam ("-threads", "number of threads",  false, "1")); // todo: set to max, as in dsk
-	getParser()->push_front (new OptionOneParam ("-threads-simulate", "(debug) number of threads to compute scheduling for",  false,"1"));
-	getParser()->push_front (new OptionOneParam ("-minimizer-type", "use lexicographical minimizers (0) or frequency based (1)",  false,"1"));
-	getParser()->push_front (new OptionOneParam ("-dsk-memory", "max memory for dsk (MB)", false, "1000"));
+	getParser()->add (new OptionOneParam ("-in", "input file",  true));
+	getParser()->add (new OptionOneParam ("-out", "output file",  false,"out.fa"));
+	getParser()->add (new OptionOneParam ("-k", "kmer size",  false,"31"));
+	getParser()->add (new OptionOneParam ("-m", "minimizer size",  false,"8"));
+	getParser()->add (new OptionOneParam ("-abundance", "abundance threeshold",  false,"3"));
+	getParser()->add (new OptionOneParam ("-threads", "number of threads",  false, "1")); // todo: set to max, as in dsk
+	getParser()->add (new OptionOneParam ("-threads-simulate", "(debug) number of threads to compute scheduling for",  false,"1"));
+	getParser()->add (new OptionOneParam ("-minimizer-type", "use lexicographical minimizers (0) or frequency based (1)",  false,"1"));
+	getParser()->add (new OptionOneParam ("-dsk-memory", "max memory for dsk (MB)", false, "1000"));
 }
 
 
