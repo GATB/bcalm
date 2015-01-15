@@ -69,16 +69,6 @@ bcalm_1::bcalm_1 ()  : Tool ("bcalm_1"){
 	getParser()->push_front (new OptionOneParam ("-dsk-memory", "max memory for dsk (MB)", false, "1000"));
 }
 
-void insertInto(unordered_map<size_t, BankBinary*>& dests, bool isSuperBucket, size_t index, string seq)
-{
-	Sequence buffer (Data::ASCII);
-	buffer.getData().setRef ((char*)seq.c_str(), seq.size());
-	if(dests.find(index)==dests.end()){
-		BankBinary* bb= new BankBinary((isSuperBucket?"SB":"B")+to_string(index));
-		dests[index]=bb;
-	}
-	dests[index]->insert(buffer);
-}
 
 void put_into_glue(string seq, size_t minimizer, Glue & glue, Model& modelK1) {
 
@@ -346,7 +336,8 @@ void bcalm_1::execute (){
         };
 
         /* expand a superbucket by inserting kmers into queues */ 
-        getDispatcher()->iterate (itKmers, iteratePartition);
+        if (partition[p].getNbItems() > 0)
+            getDispatcher()->iterate (itKmers, iteratePartition);
  
         // serial version
         /*for (itKmers->first(); !itKmers->isDone(); itKmers->next()) { 
