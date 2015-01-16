@@ -212,33 +212,6 @@ int minbutbiggerthan(int m1, int m2, const string &namebucket){
 }
 
 
-//~ string reversecompletment(const string& str){
-	//~ string res(str);
-    //~ int n = str.size();
-	//~ for(int i(n-1), j(0); i > -1; i--, j++)
-    //~ {
-        //~ unsigned char c = str[i];
-        //~ unsigned char d = (c >> 4)&7;
-        //~ if (d >= 6) //(c >= 'a' && c <= 't')
-        //~ {
-            //~ // translates acgt to tgca
-            //~ c ^= 4;
-            //~ if ((c&3) != 3)
-                //~ c ^= 17;
-            //~ res[j] = c;
-            //~ continue;
-        //~ }
-        //~ if (d == 2)  // switch '+' with '-'
-            //~ res[j] = c ^ 6;
-        //~ else
-        //~ {
-            //~ // else it will only be a number, just copy it
-            //~ res[j] = c;
-        //~ }
-    //~ }
-    //~ return res;
-//~ }
-
 
 string reversecompletment(const string& str){
 	string res(str);
@@ -272,24 +245,6 @@ bool adjacent(const string& node1,const  string& node2,int k){
 	return(node1.substr(node1.size()-k+1,k-1)==node2.substr(0,k-1));
 }
 
-
-
-//~ int chartoint(char c){
-	//~ switch(c){
-		//~ case 'a':
-		//~ return 0;
-		//~ case 'c':
-		//~ return 1;
-		//~ case 'g':
-		//~ return 2;
-		//~ case 't':
-		//~ return 3;
-		//~ default:
-		//~ cout<<"Problem with chartoint:"<<c<<endl;
-		//~ assert(0);
-		//~ return 0;
-	//~ }
-//~ }
 
 static inline int chartoint(char c){
 	switch(c){
@@ -335,6 +290,25 @@ uint64_t stringtoint(const string& str){
 
 uint64_t stringtointc(const string& str){
 	uint64_t res(0);
+	for(int32_t i(str.size()-1);i>=0;i--){
+		res<<=2;
+		res+=3-chartoint(str[i]);
+	}
+	return res;
+}
+
+
+__uint128_t stringtoint128(const string& str){
+	__uint128_t res(0);
+	for(uint32_t i(0);i<str.size();i++){
+		res<<=2;
+		res+=chartoint(str[i]);
+	}
+	return res;
+}
+
+__uint128_t stringtointc128(const string& str){
+	__uint128_t res(0);
 	for(int32_t i(str.size()-1);i>=0;i--){
 		res<<=2;
 		res+=3-chartoint(str[i]);
@@ -963,46 +937,6 @@ void graph2::addvertex(const string& unitig){
 
 bool kmerIndiceCompare(kmerIndice a ,kmerIndice b) { return a.kmmer < b.kmmer; }
 
-//~ void graph3::debruijn2(){
-	//~ sort(left.begin(),left.end(),kmerIndiceCompare);
-	//~ sort(right.begin(),right.end(),kmerIndiceCompare);
-	//~ size_t iL(0),iR(0);
-	//~ kmerIndice kL,kR;
-	//~ while(iL<left.size() && iR<right.size()){
-		//~ kL=left[iL];
-		//~ kR=right[iR];
-		//~ if(kL.kmmer==kR.kmmer){
-			//~ bool go(true);
-			//~ if(left[iL+1].kmmer==kL.kmmer){
-				//~ ++iL;
-				//~ go=false;
-				//~ while(left[iL+1].kmmer==kL.kmmer){++iL;}
-			//~ }
-			//~ if(right[iR+1].kmmer==kR.kmmer){
-				//~ ++iR;
-				//~ go=false;
-				//~ while(right[iR+1].kmmer==kR.kmmer){++iR;}
-			//~ }
-			//~ if(go){
-				//~ kmer2Indice k2i;
-				//~ k2i.indiceL=iL;
-				//~ k2i.indiceR=iR;
-				//~ ++iL;
-				//~ ++iR;
-			//~ }
-		//~ }else{
-			//~ if(kL.kmmer<kR.kmmer){
-				//~ ++iL;
-				//~ while(left[iL+1].kmmer==kL.kmmer){++iL;}
-			//~ }else{
-				//~ ++iR;
-				//~ while(right[iR+1].kmmer==kR.kmmer){++iR;}
-			//~ }
-		//~ }
-	//~ }
-//~ }
-
-
 bool isNumber(const string& str){
 	switch (str[0]){
 	case 'a': return false;
@@ -1028,11 +962,9 @@ bool isNumber(const string& str){
 
 
 void graph3::compaction(uint32_t iL, uint32_t iR){
-	//~ cout<<"COMP"<<endl;
 	string seq1(unitigs[iL]),seq2(unitigs[iR]);
     size_t s1(seq1.size()),s2(seq2.size());
     
-    //~ cin.get();
     bool b1(isNumber(seq1)),b2(isNumber(seq2));
     if(b1 && b2){
 		compaction(stoi(seq1),stoi(seq2));
@@ -1108,23 +1040,10 @@ void graph3::debruijn(){
 	sort(left.begin(),left.end(),kmerIndiceCompare);
 	sort(right.begin(),right.end(),kmerIndiceCompare);
 	
-	
-	//~ for(size_t i(0);i<left.size();++i){
-		//~ cout<<left[i].kmmer<<" ";
-	//~ }
-	//~ cout<<endl<<endl;
-	//~ for(size_t i(0);i<right.size();++i){
-		//~ cout<<right[i].kmmer<<" ";
-	//~ }
-	
-	
 	kmerIndice kL,kR;
 	while(left.size()!=0 && right.size()!=0){
 		kL=left.back();
 		kR=right.back();
-		//~ cout<<"go"<<endl;
-		//~ cout<<kL.kmmer<<endl;
-		//~ cout<<kR.kmmer<<endl;
 		if(kL.kmmer==kR.kmmer){
 			bool go(true);
 			left.pop_back();
@@ -1144,11 +1063,6 @@ void graph3::debruijn(){
 				k2i.indiceL=kL.indice;
 				k2i.indiceR=kR.indice;
 				compactions.push_back(k2i);
-				
-				
-				//~ cout<<"compaction"<<kL.kmmer<<endl;
-				
-				
 			}
 		}else{
 			if(kL.kmmer>kR.kmmer){
@@ -1162,13 +1076,9 @@ void graph3::debruijn(){
 	}
 	left={};
 	right={};
-	
-	
-	//~ cin.get();
 }
 
 void graph3::compress(){
-	//~ cout<<"go"<<endl;
 	for(size_t i(0);i<compactions.size();++i){
 		kmer2Indice k2i(compactions[i]);
 		uint32_t iL(k2i.indiceL);
@@ -1181,7 +1091,6 @@ void graph3::compress(){
 			unitigs[i]="";
 		}
 	}
-	//~ cout<<"goend"<<endl;
 }
 
 void graph3::addvertex(const string& unitig){
@@ -1189,8 +1098,8 @@ void graph3::addvertex(const string& unitig){
 	size_t i=unitigs.size()-1;
 	if(leftmins[i]){
 		string beg(unitigs[i].substr(0,k));
-		uint64_t leftKmer1(stringtoint(beg));
-		uint64_t leftKmer2(stringtointc(beg));
+		__uint128_t leftKmer1(stringtoint128(beg));
+		__uint128_t leftKmer2(stringtointc128(beg));
 		kmerIndice ki;
 		ki.indice=i;
 		if(leftKmer1<leftKmer2){
@@ -1204,8 +1113,8 @@ void graph3::addvertex(const string& unitig){
 
 	if(rightmins[i]){
 		string end(unitigs[i].substr(unitigs[i].size()-k,k));
-		uint64_t rightKmer1(stringtoint(end));
-		uint64_t rightKmer2(stringtointc(end));
+		__uint128_t rightKmer1(stringtoint128(end));
+		__uint128_t rightKmer2(stringtointc128(end));
 		kmerIndice ki;
 		ki.indice=i;
 		if(rightKmer1<rightKmer2){

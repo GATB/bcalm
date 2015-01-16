@@ -157,7 +157,7 @@ class graph2
 
 
 struct kmerIndice{
-	uint64_t kmmer;
+	__uint128_t kmmer;
 	uint32_t indice;
 };
 
@@ -187,11 +187,6 @@ class graph3
 		void debruijn();
 		void compress();
 		void compaction(uint32_t iR, uint32_t iL);
-		void print();
-		uint32_t leftUnique(uint64_t);
-		uint32_t rightUnique(uint64_t);
-		uint32_t goBeg(uint32_t i);
-		uint32_t goEnd(uint32_t i);
 		uint32_t size();
 		
 		graph3(uint ka, uint min,uint size)
