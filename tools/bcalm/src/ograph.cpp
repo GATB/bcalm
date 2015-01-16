@@ -1037,46 +1037,99 @@ void graph3::compaction(uint32_t iL, uint32_t iR){
 
 
 void graph3::debruijn(){
-	sort(left.begin(),left.end(),kmerIndiceCompare);
-	sort(right.begin(),right.end(),kmerIndiceCompare);
-	
-	kmerIndice kL,kR;
-	while(left.size()!=0 && right.size()!=0){
-		kL=left.back();
-		kR=right.back();
-		if(kL.kmmer==kR.kmmer){
-			bool go(true);
-			left.pop_back();
-			right.pop_back();
-			if(left.back().kmmer==kL.kmmer){
-				left.pop_back();
-				go=false;
-				while(left.back().kmmer==kL.kmmer){left.pop_back();}
-			}
-			if(right.back().kmmer==kL.kmmer){
-				right.pop_back();
-				go=false;
-				while(right.back().kmmer==kR.kmmer){right.pop_back();}
-			}
-			if(go){
-				kmer2Indice k2i;
-				k2i.indiceL=kL.indice;
-				k2i.indiceR=kR.indice;
-				compactions.push_back(k2i);
-			}
-		}else{
-			if(kL.kmmer>kR.kmmer){
-				left.pop_back();
-				while(left.back().kmmer==kL.kmmer){left.pop_back();}
-			}else{
-				right.pop_back();
-				while(right.back().kmmer==kR.kmmer){right.pop_back();}
-			}
-		}
-	}
-	left={};
-	right={};
+        sort(left.begin(),left.end(),kmerIndiceCompare);
+        sort(right.begin(),right.end(),kmerIndiceCompare);
+
+        kmerIndice kL,kR;
+        while(left.size()!=0 and right.size()!=0){
+                kL=left.back();
+                kR=right.back();
+                if(kL.kmmer==kR.kmmer){
+                        bool go(true);
+                        left.pop_back();
+                        right.pop_back();
+                        if(left.size()!=0){
+                                if(left.back().kmmer==kL.kmmer){
+                                        left.pop_back();
+                                        go=false;
+                    bool again;
+                    if(left.size()!=0){
+                        again=left.back().kmmer==kL.kmmer;
+                    }else{
+                        again=false;
+                    }
+
+                                        while(again){
+                        left.pop_back();
+                        if(left.size()!=0){
+                            again=left.back().kmmer==kL.kmmer;
+                        }else{
+                            again=false;
+                        }
+                    }
+                                }
+                        }
+                        if(right.size()!=0){
+                                if(right.back().kmmer==kL.kmmer){
+                                        right.pop_back();
+                    bool again;
+                                        while(again){
+                        right.pop_back();
+                        if(right.size()!=0){
+                            again=right.back().kmmer==kR.kmmer;
+                        }else{
+                            again=false;
+                        }
+                    }
+                                }
+                        }
+                        if(go){
+                                   kmer2Indice k2i;
+                                k2i.indiceL=kL.indice;
+                                k2i.indiceR=kR.indice;
+                                compactions.push_back(k2i);
+                        }
+                }else{
+                          if(kL.kmmer>kR.kmmer){
+                                left.pop_back();
+                bool again;
+                if(left.size()!=0){
+                    again=left.back().kmmer==kL.kmmer;
+                }else{
+                    again=false;
+                }
+                                while(again){
+                    left.pop_back();
+                    if(left.size()!=0){
+                        again=left.back().kmmer==kL.kmmer;
+                    }else{
+                        again=false;
+                    }
+                }
+                       }else{
+                                  right.pop_back();
+                bool again;
+                if(right.size()!=0){
+                    again=right.back().kmmer==kL.kmmer;
+                }else{
+                    again=false;
+                }
+                                while(again){
+                    right.pop_back();
+                    if(right.size()!=0){
+                        again=right.back().kmmer==kR.kmmer;
+                    }else{
+                        again=false;
+                    }
+                }
+            }
+                }
+        }
+    left.clear();
+        right.clear();
 }
+
+
 
 void graph3::compress(){
 	for(size_t i(0);i<compactions.size();++i){
