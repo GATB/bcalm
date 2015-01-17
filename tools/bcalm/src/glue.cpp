@@ -380,7 +380,7 @@ bool Glue::insert_aux(GlueEntry newEntry, string key_norm, GlueEntry & glueResul
 void GlueStorage::cleanup() {
 	//GlueEntry e("bla", false, true, kmerSize);
 	GlueEntry e;
-    nbNonEmpty = 0;
+    unsigned long nbNonEmptyAcc = 0;
 	for (auto it = glueMap.begin(); it != glueMap.end(); ) {
         // later, TODO acquire a lock here so that it can be called safely in threads
 		derefIt(it, e);
@@ -391,10 +391,11 @@ void GlueStorage::cleanup() {
 			it = glueMap.erase(it);
 #endif
 		} else {
-            nbNonEmpty++;
+            nbNonEmptyAcc++;
 			it++;
 		}
 	}
+    nbNonEmpty = nbNonEmptyAcc;
 #ifdef SPARSEHASH
 	glueMap.resize(0); // effectively remove erased entries from memory
 #endif
@@ -587,7 +588,7 @@ GlueCommander::GlueCommander(size_t _kmerSize, BankFasta *out, int nb_glues, Mod
 }
 
 
-unsigned long GlueCommander::queues_size(bool silent)
+unsigned long GlueCommander::queues_size(bool silent) // keep in mind this is executed in the main thread
 {
     unsigned long sizes = 0;
     for (int i = 0; i < nb_glues; i++)
