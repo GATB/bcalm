@@ -23,7 +23,7 @@
 
 using namespace std;
 
-const size_t SPAN = KSIZE_2;
+const size_t SPAN = KSIZE_1;
 
 /** Shortcuts. */
 typedef Kmer<SPAN>::Type  Type;
@@ -390,8 +390,9 @@ void bcalm_1::execute (){
                 /* distribute nodes (to other buckets, or output, or glue) */
                 auto start_cdistribution_t=get_wtime(); 
                 for(uint32_t i(0);i<g.unitigs.size();++i){
-                    if(g.unitigs[i].size()!=0){
-                        glue_queue.enqueue(make_pair<string, size_t>((string)(g.unitigs[i]), (size_t)actualMinimizer));
+                    if(g.unitigs[i].seq.size()!=0){
+			//cout<<"output : "<<g.unitigs[i].toString()<<endl;
+                        glue_queue.enqueue(make_pair<string, size_t>((string)(g.unitigs[i].toString()), (size_t)actualMinimizer));
                     }
                 }
                 auto end_cdistribution_t=get_wtime();

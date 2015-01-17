@@ -157,7 +157,7 @@ class graph2
 
 
 struct kmerIndice{
-	__uint128_t kmmer;
+	uint64_t kmmer;
 	uint32_t indice;
 };
 
@@ -168,33 +168,133 @@ struct kmer2Indice{
 
 
 
+
+class seqBin{
+	public:
+		vector<bool> seq;
+
+		uint64_t toInt(){
+			uint64_t res(0);
+			for(size_t i(0);i<seq.size();++i){
+				if(seq[i]){
+					res++;
+				}
+				res=res*2;
+			}
+			return res;
+		}
+		
+		seqBin substr(size_t ind,size_t size){
+			ind*=2;
+			size*=2;
+			auto first = seq.begin()+ind;
+			auto last = seq.begin()+ind+size;
+			vector<bool> seq2(first,last);
+			return seqBin(seq2); 
+		}
+			
+		seqBin substr(size_t ind){
+			ind*=2;
+                        auto first = seq.begin()+ind;
+                        auto last = seq.end();
+                        vector<bool> seq2(first,last);
+                        return seqBin(seq2);
+                }
+
+		string toString(){
+			string str;
+			for(size_t i(0);i<seq.size();i+=2){
+				if(seq[i]){
+					if(seq[i+1]){
+						str.push_back('T');
+					}else{
+						str.push_back('G');
+					}
+				}else{
+					if(seq[i+1]){
+						str.push_back('C');
+					}else{
+						str.push_back('A');
+					}
+				}
+			}
+			return str;
+		}
+
+		seqBin(const string& str){
+			for(size_t i(0);i<str.size();++i){
+				switch (str[i]){
+  					case 'A':
+					seq.push_back(false);
+					seq.push_back(false);
+					break;
+					case 'C':
+                                        seq.push_back(false);  
+                                        seq.push_back(true); 
+                                        break;
+					case 'G':
+                                        seq.push_back(true);  
+                                        seq.push_back(false); 
+                                        break;
+					case 'T':
+                                        seq.push_back(true);  
+                                        seq.push_back(true); 
+  				}	
+			}
+		}
+		
+		seqBin(const vector<bool>& V){
+			seq=V;
+		}
+
+		bool equalTo(const seqBin& seq2){
+			return(equal(seq.begin(),seq.end(),seq2.seq.begin()));
+		}
+
+		size_t numNuc(){
+			return(seq.size()/2);
+		}
+
+
+		seqBin add(const seqBin& sb){
+			seq.insert(seq.end(), sb.seq.begin(), sb.seq.end());
+			return(seqBin(seq));
+		}
+
+
+
+};
+
+
 class graph3
 {
-	public:
-		uint k;
-		uint minimizer;
-		uint minsize;
-		vector<string> unitigs;
-		vector<bool> leftmins;
-		vector<bool> rightmins;
-		vector<kmerIndice> left;
-		vector<kmerIndice> right;
-		vector<kmer2Indice> compactions;
-		
-		void addvertex(const string& str);
-		void addleftmin(int mini);
-		void addrightmin(int mini);
-		void debruijn();
-		void compress();
-		void compaction(uint32_t iR, uint32_t iL);
-		uint32_t size();
-		
-		graph3(uint ka, uint min,uint size)
-		{
-			minsize=size;
-			k=ka;
-			minimizer=min;
-		}
+        public:
+                uint k;
+                uint minimizer;
+                uint minsize;
+                vector<seqBin> unitigs;
+                vector<bool> leftmins;
+                vector<bool> rightmins;
+                vector<kmerIndice> left;
+                vector<kmerIndice> right;
+                vector<kmer2Indice> compactions;
+		unordered_map<uint32_t,uint32_t> redirection;
+
+                void addvertex(const string& str);
+                void addleftmin(int mini);
+                void addrightmin(int mini);
+                void debruijn();
+                void compress();
+                void compaction(uint32_t iR, uint32_t iL);
+                uint32_t size();
+
+                graph3(uint ka, uint min,uint size)
+                {
+                        minsize=size;
+                        k=ka;
+                        minimizer=min;
+                }
 };
+
 
 #endif
