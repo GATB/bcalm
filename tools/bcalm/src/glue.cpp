@@ -337,7 +337,15 @@ void Glue::glueSingleEntry(GlueEntry query, GlueEntry match, string key, GlueEnt
 
 
 //returns true if inserted
-bool Glue::insert_aux(GlueEntry newEntry, string key_norm, GlueEntry & glueResult, bool onlyInsertIfFull) { 
+bool Glue::insert_aux(GlueEntry newEntry, string key, GlueEntry & glueResult, bool onlyInsertIfFull) { 
+
+    // maybe try to move that into Glue::insert_aux again but i'm not sure if it affects minimizer computation so i'm keeping it here to make sure 
+	string key_norm = rcnorm(key);
+	if (key != key_norm) {
+		newEntry.revComp();
+	}
+
+
 	GlueEntry e;
 
 	//if (key == key_of_interest)  cout << key << "\tinsert_aux\t" << tostring(newEntry, key)  << "\tprior\t" << glueStorage.dump(key, false) << "\t";
@@ -651,15 +659,8 @@ void GlueCommander::insert(GlueEntry &e) {
 
 bool GlueCommander::insert_aux(GlueEntry newEntry, string key) { 
 
-
-    // maybe try to move that into Glue::insert_aux again but i'm not sure if it affects minimizer computation so i'm keeping it here to make sure 
-	string key_norm = rcnorm(key);
-	if (key != key_norm) {
-		newEntry.revComp();
-	}
-
-    Model::Kmer kmer= model->codeSeed(key_norm.c_str(), Data::ASCII);
+    Model::Kmer kmer= model->codeSeed(key.c_str(), Data::ASCII);
     size_t minimizer(model->getMinimizerValue(kmer.value()));
     int w = which_queue(minimizer); 
-    insert_aux_queues[w].enqueue(make_pair(newEntry, key_norm));
+    insert_aux_queues[w].enqueue(make_pair(newEntry, key));
 }
