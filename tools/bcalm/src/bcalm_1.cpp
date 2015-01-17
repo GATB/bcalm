@@ -171,7 +171,7 @@ void bcalm_1::execute (){
      *
      */
 
-    int nb_glues = 1;
+    int nb_glues = 2;
     GlueCommander glue_commander(kmerSize, &out, nb_glues, &model);
         
     double weighted_best_theoretical_speedup_cumul = 0;
@@ -433,7 +433,8 @@ void bcalm_1::execute (){
 
     // stop the glue thread
     glue_commander.stop();
-     
+    
+    // check if buckets are indeed empty 
     for (int minimizer = 0; minimizer < rg; minimizer++)
     {
         if  (bucket_queues[minimizer].size_approx() != 0)

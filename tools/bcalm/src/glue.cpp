@@ -361,8 +361,8 @@ bool Glue::insert_aux(GlueEntry newEntry, string key_norm, GlueEntry & glueResul
 	}
 
     nbGlueInserts++;
-    // update stats and cleanup queue every 1M inserts
-    if (nbGlueInserts % 100000 == 0)
+    // update stats and cleanup queue every 10M inserts
+    if (nbGlueInserts % 1000000 == 0)
     {
         glueStorage.updateMemStats();
         glue();
@@ -571,12 +571,12 @@ unsigned long GlueCommander::queues_size(bool silent)
     unsigned long sizes = 0;
     for (int i = 0; i < nb_glues; i++)
     {
-        if (!silent)
+        //if (!silent)
         {
             cout << "Size of insert_aux queue for glue " << i << " : " << insert_aux_queues[i].size_approx() << endl;
             cout << "Size of glueMap for glue " << i << " : " << glues[i]->glueStorage.glueMapSize() << endl;
         }
-        else
+        //else
             sizes += insert_aux_queues[i].size_approx() + glues[i]->glueStorage.glueMapSizeNonEmpty() ;
     }
     return sizes;
