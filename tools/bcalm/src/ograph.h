@@ -157,7 +157,7 @@ class graph2
 
 
 struct kmerIndice{
-	uint64_t kmmer;
+	__uint128_t kmmer;
 	uint32_t indice;
 };
 
@@ -173,8 +173,8 @@ class seqBin{
 	public:
 		vector<bool> seq;
 
-		uint64_t toInt(){
-			uint64_t res(0);
+		__uint128_t toInt(){
+			__uint128_t res(0);
 			for(size_t i(0);i<seq.size();++i){
 				if(seq[i]){
 					res++;
