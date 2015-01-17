@@ -22,6 +22,30 @@ static inline int nt2num(char c){
     return d;
 }
 
+
+
+seqBin rcsb(seqBin& sb){
+	vector<bool> V;
+	for(int i(sb.seq.size()-2);i>=0;i-=2){
+		if(sb.seq[i]){
+			V.push_back(false);
+		}else{
+			V.push_back(true);
+		}
+		if(sb.seq[i+1]){
+                        V.push_back(false);
+                }else{
+                        V.push_back(true);
+                }
+	}
+	return seqBin(V);
+}
+
+bool isEmpty(const seqBin& s){
+        return(s.seq.size()==0);
+}
+
+
 char num2nt(int num){
 	if (num == 0)
 			return 'a';
@@ -393,7 +417,7 @@ uint64_t graph1::becompacted(uint64_t nodeindice, int min, unsigned char *type){
 	if(node.empty())
 		return 0;
 
-    int leftmin = leftmins[nodeindice];
+	    int leftmin = leftmins[nodeindice];
 	int rightmin = rightmins[nodeindice];
 
 	auto neigh(neighbor[nodeindice]);
@@ -878,6 +902,7 @@ string compactionEnd(const string& seq1,const string& seq2, int k){
 			return seq1+rc2.substr(k);
 		}
 	}
+
 	
 	if(endRc==seq2.substr(s2-k,k)){
 		return seq1+rc2.substr(k);
@@ -937,198 +962,159 @@ void graph2::addvertex(const string& unitig){
 
 bool kmerIndiceCompare(kmerIndice a ,kmerIndice b) { return a.kmmer < b.kmmer; }
 
-bool isNumber(const string& str){
-	switch (str[0]){
-	case 'a': return false;
-		break;
-	case 'c': return false;
-		break;
-	case 'g': return false;
-		break;
-	case 't': return false;
-		break;
-	case 'A': return false;
-		break;
-	case 'C': return false;
-		break;
-	case 'G': return false;
-		break;
-	case 'T': return false;
-		break;
-	default: return true;
-}
-}
-
-
 
 void graph3::compaction(uint32_t iL, uint32_t iR){
-	string seq1(unitigs[iL]),seq2(unitigs[iR]);
-    size_t s1(seq1.size()),s2(seq2.size());
-    
-    bool b1(isNumber(seq1)),b2(isNumber(seq2));
-    if(b1 && b2){
-		compaction(stoi(seq1),stoi(seq2));
-		return;
-	}
-    if(b1){
-		compaction(stoi(seq1),iR);
-		return;
-	}
+        seqBin seq1(unitigs[iL]),seq2(unitigs[iR]);
+        size_t s1(seq1.numNuc()),s2(seq2.numNuc());
+        bool b1(isEmpty(seq1)),b2(isEmpty(seq2));
+        if(b1 && b2){
+                compaction(redirection[iL],redirection[iR]);
+                return;
+        }
+	if(b1){
+               	compaction(redirection[iL],iR);
+                return;
+        }
 	if(b2){
-		compaction(iL,stoi(seq2));
-		return;
+               	compaction(iL,redirection[iR]);
+                return;
+        }
+
+	seqBin beg1(seq1.substr(0,k));
+
+        if(beg1.equalTo(seq2.substr(s2-k,k))){
+                unitigs[iL]=seq2.add(seq1.substr(k));
+                unitigs[iR].seq.clear();
+                redirection[iR]=iL;
+                return;
+        }
+
+        seqBin end1(seq1.substr(s1-k,k));
+
+        if(seq2.substr(0,k).equalTo(end1)){
+                unitigs[iL]=seq1.add(seq2.substr(k));
+                unitigs[iR].seq.clear();
+                redirection[iR]=iL;
+                return;
+        }
+
+        seqBin rc2(rcsb(seq2));
+        if(beg1.equalTo(rc2.substr(s2-k,k))){
+                unitigs[iL]=rc2.add(seq1.substr(k));
+               	unitigs[iR].seq.clear();
+                redirection[iR]=iL;
+                return;
 	}
 
-    string rc2(reversecompletment(seq2));
-    string rc1(reversecompletment(seq1));
-   
-    if(seq1.substr(0,k)==seq2.substr(s2-k,k)){
-		unitigs[iL]=seq2+seq1.substr(k);
-		unitigs[iR]=to_string(iL);
-        return;
-    }else{
-        if(rc2.substr(s2-k,k)==seq1.substr(0,k)){
-		unitigs[iL]=rc2+seq1.substr(k);
-		unitigs[iR]=to_string(iL);
-		return;
-        }
-    }
+        if(end1.equalTo(rc2.substr(0,k))){
+                unitigs[iL]=seq1.add(rc2.substr(k));
+                unitigs[iR].seq.clear();
+                redirection[iR]=iL;
+                return;
+	}
 
-    if(seq2.substr(0,k)==seq1.substr(s1-k,k)){
-        unitigs[iL]=seq1+seq2.substr(k);
-		unitigs[iR]=to_string(iL);
-		return;
-    }else{
-        if(rc1.substr(s1-k,k)==seq2.substr(0,k)){
-			unitigs[iL]=rc1+seq2.substr(k);
-			unitigs[iR]=to_string(iL);
-			return;
-        }
-    }
-    
-    if(rc1.substr(0,k)==seq2.substr(s2-k,k)){
-            unitigs[iL]=seq2+rc1.substr(k);
-			unitigs[iR]=to_string(iL);
-			return;
-    }else{
-        if(rc2.substr(s2-k,k)==rc1.substr(0,k)){
-            unitigs[iL]=rc2+rc1.substr(k);
-			unitigs[iR]=to_string(iL);
-			return;
-        }
-    }
-
-    if(rc2.substr(0,k)==seq1.substr(s1-k,k)){
-        unitigs[iL]=seq1+rc2.substr(k);
-		unitigs[iR]=to_string(iL);
-		return;
-    }else{
-        if(rc1.substr(s1-k,k)==rc2.substr(0,k)){
-            unitigs[iL]=rc1+rc2.substr(k);
-			unitigs[iR]=to_string(iL);
-			return;
-        }
-    }
-    cout<<"WUT"<<endl;
-    cout<<"+"<<seq1<<"+ +"<<seq2<<"+"<<endl;
-    cin.get();
+   	 cout<<"WUT"<<endl;
+        cout<<"???"<<seq1.toString()<<" "<<seq2.toString()<<endl;
 }
-
 
 
 void graph3::debruijn(){
-        sort(left.begin(),left.end(),kmerIndiceCompare);
-        sort(right.begin(),right.end(),kmerIndiceCompare);
+	sort(left.begin(),left.end(),kmerIndiceCompare);
+	sort(right.begin(),right.end(),kmerIndiceCompare);
 
         kmerIndice kL,kR;
         while(left.size()!=0 and right.size()!=0){
-                kL=left.back();
+		kL=left.back();
                 kR=right.back();
                 if(kL.kmmer==kR.kmmer){
-                        bool go(true);
+                	bool go(true);
                         left.pop_back();
                         right.pop_back();
                         if(left.size()!=0){
                                 if(left.back().kmmer==kL.kmmer){
                                         left.pop_back();
                                         go=false;
-                    bool again;
-                    if(left.size()!=0){
-                        again=left.back().kmmer==kL.kmmer;
-                    }else{
-                        again=false;
-                    }
+					bool again;
+					if(left.size()!=0){
+						again=left.back().kmmer==kL.kmmer;
+					}else{
+						again=false;
+					}
 
                                         while(again){
-                        left.pop_back();
-                        if(left.size()!=0){
-                            again=left.back().kmmer==kL.kmmer;
-                        }else{
-                            again=false;
-                        }
-                    }
+						left.pop_back();
+						if(left.size()!=0){
+							again=left.back().kmmer==kL.kmmer;
+						}else{
+							again=false;
+						}
+					}
                                 }
                         }
                         if(right.size()!=0){
-                                if(right.back().kmmer==kL.kmmer){
+                                if(right.back().kmmer==kR.kmmer){
                                         right.pop_back();
-                    bool again;
+					bool again;
+					if(right.size()!=0){
+                                                again=right.back().kmmer==kR.kmmer;
+                                        }else{
+                                              	again=false;
+                                        }
                                         while(again){
-                        right.pop_back();
-                        if(right.size()!=0){
-                            again=right.back().kmmer==kR.kmmer;
-                        }else{
-                            again=false;
-                        }
-                    }
+                        			right.pop_back();
+                        			if(right.size()!=0){
+                            				again=right.back().kmmer==kR.kmmer;
+                        			}else{
+                           				again=false;
+                        			}
+                   			 }
                                 }
                         }
                         if(go){
-                                   kmer2Indice k2i;
+                                kmer2Indice k2i;
                                 k2i.indiceL=kL.indice;
                                 k2i.indiceR=kR.indice;
                                 compactions.push_back(k2i);
                         }
-                }else{
-                          if(kL.kmmer>kR.kmmer){
-                                left.pop_back();
-                bool again;
-                if(left.size()!=0){
-                    again=left.back().kmmer==kL.kmmer;
-                }else{
-                    again=false;
-                }
+		}else{
+                	if(kL.kmmer>kR.kmmer){
+                        	left.pop_back();
+                		bool again;
+                		if(left.size()!=0){
+                   			again=left.back().kmmer==kL.kmmer;
+               			}else{
+                   			again=false;
+               			}
                                 while(again){
-                    left.pop_back();
-                    if(left.size()!=0){
-                        again=left.back().kmmer==kL.kmmer;
-                    }else{
-                        again=false;
-                    }
-                }
-                       }else{
-                                  right.pop_back();
-                bool again;
-                if(right.size()!=0){
-                    again=right.back().kmmer==kL.kmmer;
-                }else{
-                    again=false;
-                }
+                   			left.pop_back();
+                   			if(left.size()!=0){
+                       				again=left.back().kmmer==kL.kmmer;
+                   			}else{
+                       				again=false;
+                    			}
+               			}
+			}else{
+                        	right.pop_back();
+               			bool again;
+             			if(right.size()!=0){
+                   			again=right.back().kmmer==kR.kmmer;
+               			}else{
+                   			 again=false;
+               			}
                                 while(again){
-                    right.pop_back();
-                    if(right.size()!=0){
-                        again=right.back().kmmer==kR.kmmer;
-                    }else{
-                        again=false;
-                    }
-                }
-            }
-                }
-        }
+                   			right.pop_back();
+                   			if(right.size()!=0){
+                     				again=right.back().kmmer==kR.kmmer;
+                   			}else{
+                      				again=false;
+                   			}
+               		 	}
+           		}
+		}
+	}  
     left.clear();
-        right.clear();
+    right.clear();
 }
-
 
 
 void graph3::compress(){
@@ -1140,19 +1126,19 @@ void graph3::compress(){
 	}
 	
 	for(size_t i(0);i<unitigs.size();++i){
-		if(isNumber(unitigs[i])){
-			unitigs[i]="";
+		if(isEmpty(unitigs[i])){
+			unitigs[i].seq.clear();
 		}
 	}
 }
 
 void graph3::addvertex(const string& unitig){
-	unitigs.push_back(unitig);
+	unitigs.push_back(seqBin(unitig));
 	size_t i=unitigs.size()-1;
 	if(leftmins[i]){
-		string beg(unitigs[i].substr(0,k));
-		__uint128_t leftKmer1(stringtoint128(beg));
-		__uint128_t leftKmer2(stringtointc128(beg));
+		seqBin beg(unitigs[i].substr(0,k));
+		__uint128_t leftKmer1(beg.toInt());
+		__uint128_t leftKmer2((rcsb(beg)).toInt());
 		kmerIndice ki;
 		ki.indice=i;
 		if(leftKmer1<leftKmer2){
@@ -1162,12 +1148,12 @@ void graph3::addvertex(const string& unitig){
 			ki.kmmer=leftKmer2;
 			right.push_back(ki);
 		}
-	}
+	}	
 
 	if(rightmins[i]){
-		string end(unitigs[i].substr(unitigs[i].size()-k,k));
-		__uint128_t rightKmer1(stringtoint128(end));
-		__uint128_t rightKmer2(stringtointc128(end));
+		seqBin end(unitigs[i].substr((unitigs[i]).numNuc()-k,k));
+		__uint128_t rightKmer1(end.toInt());
+		__uint128_t rightKmer2(rcsb(end).toInt());
 		kmerIndice ki;
 		ki.indice=i;
 		if(rightKmer1<rightKmer2){
