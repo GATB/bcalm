@@ -510,9 +510,9 @@ void GlueCommander::stop()
     while (queues_size(true) != previous_queues_size) // FIXME: a very ugly way to force bcalm to stop (reach a fixpoint of glue size)
     {
         cleanup_threaded();
-        previous_queues_size = queues_size();
-        // wait for all queues and glues to be empty
-        sleep(0.5);
+        previous_queues_size = queues_size(true);
+        // wait for all queues and glues to be empty // FIXME: hacky
+        sleep(1);
     }
 
     for (int i = 0; i < nb_glues; i++)
@@ -599,8 +599,7 @@ unsigned long GlueCommander::queues_size(bool silent)
             cout << "Cached number of non-empty elts for glue " << i << " : " << glues[i]->glueStorage.nbNonEmpty << endl;
         }
         //else
-        if (silent)
-            sizes += insert_aux_queues[i].size_approx() + glues[i]->glueStorage.nbNonEmpty ;
+        sizes += insert_aux_queues[i].size_approx() + glues[i]->glueStorage.nbNonEmpty ;
     }
     return sizes;
 }
