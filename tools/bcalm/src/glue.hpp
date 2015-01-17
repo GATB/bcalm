@@ -159,6 +159,7 @@ class GlueCommander
 
 
     private:
+        std::hash<size_t> hash_fn;
         std::mutex commander_mutex;
         BankFasta *out;
         Model *model;

@@ -137,17 +137,23 @@ void bcalm_1::execute (){
     typedef Kmer<SPAN>::Count Count;
     Partition<Count>& partition = dskGroup.getPartition<Count> ("solid", nbPartitions);
     cout << "DSK created " << nbPartitions << " partitions" << endl;
-
+    
     /** We retrieve the minimizers distribution from the solid kmers storage. */
     Repartitor repart;
     repart.load (dskGroup);
 
+    u_int64_t rg = ((u_int64_t)1 << (2*minSize));
+
     /* Retrieve frequency of minimizers;
      * actually only used in minimizerMin and minimizerMax */
-    u_int64_t rg = ((u_int64_t)1 << (2*minSize));
-    uint32_t *freq_order = new uint32_t[rg];
-    Storage::istream is (dskGroup, "minimFrequency");
-    is.read ((char*)freq_order, sizeof(uint32_t) * rg);
+    uint32_t *freq_order = NULL;
+
+    if (minimizer_type == 1)
+    {     
+        freq_order = new uint32_t[rg];
+        Storage::istream is (dskGroup, "minimFrequency");
+        is.read ((char*)freq_order, sizeof(uint32_t) * rg);
+    }
 
     Model model(kmerSize, minSize, Kmer<SPAN>::ComparatorMinimizerFrequency(), freq_order);
     Model modelK1(kmerSize-1, minSize,  Kmer<SPAN>::ComparatorMinimizerFrequency(), freq_order);
@@ -232,7 +238,10 @@ void bcalm_1::execute (){
             }
         };
 
-        auto insertIntoQueues = [p, &minimizerMax, &minimizerMin, &add_to_bucket_queue, &bucket_queues, &modelK1, &k, &repart](string seq) {
+        std::atomic<long> nb_left_min_diff_right_min;
+        nb_left_min_diff_right_min = 0;
+
+        auto insertIntoQueues = [p, &minimizerMax, &minimizerMin, &add_to_bucket_queue, &bucket_queues, &modelK1, &k, &repart, &nb_left_min_diff_right_min](string seq) {
             Model::Kmer kmmerBegin = modelK1.codeSeed(seq.substr(0, k - 1).c_str(), Data::ASCII);
             size_t leftMin(modelK1.getMinimizerValue(kmmerBegin.value()));
             Model::Kmer kmmerEnd = modelK1.codeSeed(seq.substr(seq.size() - k + 1, k - 1).c_str(), Data::ASCII);
@@ -243,6 +252,8 @@ void bcalm_1::execute (){
 
             if (leftMin != rightMin)
             {
+                nb_left_min_diff_right_min ++;
+
                 if (repart(rightMin) == p)
                     add_to_bucket_queue(rightMin, seq, leftMin, rightMin, p);
 
@@ -285,6 +296,7 @@ void bcalm_1::execute (){
             insertIntoQueues(seq);
         }*/
 
+        cout << "Iterated " << partition[p].getNbItems() << " kmers, among them " << nb_left_min_diff_right_min << " has leftmin!=rightmin" << endl;
 
         auto end_createbucket_t=get_wtime();
         atomic_double_add(global_wtime_create_buckets, diff_wtime(start_createbucket_t, end_createbucket_t));
@@ -341,7 +353,6 @@ void bcalm_1::execute (){
 
                         bool lmark = actualMinimizer != leftMin;
                         bool rmark = actualMinimizer != rightMin; 
-
                         GlueEntry e(seq, lmark, rmark, kmerSize);
                         glue_commander.insert(e);
                     }

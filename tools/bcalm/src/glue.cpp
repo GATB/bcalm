@@ -545,7 +545,7 @@ void GlueCommander::printMemStats()
 
 int GlueCommander::which_queue(size_t minimizer)
 {
-    return minimizer % nb_glues;
+    return hash_fn(minimizer) % nb_glues;
 }
 
 void GlueCommander::spawn_threads()
