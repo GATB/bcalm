@@ -100,6 +100,8 @@ class GlueStorage {
 		void cleanup();
 		void updateMemStats();
 		void printMemStats();
+        unsigned long glueMapSize();
+        unsigned long glueMapSizeNonEmpty();
 
 		string dump();
 		string dump(string key, bool dumpkey = true);
@@ -148,7 +150,7 @@ class GlueCommander
 	void output(string seq);
     void spawn_threads();
     int which_queue(size_t minimizer);
-    void queues_size();
+    unsigned long queues_size(bool silent=false);
 
 	GlueCommander(size_t _kmerSize, BankFasta *out, int nb_glues, Model *model);
 
@@ -169,7 +171,7 @@ class Glue
     public:
 		GlueStorage glueStorage; //this should really be treated as private. It is only public to allow calling updateMemStats and such
 
-		Glue(size_t _kmerSize, GlueCommander *commander) : kmerSize(_kmerSize), glueStorage(_kmerSize), commander(commander) {
+		Glue(size_t _kmerSize, GlueCommander *commander) : kmerSize(_kmerSize), glueStorage(_kmerSize), commander(commander), nbGlueInserts(0) {
 #ifdef TWOBITGLUEHASH 
 			cout << "Glue: using TWOBITBLUEHASH.\n";
 #else
@@ -209,5 +211,7 @@ class Glue
 			if (timerReferenceCount++ == 0) startTime =  chrono::system_clock::now(); 
 		};
 		void stopTimer();
+
+        unsigned long nbGlueInserts;
 };
 

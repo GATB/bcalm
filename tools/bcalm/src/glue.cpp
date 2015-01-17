@@ -359,6 +359,15 @@ bool Glue::insert_aux(GlueEntry newEntry, string key_norm, GlueEntry & glueResul
 			//glueStorage.insertAtKey(key_norm, GlueEntry()); //clear entry
 		}
 	}
+
+    nbGlueInserts++;
+    // update stats and cleanup queue every 1M inserts
+    if (nbGlueInserts % 100000 == 0)
+    {
+        glueStorage.updateMemStats();
+        glue();
+    } 
+
 	return true; 
 
 	//if (key == key_of_interest) cout << "after\t" << glueStorage.dump(key,false ) << endl;
@@ -371,9 +380,9 @@ void GlueStorage::cleanup() {
 	//GlueEntry e("bla", false, true, kmerSize);
 	GlueEntry e;
 	for (auto it = glueMap.begin(); it != glueMap.end(); ) {
+        // later, TODO acquire a lock here so that it can be called safely in threads
 		derefIt(it, e);
 		if (e.isEmpty()) {
-            // later, TODO acquire a lock here so that it can be called safely in threads
 #ifdef SPARSEHASH
 			glueMap.erase(it);
 #else
@@ -409,6 +418,25 @@ void Glue::stopTimer() {
 		totalTime += chrono::duration_cast<chrono::microseconds>(endTime - startTime);
 	}
 }
+
+unsigned long GlueStorage::glueMapSize() {
+    return glueMap.size();
+}
+
+unsigned long GlueStorage::glueMapSizeNonEmpty() {
+    unsigned long res = 0;
+	GlueEntry e;
+	for (auto it = glueMap.begin(); it != glueMap.end(); ) {
+		derefIt(it, e);
+		if (!e.isEmpty()) {
+            res++;
+		}
+		it++;
+	}
+    return res;
+}
+
+
 
 void GlueStorage::updateMemStats() {
 	maxEntries = std::max(maxEntries, glueMap.size());
@@ -467,6 +495,13 @@ void GlueCommander::dump()
 void GlueCommander::stop()
 {
     cout << "Stopping GlueCommander" << endl;
+
+    while (queues_size(true) != 0)
+    {
+        // wait for all queues and glues to be empty
+        sleep(0.5);
+    }
+
     for (int i = 0; i < nb_glues; i++)
         keep_glueing[i] = false;
     
@@ -504,11 +539,9 @@ void GlueCommander::spawn_threads()
             {
                 while (insert_aux_queues[i].try_dequeue(glue_elt))
                 {
-
                     GlueEntry insRes;
                     glues[i]->insert_aux(glue_elt.first, glue_elt.second, insRes);
                     if (!insRes.isEmpty()) insert(insRes);
-
                 }
             }
             cout << "Glue thread " << i << "END" << endl;
@@ -533,12 +566,20 @@ GlueCommander::GlueCommander(size_t _kmerSize, BankFasta *out, int nb_glues, Mod
 }
 
 
-void GlueCommander::queues_size()
+unsigned long GlueCommander::queues_size(bool silent)
 {
+    unsigned long sizes = 0;
     for (int i = 0; i < nb_glues; i++)
     {
-        cout << "Size of insert_aux queue for glue " << i << " : " << insert_aux_queues[i].size_approx() << endl;
+        if (!silent)
+        {
+            cout << "Size of insert_aux queue for glue " << i << " : " << insert_aux_queues[i].size_approx() << endl;
+            cout << "Size of glueMap for glue " << i << " : " << glues[i]->glueStorage.glueMapSize() << endl;
+        }
+        else
+            sizes += insert_aux_queues[i].size_approx() + glues[i]->glueStorage.glueMapSizeNonEmpty() ;
     }
+    return sizes;
 }
 
 
@@ -583,18 +624,6 @@ void GlueCommander::insert(GlueEntry &e) {
 	}
 
 	glueDebug = oldGlueDebug; 
-
-    /* // TODO enable that code, later;
-    nbGlueInserts++;
-    // update stats and cleanup queue every 1M inserts
-    if (nbGlueInserts % 100000 == 0)
-    {
-        for (int i = 0; i < nb_glues; i ++)
-        {
-            glues[i].updateMemStats();
-            glues[i].cleanup();
-        }
-    }*/ 
 }
 
 bool GlueCommander::insert_aux(GlueEntry newEntry, string key) { 

@@ -171,7 +171,7 @@ void bcalm_1::execute (){
      *
      */
 
-    int nb_glues = 2;
+    int nb_glues = 1;
     GlueCommander glue_commander(kmerSize, &out, nb_glues, &model);
         
     double weighted_best_theoretical_speedup_cumul = 0;
