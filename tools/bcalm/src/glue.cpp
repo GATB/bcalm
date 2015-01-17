@@ -337,7 +337,15 @@ void Glue::glueSingleEntry(GlueEntry query, GlueEntry match, string key, GlueEnt
 
 
 //returns true if inserted
-bool Glue::insert_aux(GlueEntry newEntry, string key_norm, GlueEntry & glueResult, bool onlyInsertIfFull) { 
+bool Glue::insert_aux(GlueEntry newEntry, string key, GlueEntry & glueResult, bool onlyInsertIfFull) { 
+
+    // maybe try to move that into Glue::insert_aux again but i'm not sure if it affects minimizer computation so i'm keeping it here to make sure 
+	string key_norm = rcnorm(key);
+	if (key != key_norm) {
+		newEntry.revComp();
+	}
+
+
 	GlueEntry e;
 
 	//if (key == key_of_interest)  cout << key << "\tinsert_aux\t" << tostring(newEntry, key)  << "\tprior\t" << glueStorage.dump(key, false) << "\t";
@@ -380,7 +388,7 @@ bool Glue::insert_aux(GlueEntry newEntry, string key_norm, GlueEntry & glueResul
 void GlueStorage::cleanup() {
 	//GlueEntry e("bla", false, true, kmerSize);
 	GlueEntry e;
-    nbNonEmpty = 0;
+    unsigned long nbNonEmptyAcc = 0;
 	for (auto it = glueMap.begin(); it != glueMap.end(); ) {
         // later, TODO acquire a lock here so that it can be called safely in threads
 		derefIt(it, e);
@@ -391,10 +399,11 @@ void GlueStorage::cleanup() {
 			it = glueMap.erase(it);
 #endif
 		} else {
-            nbNonEmpty++;
+            nbNonEmptyAcc++;
 			it++;
 		}
 	}
+    nbNonEmpty = nbNonEmptyAcc;
 #ifdef SPARSEHASH
 	glueMap.resize(0); // effectively remove erased entries from memory
 #endif
@@ -510,9 +519,9 @@ void GlueCommander::stop()
     while (queues_size(true) != previous_queues_size) // FIXME: a very ugly way to force bcalm to stop (reach a fixpoint of glue size)
     {
         cleanup_threaded();
-        previous_queues_size = queues_size();
-        // wait for all queues and glues to be empty
-        sleep(0.5);
+        previous_queues_size = queues_size(true);
+        // wait for all queues and glues to be empty // FIXME: hacky
+        sleep(1);
     }
 
     for (int i = 0; i < nb_glues; i++)
@@ -587,7 +596,7 @@ GlueCommander::GlueCommander(size_t _kmerSize, BankFasta *out, int nb_glues, Mod
 }
 
 
-unsigned long GlueCommander::queues_size(bool silent)
+unsigned long GlueCommander::queues_size(bool silent) // keep in mind this is executed in the main thread
 {
     unsigned long sizes = 0;
     for (int i = 0; i < nb_glues; i++)
@@ -599,8 +608,7 @@ unsigned long GlueCommander::queues_size(bool silent)
             cout << "Cached number of non-empty elts for glue " << i << " : " << glues[i]->glueStorage.nbNonEmpty << endl;
         }
         //else
-        if (silent)
-            sizes += insert_aux_queues[i].size_approx() + glues[i]->glueStorage.nbNonEmpty ;
+        sizes += insert_aux_queues[i].size_approx() + glues[i]->glueStorage.nbNonEmpty ;
     }
     return sizes;
 }
@@ -651,15 +659,8 @@ void GlueCommander::insert(GlueEntry &e) {
 
 bool GlueCommander::insert_aux(GlueEntry newEntry, string key) { 
 
-
-    // maybe try to move that into Glue::insert_aux again but i'm not sure if it affects minimizer computation so i'm keeping it here to make sure 
-	string key_norm = rcnorm(key);
-	if (key != key_norm) {
-		newEntry.revComp();
-	}
-
-    Model::Kmer kmer= model->codeSeed(key_norm.c_str(), Data::ASCII);
+    Model::Kmer kmer= model->codeSeed(key.c_str(), Data::ASCII);
     size_t minimizer(model->getMinimizerValue(kmer.value()));
     int w = which_queue(minimizer); 
-    insert_aux_queues[w].enqueue(make_pair(newEntry, key_norm));
+    insert_aux_queues[w].enqueue(make_pair(newEntry, key));
 }
