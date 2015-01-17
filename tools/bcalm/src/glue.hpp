@@ -105,6 +105,8 @@ class GlueStorage {
 
 		string dump();
 		string dump(string key, bool dumpkey = true);
+        
+        unsigned long nbNonEmpty;
 
 	private:
 #ifdef SPARSEHASH
@@ -142,7 +144,8 @@ class GlueCommander
 
     void insert(GlueEntry &e);
     bool insert_aux(GlueEntry newEntry, string key);
-    void cleanup();
+    void cleanup_force();
+    void cleanup_threaded();
     void updateMemStats();
     void dump();
     void printMemStats();
@@ -171,7 +174,7 @@ class Glue
     public:
 		GlueStorage glueStorage; //this should really be treated as private. It is only public to allow calling updateMemStats and such
 
-		Glue(size_t _kmerSize, GlueCommander *commander) : kmerSize(_kmerSize), glueStorage(_kmerSize), commander(commander), nbGlueInserts(0) {
+		Glue(size_t _kmerSize, GlueCommander *commander) : kmerSize(_kmerSize), glueStorage(_kmerSize), commander(commander), nbGlueInserts(0), needs_cleanup(false) {
 #ifdef TWOBITGLUEHASH 
 			cout << "Glue: using TWOBITBLUEHASH.\n";
 #else
@@ -195,6 +198,8 @@ class Glue
 		};
 
 		bool insert_aux(GlueEntry newEntry, string key, GlueEntry & glueResult, bool onlyCheckIfEmpty = false);
+        
+        std::atomic<bool> needs_cleanup;
 
 	private:
 		int kmerSize;

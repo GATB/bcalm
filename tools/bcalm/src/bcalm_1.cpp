@@ -372,7 +372,9 @@ void bcalm_1::execute (){
 
         } // end for each bucket
 
+        glue_commander.cleanup_threaded();
         pool.join();
+                        
         
         if (partition[p].getNbItems() == 0)
             continue; // no stats to print here
@@ -408,7 +410,7 @@ void bcalm_1::execute (){
                 cout <<"                       best theoretical speedup: "<<  best_theoretical_speedup << "x" <<endl;
                 if (nb_threads_simulate > 1)
                     cout <<"     best theoretical speedup with "<< nb_threads_simulate << " thread(s): "<<  actual_theoretical_speedup << "x" <<endl;
-                //glue_commander.queues_size();
+                glue_commander.queues_size();
 
                 weighted_best_theoretical_speedup_cumul += best_theoretical_speedup * wallclock_sb;
                 weighted_best_theoretical_speedup_sum_times                        += wallclock_sb;

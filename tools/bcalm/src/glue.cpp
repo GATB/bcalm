@@ -364,6 +364,7 @@ bool Glue::insert_aux(GlueEntry newEntry, string key_norm, GlueEntry & glueResul
     // update stats and cleanup queue every 10M inserts
     if (nbGlueInserts % 1000000 == 0)
     {
+        cout << "periodic glue cleanup" << endl;
         glueStorage.updateMemStats();
         glue();
     } 
@@ -379,6 +380,7 @@ bool Glue::insert_aux(GlueEntry newEntry, string key_norm, GlueEntry & glueResul
 void GlueStorage::cleanup() {
 	//GlueEntry e("bla", false, true, kmerSize);
 	GlueEntry e;
+    nbNonEmpty = 0;
 	for (auto it = glueMap.begin(); it != glueMap.end(); ) {
         // later, TODO acquire a lock here so that it can be called safely in threads
 		derefIt(it, e);
@@ -389,6 +391,7 @@ void GlueStorage::cleanup() {
 			it = glueMap.erase(it);
 #endif
 		} else {
+            nbNonEmpty++;
 			it++;
 		}
 	}
@@ -471,11 +474,18 @@ void GlueStorage::printMemStats() {
  *
  */
 
-void GlueCommander::cleanup()
+void GlueCommander::cleanup_force() // non thread safe
 {
     for (int i = 0; i < nb_glues; i++)
         glues[i]->glueStorage.cleanup();
 }
+
+void GlueCommander::cleanup_threaded() // signals the threads
+{
+    for (int i = 0; i < nb_glues; i++)
+        glues[i]->needs_cleanup = 1;
+}
+
 
 void GlueCommander::updateMemStats()
 {
@@ -496,8 +506,11 @@ void GlueCommander::stop()
 {
     cout << "Stopping GlueCommander" << endl;
 
-    while (queues_size(true) != 0)
+    uint previous_queues_size = 0;
+    while (queues_size(true) != previous_queues_size) // FIXME: a very ugly way to force bcalm to stop (reach a fixpoint of glue size)
     {
+        cleanup_threaded();
+        previous_queues_size = queues_size();
         // wait for all queues and glues to be empty
         sleep(0.5);
     }
@@ -508,7 +521,7 @@ void GlueCommander::stop()
     for (int i = 0; i < nb_glues; i++)
         glue_threads[i]->join(); 
 
-    cleanup();    
+    cleanup_force();
 }
 
 
@@ -537,12 +550,20 @@ void GlueCommander::spawn_threads()
             cout << "Glue thread "<< i << " START" << endl;
             while (keep_glueing[i])
             {
-                while (insert_aux_queues[i].try_dequeue(glue_elt))
+                if (insert_aux_queues[i].try_dequeue(glue_elt))
                 {
                     GlueEntry insRes;
                     glues[i]->insert_aux(glue_elt.first, glue_elt.second, insRes);
                     if (!insRes.isEmpty()) insert(insRes);
+
                 }
+
+                if (glues[i]->needs_cleanup)
+                {
+                    glues[i]->glue();
+                    glues[i]->needs_cleanup = false;
+                }
+
             }
             cout << "Glue thread " << i << "END" << endl;
         };
@@ -575,11 +596,11 @@ unsigned long GlueCommander::queues_size(bool silent)
         {
             cout << "Size of insert_aux queue for glue " << i << " : " << insert_aux_queues[i].size_approx() << endl;
             cout << "Size of glueMap for glue " << i << " : " << glues[i]->glueStorage.glueMapSize() << endl;
-            cout << "Size of glueMap with non-empty elts for glue " << i << " : " << glues[i]->glueStorage.glueMapSizeNonEmpty() << endl;
+            cout << "Cached number of non-empty elts for glue " << i << " : " << glues[i]->glueStorage.nbNonEmpty << endl;
         }
         //else
         if (silent)
-            sizes += insert_aux_queues[i].size_approx() + glues[i]->glueStorage.glueMapSizeNonEmpty() ;
+            sizes += insert_aux_queues[i].size_approx() + glues[i]->glueStorage.nbNonEmpty ;
     }
     return sizes;
 }
