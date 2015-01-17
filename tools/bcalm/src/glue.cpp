@@ -575,8 +575,10 @@ unsigned long GlueCommander::queues_size(bool silent)
         {
             cout << "Size of insert_aux queue for glue " << i << " : " << insert_aux_queues[i].size_approx() << endl;
             cout << "Size of glueMap for glue " << i << " : " << glues[i]->glueStorage.glueMapSize() << endl;
+            cout << "Size of glueMap with non-empty elts for glue " << i << " : " << glues[i]->glueStorage.glueMapSizeNonEmpty() << endl;
         }
         //else
+        if (silent)
             sizes += insert_aux_queues[i].size_approx() + glues[i]->glueStorage.glueMapSizeNonEmpty() ;
     }
     return sizes;
