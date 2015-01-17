@@ -313,7 +313,7 @@ void bcalm_1::execute (){
                 auto start_nodes_t=get_wtime();
 
                 graph3 g(kmerSize-1,actualMinimizer,minSize);
-                //graph1 g(kmerSize);
+                //~ //graph1 g(kmerSize);
 
                 /* add nodes to graph */
                 std::tuple<string,size_t,size_t> bucket_elt;
@@ -334,7 +334,7 @@ void bcalm_1::execute (){
 
                 g.debruijn();
                 g.compress();
-                //g.compressh(actualMinimizer);
+                //~ g.compressh(actualMinimizer);
 
                 auto end_dbg=get_wtime();
                 atomic_double_add(global_wtime_compactions, diff_wtime(start_dbg, end_dbg));
@@ -342,8 +342,8 @@ void bcalm_1::execute (){
                 /* distribute nodes (to other buckets, or output, or glue) */
                 auto start_cdistribution_t=get_wtime(); 
                 for(uint32_t i(0);i<g.unitigs.size();++i){
-                    if(g.unitigs[i].seq.size()!=0){
-                        string seq = g.unitigs[i].toString();
+                    if(g.unitigs[i].size()!=0){
+                        string seq = g.unitigs[i];
 
                         int k = kmerSize;
                         Model::Kmer kmmerBegin = modelK1.codeSeed(seq.substr(0, k - 1).c_str(), Data::ASCII);

@@ -146,6 +146,7 @@ class GlueCommander
     bool insert_aux(GlueEntry newEntry, string key);
     void cleanup_force();
     void cleanup_threaded();
+    bool not_yet_cleaned();
     void updateMemStats();
     void dump();
     void printMemStats();

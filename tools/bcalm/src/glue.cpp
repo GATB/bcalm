@@ -370,7 +370,7 @@ bool Glue::insert_aux(GlueEntry newEntry, string key, GlueEntry & glueResult, bo
 
     nbGlueInserts++;
     // update stats and cleanup queue every 10M inserts
-    if (nbGlueInserts % 1000000 == 0)
+    if (nbGlueInserts % 10000000 == 0)
     {
         cout << "periodic glue cleanup" << endl;
         glueStorage.updateMemStats();
@@ -492,8 +492,17 @@ void GlueCommander::cleanup_force() // non thread safe
 void GlueCommander::cleanup_threaded() // signals the threads
 {
     for (int i = 0; i < nb_glues; i++)
-        glues[i]->needs_cleanup = 1;
+        glues[i]->needs_cleanup = true;
 }
+
+bool GlueCommander::not_yet_cleaned()
+{
+    for (int i = 0; i < nb_glues; i++)
+        if (glues[i]->needs_cleanup)
+            return true;
+    return false;
+}
+
 
 
 void GlueCommander::updateMemStats()
@@ -518,10 +527,10 @@ void GlueCommander::stop()
     uint previous_queues_size = 0;
     while (queues_size(true) != previous_queues_size) // FIXME: a very ugly way to force bcalm to stop (reach a fixpoint of glue size)
     {
-        cleanup_threaded();
         previous_queues_size = queues_size(true);
+        cleanup_threaded();
+        while (not_yet_cleaned()) {sleep(1);}
         // wait for all queues and glues to be empty // FIXME: hacky
-        sleep(1);
     }
 
     for (int i = 0; i < nb_glues; i++)
@@ -601,7 +610,7 @@ unsigned long GlueCommander::queues_size(bool silent) // keep in mind this is ex
     unsigned long sizes = 0;
     for (int i = 0; i < nb_glues; i++)
     {
-        //if (!silent)
+        if (!silent)
         {
             cout << "Size of insert_aux queue for glue " << i << " : " << insert_aux_queues[i].size_approx() << endl;
             cout << "Size of glueMap for glue " << i << " : " << glues[i]->glueStorage.glueMapSize() << endl;
