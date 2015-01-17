@@ -1090,59 +1090,59 @@ void graph3::debruijn(){
                                         right.pop_back();
 					bool again;
                                         while(again){
-						right.pop_back();
-						if(right.size()!=0){
-							again=right.back().kmmer==kR.kmmer;
-						}else{
-							again=false;
-						}
-					}
+                        			right.pop_back();
+                        			if(right.size()!=0){
+                            				again=right.back().kmmer==kR.kmmer;
+                        			}else{
+                           				again=false;
+                        			}
+                   			 }
                                 }
                         }
                         if(go){
-                               	kmer2Indice k2i;
+                                kmer2Indice k2i;
                                 k2i.indiceL=kL.indice;
                                 k2i.indiceR=kR.indice;
                                 compactions.push_back(k2i);
                         }
                 }else{
-                      	if(kL.kmmer>kR.kmmer){
+                          if(kL.kmmer>kR.kmmer){
                                 left.pop_back();
-				bool again;
-				if(left.size()!=0){
-					again=left.back().kmmer==kL.kmmer;
-				}else{
-					again=false;
-				}
+                bool again;
+                if(left.size()!=0){
+                    again=left.back().kmmer==kL.kmmer;
+                }else{
+                    again=false;
+                }
                                 while(again){
-					left.pop_back();
-					if(left.size()!=0){
-						again=left.back().kmmer==kL.kmmer;
-					}else{
-						again=false;
-					}
-				} 
+                    left.pop_back();
+                    if(left.size()!=0){
+                        again=left.back().kmmer==kL.kmmer;
+                    }else{
+                        again=false;
+                    }
+                }
                        }else{
-                              	right.pop_back();
-				bool again;
-				if(right.size()!=0){
-					again=right.back().kmmer==kL.kmmer;
-				}else{
-					again=false;
-				}
+                                  right.pop_back();
+                bool again;
+                if(right.size()!=0){
+                    again=right.back().kmmer==kL.kmmer;
+                }else{
+                    again=false;
+                }
                                 while(again){
-					right.pop_back();
-					if(right.size()!=0){
-						again=right.back().kmmer==kR.kmmer;
-					}else{
-						again=false;
-					}
-				}
-			}
+                    right.pop_back();
+                    if(right.size()!=0){
+                        again=right.back().kmmer==kR.kmmer;
+                    }else{
+                        again=false;
+                    }
+                }
+            }
                 }
         }
-	left.clear();
-        right.clear();
+    left.clear();
+    right.clear();
 }
 
 

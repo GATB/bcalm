@@ -337,13 +337,8 @@ void Glue::glueSingleEntry(GlueEntry query, GlueEntry match, string key, GlueEnt
 
 
 //returns true if inserted
-bool Glue::insert_aux(GlueEntry newEntry, string key, GlueEntry & glueResult, bool onlyInsertIfFull) { 
+bool Glue::insert_aux(GlueEntry newEntry, string key_norm, GlueEntry & glueResult, bool onlyInsertIfFull) { 
 	GlueEntry e;
-
-	string key_norm = rcnorm(key);
-	if (key != key_norm) {
-		newEntry.revComp();
-	}
 
 	//if (key == key_of_interest)  cout << key << "\tinsert_aux\t" << tostring(newEntry, key)  << "\tprior\t" << glueStorage.dump(key, false) << "\t";
 	if (glueDebug) cout << key_norm << "\tinsert_aux\t" << tostring(newEntry, key_norm)  << "\tprior\t" << glueStorage.dump(key_norm, false) << "\t";
@@ -364,6 +359,16 @@ bool Glue::insert_aux(GlueEntry newEntry, string key, GlueEntry & glueResult, bo
 			//glueStorage.insertAtKey(key_norm, GlueEntry()); //clear entry
 		}
 	}
+
+    nbGlueInserts++;
+    // update stats and cleanup queue every 10M inserts
+    if (nbGlueInserts % 1000000 == 0)
+    {
+        cout << "periodic glue cleanup" << endl;
+        glueStorage.updateMemStats();
+        glue();
+    } 
+
 	return true; 
 
 	//if (key == key_of_interest) cout << "after\t" << glueStorage.dump(key,false ) << endl;
@@ -372,60 +377,12 @@ bool Glue::insert_aux(GlueEntry newEntry, string key, GlueEntry & glueResult, bo
 }
 
 
-void Glue::insert(GlueEntry e, bool process) {
-	
-	/* for testing:
-	string str;
-	while (cin >> str) {
-		GlueEntry en(str, true, true, 2);
-		RawEntry raw = en.getRaw();
-		cout << tostring(en, "Z") << endl << raw << endl << tostring(GlueEntry(raw,2), "Z") << endl;
-	}
-	return; 	
-	*/
-
-	startTimer();
-	bool oldGlueDebug = glueDebug;
-	if (process == false) {
-		cout << "insertion without processing is no longer supported\n";
-		exit(1);
-	}
-
-	
-	//if ((e.getSeq().find(key_of_interest) != std::string::npos) || (e.getSeq().find(reversecomplement(key_of_interest)) != std::string::npos))  glueDebug = true; 
-
-	if (glueDebug) 
-		cout << "insert\t" << tostring(e,"") << endl;
-
-	GlueEntry insRes;
-
-	if (!e.getRmark() && !e.getLmark()) {
-		output(e.getSeq());
-	} else if (e.getLmark() && !e.getRmark()) {
-		insert_aux(e, e.getLkmer(), insRes);
-	} else if (!e.getLmark() && e.getRmark()) {
-		insert_aux(e, e.getRkmer(), insRes);
-	} else { 
-		//pick one that is not empty
-		//this is not necessary for correctness, picking an arbitrary one will do
-		//but picking a non-empty one may force glues to happen sooner rather later, preventing build-ups of long sequential chains
-		if (!insert_aux(e, e.getRkmer(), insRes, true)) {
-			insert_aux(e, e.getLkmer(), insRes);
-		}
-	}
-	
-
-	if (!insRes.isEmpty()) insert(insRes, true);
-
-	glueDebug = oldGlueDebug; 
-
-	stopTimer();
-}
-
 void GlueStorage::cleanup() {
 	//GlueEntry e("bla", false, true, kmerSize);
 	GlueEntry e;
+    nbNonEmpty = 0;
 	for (auto it = glueMap.begin(); it != glueMap.end(); ) {
+        // later, TODO acquire a lock here so that it can be called safely in threads
 		derefIt(it, e);
 		if (e.isEmpty()) {
 #ifdef SPARSEHASH
@@ -434,6 +391,7 @@ void GlueStorage::cleanup() {
 			it = glueMap.erase(it);
 #endif
 		} else {
+            nbNonEmpty++;
 			it++;
 		}
 	}
@@ -450,11 +408,11 @@ void Glue::glue()
 	stopTimer();
 }
 
-void Glue::output(string seq)
+void GlueCommander::output(string seq)
 {
 	Sequence s (Data::ASCII);
 	s.getData().setRef ((char*)seq.c_str(), seq.size());
-	out.insert(s);
+	out->insert(s);
 }
 
 void Glue::stopTimer() { 
@@ -463,6 +421,25 @@ void Glue::stopTimer() {
 		totalTime += chrono::duration_cast<chrono::microseconds>(endTime - startTime);
 	}
 }
+
+unsigned long GlueStorage::glueMapSize() {
+    return glueMap.size();
+}
+
+unsigned long GlueStorage::glueMapSizeNonEmpty() {
+    unsigned long res = 0;
+	GlueEntry e;
+	for (auto it = glueMap.begin(); it != glueMap.end(); ) {
+		derefIt(it, e);
+		if (!e.isEmpty()) {
+            res++;
+		}
+		it++;
+	}
+    return res;
+}
+
+
 
 void GlueStorage::updateMemStats() {
 	maxEntries = std::max(maxEntries, glueMap.size());
@@ -489,3 +466,200 @@ void GlueStorage::printMemStats() {
 	}
 }
 
+
+
+/*
+ *
+ * GlueCommander
+ *
+ */
+
+void GlueCommander::cleanup_force() // non thread safe
+{
+    for (int i = 0; i < nb_glues; i++)
+        glues[i]->glueStorage.cleanup();
+}
+
+void GlueCommander::cleanup_threaded() // signals the threads
+{
+    for (int i = 0; i < nb_glues; i++)
+        glues[i]->needs_cleanup = 1;
+}
+
+
+void GlueCommander::updateMemStats()
+{
+    for (int i = 0; i < nb_glues; i++)
+        glues[i]->glueStorage.updateMemStats();
+}
+
+void GlueCommander::dump()
+{
+    for (int i = 0; i < nb_glues; i++)
+    {
+        cout << "Printing memory stats for glue " << i << "\n";
+        cout << glues[i]->glueStorage.dump();
+    }
+}
+
+void GlueCommander::stop()
+{
+    cout << "Stopping GlueCommander" << endl;
+
+    uint previous_queues_size = 0;
+    while (queues_size(true) != previous_queues_size) // FIXME: a very ugly way to force bcalm to stop (reach a fixpoint of glue size)
+    {
+        cleanup_threaded();
+        previous_queues_size = queues_size();
+        // wait for all queues and glues to be empty
+        sleep(0.5);
+    }
+
+    for (int i = 0; i < nb_glues; i++)
+        keep_glueing[i] = false;
+    
+    for (int i = 0; i < nb_glues; i++)
+        glue_threads[i]->join(); 
+
+    cleanup_force();
+}
+
+
+void GlueCommander::printMemStats()
+{
+    for (int i = 0; i < nb_glues; i++)
+    {
+        cout << "Printing memory stats for glue " << i << "\n";
+        glues[i]->glueStorage.printMemStats();
+    }
+}
+
+int GlueCommander::which_queue(size_t minimizer)
+{
+    return minimizer % nb_glues;
+}
+
+void GlueCommander::spawn_threads()
+{
+
+    for (int i = 0; i < nb_glues; i++)
+    {
+        auto lambdaGlue = [this, i]() {
+
+            std::pair<GlueEntry, string> glue_elt;
+            cout << "Glue thread "<< i << " START" << endl;
+            while (keep_glueing[i])
+            {
+                if (insert_aux_queues[i].try_dequeue(glue_elt))
+                {
+                    GlueEntry insRes;
+                    glues[i]->insert_aux(glue_elt.first, glue_elt.second, insRes);
+                    if (!insRes.isEmpty()) insert(insRes);
+
+                }
+
+                if (glues[i]->needs_cleanup)
+                {
+                    glues[i]->glue();
+                    glues[i]->needs_cleanup = false;
+                }
+
+            }
+            cout << "Glue thread " << i << "END" << endl;
+        };
+
+        glue_threads.push_back(new std::thread (lambdaGlue));
+    }
+
+}
+
+GlueCommander::GlueCommander(size_t _kmerSize, BankFasta *out, int nb_glues, Model *model) : nb_glues(nb_glues), model(model), out(out)
+{
+
+    for (int i = 0; i < nb_glues; i++)
+    {
+        glues.push_back(new Glue(_kmerSize, this));
+        keep_glueing.push_back(true);
+    }
+
+    insert_aux_queues.resize(nb_glues);
+    spawn_threads();
+}
+
+
+unsigned long GlueCommander::queues_size(bool silent)
+{
+    unsigned long sizes = 0;
+    for (int i = 0; i < nb_glues; i++)
+    {
+        //if (!silent)
+        {
+            cout << "Size of insert_aux queue for glue " << i << " : " << insert_aux_queues[i].size_approx() << endl;
+            cout << "Size of glueMap for glue " << i << " : " << glues[i]->glueStorage.glueMapSize() << endl;
+            cout << "Cached number of non-empty elts for glue " << i << " : " << glues[i]->glueStorage.nbNonEmpty << endl;
+        }
+        //else
+        if (silent)
+            sizes += insert_aux_queues[i].size_approx() + glues[i]->glueStorage.nbNonEmpty ;
+    }
+    return sizes;
+}
+
+
+
+void GlueCommander::insert(GlueEntry &e) {
+	
+	/* for testing:
+	string str;
+	while (cin >> str) {
+		GlueEntry en(str, true, true, 2);
+		RawEntry raw = en.getRaw();
+		cout << tostring(en, "Z") << endl << raw << endl << tostring(GlueEntry(raw,2), "Z") << endl;
+	}
+	return; 	
+	*/
+
+	bool oldGlueDebug = glueDebug;
+	
+	//if ((e.getSeq().find(key_of_interest) != std::string::npos) || (e.getSeq().find(reversecomplement(key_of_interest)) != std::string::npos))  glueDebug = true; 
+
+	if (glueDebug) 
+		cout << "insert\t" << tostring(e,"") << endl;
+
+	if (!e.getRmark() && !e.getLmark()) {
+        commander_mutex.lock(); // hopefully not too much performance issue? else use a queue..
+		output(e.getSeq());
+        commander_mutex.unlock();
+	} else if (e.getLmark() && !e.getRmark()) {
+		insert_aux(e, e.getLkmer());
+	} else if (!e.getLmark() && e.getRmark()) {
+		insert_aux(e, e.getRkmer());
+	} else { 
+		//pick one that is not empty
+		//this is not necessary for correctness, picking an arbitrary one will do
+		//but picking a non-empty one may force glues to happen sooner rather later, preventing build-ups of long sequential chains
+		/*if (!insert_aux(e, e.getRkmer(), insRes, true)) {
+			insert_aux(e, e.getLkmer(), insRes);
+		}*/
+
+        // but for threaded glues, it's not so easy, to let's pick an arbitrary one
+		insert_aux(e, e.getLkmer());
+	}
+
+	glueDebug = oldGlueDebug; 
+}
+
+bool GlueCommander::insert_aux(GlueEntry newEntry, string key) { 
+
+
+    // maybe try to move that into Glue::insert_aux again but i'm not sure if it affects minimizer computation so i'm keeping it here to make sure 
+	string key_norm = rcnorm(key);
+	if (key != key_norm) {
+		newEntry.revComp();
+	}
+
+    Model::Kmer kmer= model->codeSeed(key_norm.c_str(), Data::ASCII);
+    size_t minimizer(model->getMinimizerValue(kmer.value()));
+    int w = which_queue(minimizer); 
+    insert_aux_queues[w].enqueue(make_pair(newEntry, key_norm));
+}

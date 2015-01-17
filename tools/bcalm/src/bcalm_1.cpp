@@ -23,7 +23,7 @@
 
 using namespace std;
 
-const size_t SPAN = KSIZE_1;
+const size_t SPAN = KSIZE_2;
 
 /** Shortcuts. */
 typedef Kmer<SPAN>::Type  Type;
@@ -66,33 +66,6 @@ bcalm_1::bcalm_1 ()  : Tool ("bcalm_1"){
 	getParser()->add (new OptionOneParam ("-threads-simulate", "(debug) number of threads to compute scheduling for",  false,"1"));
 	getParser()->add (new OptionOneParam ("-minimizer-type", "use lexicographical minimizers (0) or frequency based (1)",  false,"1"));
 	getParser()->add (new OptionOneParam ("-dsk-memory", "max memory for dsk (MB)", false, "1000"));
-}
-
-
-void put_into_glue(string seq, size_t minimizer, Glue & glue, Model& modelK1) {
-
-	size_t k = kmerSize;
-	Model::Kmer kmmerBegin = modelK1.codeSeed(seq.substr(0, k - 1).c_str(), Data::ASCII);
-	size_t leftMin(modelK1.getMinimizerValue(kmmerBegin.value()));
-	Model::Kmer kmmerEnd = modelK1.codeSeed(seq.substr(seq.size() - k + 1, k - 1).c_str(), Data::ASCII);
-	size_t rightMin(modelK1.getMinimizerValue(kmmerEnd.value()));
-
-	bool lmark = minimizer != leftMin;
-	bool rmark = minimizer != rightMin; 
-	GlueEntry e(seq, lmark, rmark, kmerSize) ;
-
-	/*const string keyofin = "CACATGTTCACACACACACACACACACACACACACACACACACACACACAC";
-	if ((seq.find(keyofin) != std::string::npos) || (seq.find(reversecomplement(keyofin)) != std::string::npos)) {
-		cout << "In put or glue, we got " << tostring(e, e.seq) << endl;
-	}
-	*/
-
-    auto start_glue_t=get_wtime();
-
-	glue.insert(e, true);
-
-    auto end_glue_t=get_wtime();
-    atomic_double_add(global_wtime_glue,  diff_wtime(start_glue_t, end_glue_t));
 }
 
 void bcalm_1::execute (){
@@ -198,42 +171,9 @@ void bcalm_1::execute (){
      *
      */
 
-    Glue glue(kmerSize, out);
-    bool keep_glueing = true;
-    bool parallel_glue = (nb_threads > 1);
-    unsigned long nbGlueInserts = 0;
-
-    moodycamel::ConcurrentQueue<std::pair<string, size_t> > glue_queue;
-    auto lambdaGlue = [&parallel_glue, &glue_queue, &glue, &modelK1, &keep_glueing, &nbGlueInserts]() {
-        std::pair<string, size_t> glue_elt;
-        cout << "Glue thread START\n";
-        while (keep_glueing)
-        {
-            while (glue_queue.try_dequeue(glue_elt))
-            {
-                put_into_glue(glue_elt.first, glue_elt.second, glue, modelK1);
-                nbGlueInserts++;
-
-                // update stats and cleanup queue every 1M inserts
-                if (nbGlueInserts % 100000 == 0)
-                {
-                    glue.glueStorage.updateMemStats();
-                    glue.glue();
-                }
-            }
-            if (!parallel_glue)
-                break;
-        }
-        cout << "Glue thread END\n";
-        glue.glue();  // final cleanup
-    };
-
-    std::thread *glue_thread;
-    if (parallel_glue)
-    {
-        glue_thread = new std::thread (lambdaGlue);
-    }
-
+    int nb_glues = 2;
+    GlueCommander glue_commander(kmerSize, &out, nb_glues, &model);
+        
     double weighted_best_theoretical_speedup_cumul = 0;
     double weighted_best_theoretical_speedup_sum_times = 0;
     double weighted_best_theoretical_speedup = 0;
@@ -357,13 +297,13 @@ void bcalm_1::execute (){
         /**FOREACH BUCKET **/
         for(auto actualMinimizer : active_minimizers[p])
         {
-            auto lambdaCompact = [&bucket_queues, actualMinimizer, &glue_queue, &maxBucket, &lambda_timings, &repart]() {
-                /* add nodes to graph */
+            auto lambdaCompact = [&bucket_queues, actualMinimizer, &glue_commander, &maxBucket, &lambda_timings, &repart, &modelK1]() {
                 auto start_nodes_t=get_wtime();
 
                 graph3 g(kmerSize-1,actualMinimizer,minSize);
                 //~ //graph1 g(kmerSize);
 
+                /* add nodes to graph */
                 std::tuple<string,size_t,size_t> bucket_elt;
                 while (bucket_queues[actualMinimizer].try_dequeue(bucket_elt))
                 {
@@ -391,8 +331,19 @@ void bcalm_1::execute (){
                 auto start_cdistribution_t=get_wtime(); 
                 for(uint32_t i(0);i<g.unitigs.size();++i){
                     if(g.unitigs[i].seq.size()!=0){
-			//cout<<"output : "<<g.unitigs[i].toString()<<endl;
-                        glue_queue.enqueue(make_pair<string, size_t>((string)(g.unitigs[i].toString()), (size_t)actualMinimizer));
+                        string seq = g.unitigs[i].toString();
+
+                        int k = kmerSize;
+                        Model::Kmer kmmerBegin = modelK1.codeSeed(seq.substr(0, k - 1).c_str(), Data::ASCII);
+                        size_t leftMin(modelK1.getMinimizerValue(kmmerBegin.value()));
+                        Model::Kmer kmmerEnd = modelK1.codeSeed(seq.substr(seq.size() - k + 1, k - 1).c_str(), Data::ASCII);
+                        size_t rightMin(modelK1.getMinimizerValue(kmmerEnd.value()));
+
+                        bool lmark = actualMinimizer != leftMin;
+                        bool rmark = actualMinimizer != rightMin; 
+
+                        GlueEntry e(seq, lmark, rmark, kmerSize);
+                        glue_commander.insert(e);
                     }
                 }
                 auto end_cdistribution_t=get_wtime();
@@ -421,7 +372,9 @@ void bcalm_1::execute (){
 
         } // end for each bucket
 
+        glue_commander.cleanup_threaded();
         pool.join();
+                        
         
         if (partition[p].getNbItems() == 0)
             continue; // no stats to print here
@@ -457,6 +410,7 @@ void bcalm_1::execute (){
                 cout <<"                       best theoretical speedup: "<<  best_theoretical_speedup << "x" <<endl;
                 if (nb_threads_simulate > 1)
                     cout <<"     best theoretical speedup with "<< nb_threads_simulate << " thread(s): "<<  actual_theoretical_speedup << "x" <<endl;
+                glue_commander.queues_size();
 
                 weighted_best_theoretical_speedup_cumul += best_theoretical_speedup * wallclock_sb;
                 weighted_best_theoretical_speedup_sum_times                        += wallclock_sb;
@@ -471,12 +425,6 @@ void bcalm_1::execute (){
             }
         }
 
-        if (!parallel_glue)
-        {
-            lambdaGlue();
-        }
-
-
     } // end iteration superbuckets
 
     /*
@@ -486,12 +434,9 @@ void bcalm_1::execute (){
      */
 
     // stop the glue thread
-    keep_glueing = false;
-    if (parallel_glue)
-    {
-        glue_thread->join();
-    }
-     
+    glue_commander.stop();
+    
+    // check if buckets are indeed empty 
     for (int minimizer = 0; minimizer < rg; minimizer++)
     {
         if  (bucket_queues[minimizer].size_approx() != 0)
@@ -503,9 +448,10 @@ void bcalm_1::execute (){
         }
     }
 
-    cout << "Final glue:\n" << glue.glueStorage.dump() << "*****\n";
-    glue.glueStorage.printMemStats();
-    cout << "Glue class took " << glue.getTime() / 1000000 << " seconds.\n";
+    cout << "Final glue:\n";
+    glue_commander.dump();
+    cout << "*****\n";
+    glue_commander.printMemStats();
 
     /* printing some timing stats */
     auto end_t=chrono::system_clock::now();

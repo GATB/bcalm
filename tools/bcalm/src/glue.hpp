@@ -11,6 +11,12 @@
 #include <sys/sysinfo.h> // to determine system memory
 #endif
 
+// glue has threaded components now
+#include <thread>
+#include <atomic>
+#include <mutex>
+#include <../../../thirdparty/concurrentqueue.h>
+
 #define TWOBITGLUEHASH 
 //#define SPARSEHASH 
 #ifdef SPARSEHASH
@@ -94,9 +100,13 @@ class GlueStorage {
 		void cleanup();
 		void updateMemStats();
 		void printMemStats();
+        unsigned long glueMapSize();
+        unsigned long glueMapSizeNonEmpty();
 
 		string dump();
 		string dump(string key, bool dumpkey = true);
+        
+        unsigned long nbNonEmpty;
 
 	private:
 #ifdef SPARSEHASH
@@ -120,12 +130,51 @@ class GlueStorage {
 };
 
 
+class Glue;
+
+
+class GlueCommander
+{
+    public:
+        // to compute minimizers
+        const static size_t SPAN = KSIZE_2; // TODO: should be shared with bcalm_1.cpp
+        typedef Kmer<SPAN>::ModelCanonical ModelCanon;
+        typedef Kmer<SPAN>::ModelMinimizer <ModelCanon> Model;
+
+
+    void insert(GlueEntry &e);
+    bool insert_aux(GlueEntry newEntry, string key);
+    void cleanup_force();
+    void cleanup_threaded();
+    void updateMemStats();
+    void dump();
+    void printMemStats();
+    void stop();
+	void output(string seq);
+    void spawn_threads();
+    int which_queue(size_t minimizer);
+    unsigned long queues_size(bool silent=false);
+
+	GlueCommander(size_t _kmerSize, BankFasta *out, int nb_glues, Model *model);
+
+
+    private:
+        std::mutex commander_mutex;
+        BankFasta *out;
+        Model *model;
+        int nb_glues;
+        std::vector<Glue*> glues;
+        std::vector<moodycamel::ConcurrentQueue<pair<GlueEntry, string> >>  insert_aux_queues;
+        std::vector<bool> keep_glueing; 
+        std::vector<std::thread*> glue_threads; 
+};
+
 class Glue
 {
     public:
 		GlueStorage glueStorage; //this should really be treated as private. It is only public to allow calling updateMemStats and such
 
-		Glue(size_t _kmerSize, BankFasta &out) : kmerSize(_kmerSize), out(out), glueStorage(_kmerSize) {
+		Glue(size_t _kmerSize, GlueCommander *commander) : kmerSize(_kmerSize), glueStorage(_kmerSize), commander(commander), nbGlueInserts(0), needs_cleanup(false) {
 #ifdef TWOBITGLUEHASH 
 			cout << "Glue: using TWOBITBLUEHASH.\n";
 #else
@@ -148,12 +197,14 @@ class Glue
 			return totalTime.count();
 		};
 
-	private:
-		BankFasta out;
-		int kmerSize;
-
-		void output(string seq);
 		bool insert_aux(GlueEntry newEntry, string key, GlueEntry & glueResult, bool onlyCheckIfEmpty = false);
+        
+        std::atomic<bool> needs_cleanup;
+
+	private:
+		int kmerSize;
+        GlueCommander *commander;
+
 		void glueSingleEntry(GlueEntry query, GlueEntry match, string key, GlueEntry & glueResult);
 		bool check_if_empty(GlueEntry newEntry, string key);
 
@@ -165,5 +216,7 @@ class Glue
 			if (timerReferenceCount++ == 0) startTime =  chrono::system_clock::now(); 
 		};
 		void stopTimer();
+
+        unsigned long nbGlueInserts;
 };
 
