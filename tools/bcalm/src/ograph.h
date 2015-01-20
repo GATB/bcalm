@@ -171,9 +171,9 @@ struct kmer2Indice{
 class graph3
 {
 	public:
-		uint k;
-		uint minimizer;
-		uint minsize;
+		uint32_t k;
+		uint32_t minimizer;
+		uint32_t minsize;
 		vector<string> unitigs;
 		vector<bool> leftmins;
 		vector<bool> rightmins;
@@ -189,7 +189,7 @@ class graph3
 		void compaction(uint32_t iR, uint32_t iL);
 		uint32_t size();
 		
-		graph3(uint ka, uint min,uint size)
+		graph3(uint32_t ka, uint32_t min,uint32_t size)
 		{
 			minsize=size;
 			k=ka;
