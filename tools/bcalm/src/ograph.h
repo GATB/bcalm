@@ -7,6 +7,7 @@
 #include <array>
 #include <string>
 #include <cstdlib>
+#include "binSeq.h"
 
 #ifdef SPARSE_HASH
     #include <sparsehash/sparse_hash_map>
@@ -126,7 +127,7 @@ class graph2
 		unordered_map<uint64_t,uint32_t> right2unitig;
 		//~ dense_hash_set<uint64_t> multiple;
 		//~ unordered_set<uint64_t> multiple;
-		
+
 		void addvertex(const string& str);
 		void addleftmin(int mini);
 		void addrightmin(int mini);
@@ -140,7 +141,7 @@ class graph2
 		uint32_t goBeg(uint32_t i);
 		uint32_t goEnd(uint32_t i);
 		uint32_t size();
-		
+
 		graph2(int ka, int min,int size)
 		{
 			minsize=size;
@@ -180,7 +181,7 @@ class graph3
 		vector<kmerIndice> left;
 		vector<kmerIndice> right;
 		vector<kmer2Indice> compactions;
-		
+
 		void addvertex(const string& str);
 		void addleftmin(int mini);
 		void addrightmin(int mini);
@@ -188,9 +189,37 @@ class graph3
 		void compress();
 		void compaction(uint32_t iR, uint32_t iL);
 		uint32_t size();
-		
+
 		graph3(uint32_t ka, uint32_t min,uint32_t size)
 		{
+			minsize=size;
+			k=ka;
+			minimizer=min;
+		}
+};
+
+class graph4
+{
+	public:
+		uint32_t k;
+		uint32_t minimizer;
+		uint32_t minsize;
+		vector<binSeq> unitigs;
+		vector<bool> leftmins;
+		vector<bool> rightmins;
+		vector<kmerIndice> left;
+		vector<kmerIndice> right;
+		vector<kmer2Indice> compactions;
+
+		void addvertex(const string& str);
+		void addleftmin(int mini);
+		void addrightmin(int mini);
+		void debruijn();
+		void compress();
+		void compaction(uint32_t iR, uint32_t iL);
+		uint32_t size();
+
+		graph4(uint32_t ka, uint32_t min,uint32_t size){
 			minsize=size;
 			k=ka;
 			minimizer=min;

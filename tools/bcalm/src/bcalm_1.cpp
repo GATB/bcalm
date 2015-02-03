@@ -9,6 +9,7 @@
 #include <algorithm>
 #include <chrono>
 #include <tuple>
+#include "binSeq.h"
 #ifndef OSX
 #include <sys/sysinfo.h> // to determine system memory
 #endif
@@ -18,8 +19,8 @@
 #include <../../../thirdparty/concurrentqueue.h>
 #include "../../../thirdparty/ThreadPool.h"
 
-#define get_wtime() chrono::system_clock::now() 
-#define diff_wtime(x,y) chrono::duration_cast<chrono::nanoseconds>(y - x).count() 
+#define get_wtime() chrono::system_clock::now()
+#define diff_wtime(x,y) chrono::duration_cast<chrono::nanoseconds>(y - x).count()
 
 using namespace std;
 
@@ -70,7 +71,7 @@ bcalm_1::bcalm_1 ()  : Tool ("bcalm_1"){
 
 void bcalm_1::execute (){
     static char tableASCII[] = {'A', 'C', 'T', 'G'};
-    
+
     string inputFile(getInput()->getStr("-in"));
     BankFasta out (getInput()->getStr("-out"));
     kmerSize=getInput()->getInt("-k");
@@ -80,7 +81,7 @@ void bcalm_1::execute (){
     nb_threads_simulate = getInput()->getInt("-threads-simulate");
     int minimizer_type = getInput()->getInt("-minimizer-type");
     int dsk_memory = getInput()->getInt("-dsk-memory");
-    
+
     if (nb_threads > nb_threads_simulate)
         nb_threads_simulate = nb_threads;
 
@@ -116,7 +117,7 @@ void bcalm_1::execute (){
 
     /*
      *
-     * VARIOUS INIT 
+     * VARIOUS INIT
      *
      */
 
@@ -137,7 +138,7 @@ void bcalm_1::execute (){
     typedef Kmer<SPAN>::Count Count;
     Partition<Count>& partition = dskGroup.getPartition<Count> ("solid", nbPartitions);
     cout << "DSK created " << nbPartitions << " partitions" << endl;
-    
+
     /** We retrieve the minimizers distribution from the solid kmers storage. */
     Repartitor repart;
     repart.load (dskGroup);
@@ -149,7 +150,7 @@ void bcalm_1::execute (){
     uint32_t *freq_order = NULL;
 
     if (minimizer_type == 1)
-    {     
+    {
         freq_order = new uint32_t[rg];
         Storage::istream is (dskGroup, "minimFrequency");
         is.read ((char*)freq_order, sizeof(uint32_t) * rg);
@@ -179,7 +180,7 @@ void bcalm_1::execute (){
 
     int nb_glues = 2;
     GlueCommander glue_commander(kmerSize, &out, nb_glues, &model);
-        
+
     double weighted_best_theoretical_speedup_cumul = 0;
     double weighted_best_theoretical_speedup_sum_times = 0;
     double weighted_best_theoretical_speedup = 0;
@@ -201,7 +202,7 @@ void bcalm_1::execute (){
 
     /*
      *
-     * Iteration of partitions 
+     * Iteration of partitions
      *
      */
 
@@ -231,7 +232,7 @@ void bcalm_1::execute (){
             bucket_queues[minimizer].enqueue(std::make_tuple(seq,leftmin,rightmin));
 
             if (active_minimizers[p].find(minimizer) == active_minimizers[p].end())
-            { 
+            {
                 active_minimizers_mutex.lock();
                 active_minimizers[p].insert(minimizer);
                 active_minimizers_mutex.unlock();
@@ -260,7 +261,7 @@ void bcalm_1::execute (){
                 // handle traveller kmers
                 size_t max_minimizer = minimizerMax(leftMin, rightMin);
                 size_t min_minimizer = minimizerMin(leftMin, rightMin);
-                if (repart(max_minimizer) != repart(min_minimizer)) 
+                if (repart(max_minimizer) != repart(min_minimizer))
                 {
                     /* I call that a "traveller kmer" */
                     add_to_bucket_queue(max_minimizer, seq, leftMin, rightMin, repart(max_minimizer));
@@ -285,11 +286,11 @@ void bcalm_1::execute (){
             insertIntoQueues(seq);
         };
 
-        /* expand a superbucket by inserting kmers into queues */ 
+        /* expand a superbucket by inserting kmers into queues */
         getDispatcher()->iterate (itKmers, iteratePartition);
- 
+
         // serial version
-        /*for (itKmers->first(); !itKmers->isDone(); itKmers->next()) { 
+        /*for (itKmers->first(); !itKmers->isDone(); itKmers->next()) {
             nbKmers++;
             Kmer<SPAN>::Type current = itKmers->item().value;
             string seq = model.toString(current);
@@ -312,7 +313,7 @@ void bcalm_1::execute (){
             auto lambdaCompact = [&bucket_queues, actualMinimizer, &glue_commander, &maxBucket, &lambda_timings, &repart, &modelK1]() {
                 auto start_nodes_t=get_wtime();
 
-                graph3 g(kmerSize-1,actualMinimizer,minSize);
+                graph4 g(kmerSize-1,actualMinimizer,minSize);
                 //~ //graph1 g(kmerSize);
 
                 /* add nodes to graph */
@@ -340,10 +341,11 @@ void bcalm_1::execute (){
                 atomic_double_add(global_wtime_compactions, diff_wtime(start_dbg, end_dbg));
 
                 /* distribute nodes (to other buckets, or output, or glue) */
-                auto start_cdistribution_t=get_wtime(); 
+                auto start_cdistribution_t=get_wtime();
                 for(uint32_t i(0);i<g.unitigs.size();++i){
                     if(g.unitigs[i].size()!=0){
-                        string seq = g.unitigs[i];
+                        string seq = g.unitigs[i].str();
+                        //~ string seq = g.unitigs[i];
 
                         int k = kmerSize;
                         Model::Kmer kmmerBegin = modelK1.codeSeed(seq.substr(0, k - 1).c_str(), Data::ASCII);
@@ -352,7 +354,7 @@ void bcalm_1::execute (){
                         size_t rightMin(modelK1.getMinimizerValue(kmmerEnd.value()));
 
                         bool lmark = actualMinimizer != leftMin;
-                        bool rmark = actualMinimizer != rightMin; 
+                        bool rmark = actualMinimizer != rightMin;
                         GlueEntry e(seq, lmark, rmark, kmerSize);
                         glue_commander.insert(e);
                     }
@@ -374,10 +376,10 @@ void bcalm_1::execute (){
                     lambda_timing_mutex.unlock();
                 }
 
-            }; // end lambda function 
+            }; // end lambda function
 
-            if (nb_threads > 1) 
-                pool.enqueue(lambdaCompact); 
+            if (nb_threads > 1)
+                pool.enqueue(lambdaCompact);
             else
                 lambdaCompact();
 
@@ -385,8 +387,8 @@ void bcalm_1::execute (){
 
         glue_commander.cleanup_threaded();
         pool.join();
-                        
-        
+
+
         if (partition[p].getNbItems() == 0)
             continue; // no stats to print here
 
@@ -401,7 +403,7 @@ void bcalm_1::execute (){
             {
                 std::sort(lambda_timings.begin(), lambda_timings.end());
                 std::reverse(lambda_timings.begin(), lambda_timings.end());
-                /* compute a theoretical, i think optimal, scheduling of lambda's using the current number of threads 
+                /* compute a theoretical, i think optimal, scheduling of lambda's using the current number of threads
                 */
                 double tot_time_best_sched_lambda = 0; // start with the longest lambda
                 int t = 0;
@@ -446,8 +448,8 @@ void bcalm_1::execute (){
 
     // stop the glue thread
     glue_commander.stop();
-    
-    // check if buckets are indeed empty 
+
+    // check if buckets are indeed empty
     for (int minimizer = 0; minimizer < rg; minimizer++)
     {
         if  (bucket_queues[minimizer].size_approx() != 0)
@@ -514,17 +516,17 @@ printf("minimizers for kmer %s: %d %d, k-1-mers: %s %s\n",model.toString(current
             //~ superBuckets[i]->iterate ([&] (const Sequence& s){
             //~ /** We get the kmer corresponding to the current sequence. */
             //~ ModelCanon::Kmer mini = model.codeSeed (s.getDataBuffer(), Data::BINARY);
-//~ 
+//~
             //~ cout << "mini=" << mini.value() << "  " << model.toString (mini.value()) << endl;
         //~ });
             //~ cin.get();
-            
-            
+
+
                  //~ cout << "[0]=" << modelK1.toString(modelK1.getKmer(itBinary->getData(),0).value())
          //~ << "  mini=" << modelK1.getMmersModel().toString(modelK1.getKmer (itBinary->getData(), 0).minimizer().value() )
          //~ << endl;
-//~ 
-//~ 
+//~
+//~
     //~ cout << "[N]=" << modelK1.toString(modelK1.getKmer (itBinary->getData(), itBinary->getData().size()-modelK1.getKmerSize()).value())
          //~ << "  mini=" << modelK1.getMmersModel().toString(modelK1.getKmer (itBinary->getData(), itBinary->getData().size()-modelK1.getKmerSize()).minimizer().value() )
          //~ << endl;
@@ -538,16 +540,16 @@ printf("minimizers for kmer %s: %d %d, k-1-mers: %s %s\n",model.toString(current
         //~ {
             //~ cout << "-> " << k.value() << " minimizer=" << k.minimizer().value() << "  data.size=" << data.size() << endl;
         //~ });
-        
+
         //~ Data data (Data::ASCII);
     //~ char* str = "AAAAAAAAAAAAACGTACGATTTTTTTTTTATATAGGATAAAAAAAAAAAACGACTGATCATCGATCATAAAAA";
     //~ data.set (str, strlen(str) );
-//~ 
+//~
     //~ cout << "[0]=" << modelK1.toString(modelK1.getKmer (data, 0).value() )
          //~ << "  mini=" << modelK1.getMmersModel().toString(modelK1.getKmer (data, 0).minimizer().value() )
          //~ << endl;
-//~ 
-//~ 
+//~
+//~
     //~ cout << "[N]=" << modelK1.toString(modelK1.getKmer (data, data.size()-modelK1.getKmerSize()).value())
          //~ << "  mini=" << modelK1.getMmersModel().toString(modelK1.getKmer (data, data.size()-modelK1.getKmerSize()).minimizer().value() )
          //~ << endl;
