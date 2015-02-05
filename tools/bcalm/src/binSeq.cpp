@@ -55,6 +55,117 @@ const uint8_t rc[]={
 };
 
 
+uint8_t char2int1[100];
+
+uint8_t char2int[255];
+
+uint8_t char2int2[255];
+
+uint8_t functionwihtoutcoll(uint8_t x,uint8_t y,uint8_t z){
+	return( (x&0b00000110)|((y&0b00000110)<<2)|((z&0b00000110)<<4) );
+	//~ return( x|(y<<2)|(z<<4));
+}
+
+uint8_t functionwihtoutcoll(uint8_t x,uint8_t y){
+	return(x|(y<<4));
+	//~ return( x|(y<<2)|(z<<4));
+}
+
+//~ uint8_t functionwihtoutcoll(uint8_t x){
+	//~ return(x&0b00000110);
+//~ }
+
+void initBinSeq(){
+	char2int1[65]=0b01000000;
+	char2int1[67]=0b01000001;
+	char2int1[71]=0b01000010;
+	char2int1[84]=0b01000011;
+
+	char2int2[functionwihtoutcoll(65,65)]=0b10000000;
+	char2int2[functionwihtoutcoll(65,67)]=0b10000001;
+	char2int2[functionwihtoutcoll(65,71)]=0b10000010;
+	char2int2[functionwihtoutcoll(65,84)]=0b10000011;
+	char2int2[functionwihtoutcoll(67,65)]=0b10000100;
+	char2int2[functionwihtoutcoll(67,67)]=0b10000101;
+	char2int2[functionwihtoutcoll(67,71)]=0b10000110;
+	char2int2[functionwihtoutcoll(67,84)]=0b10000111;
+	char2int2[functionwihtoutcoll(71,65)]=0b10001000;
+	char2int2[functionwihtoutcoll(71,67)]=0b10001001;
+	char2int2[functionwihtoutcoll(71,71)]=0b10001010;
+	char2int2[functionwihtoutcoll(71,84)]=0b10001011;
+	char2int2[functionwihtoutcoll(84,65)]=0b10001100;
+	char2int2[functionwihtoutcoll(84,67)]=0b10001101;
+	char2int2[functionwihtoutcoll(84,71)]=0b10001110;
+	char2int2[functionwihtoutcoll(84,84)]=0b10001111;
+
+	char2int[functionwihtoutcoll(65,65,65)]=0b11000000;
+	char2int[functionwihtoutcoll(65,65,67)]=0b11000001;
+	char2int[functionwihtoutcoll(65,65,71)]=0b11000010;
+	char2int[functionwihtoutcoll(65,65,84)]=0b11000011;
+	char2int[functionwihtoutcoll(65,67,65)]=0b11000100;
+	char2int[functionwihtoutcoll(65,67,67)]=0b11000101;
+	char2int[functionwihtoutcoll(65,67,71)]=0b11000110;
+	char2int[functionwihtoutcoll(65,67,84)]=0b11000111;
+	char2int[functionwihtoutcoll(65,71,65)]=0b11001000;
+	char2int[functionwihtoutcoll(65,71,67)]=0b11001001;
+	char2int[functionwihtoutcoll(65,71,71)]=0b11001010;
+	char2int[functionwihtoutcoll(65,71,84)]=0b11001011;
+	char2int[functionwihtoutcoll(65,84,65)]=0b11001100;
+	char2int[functionwihtoutcoll(65,84,67)]=0b11001101;
+	char2int[functionwihtoutcoll(65,84,71)]=0b11001110;
+	char2int[functionwihtoutcoll(65,84,84)]=0b11001111;
+	char2int[functionwihtoutcoll(67,65,65)]=0b11010000;
+	char2int[functionwihtoutcoll(67,65,67)]=0b11010001;
+	char2int[functionwihtoutcoll(67,65,71)]=0b11010010;
+	char2int[functionwihtoutcoll(67,65,84)]=0b11010011;
+	char2int[functionwihtoutcoll(67,67,65)]=0b11010100;
+	char2int[functionwihtoutcoll(67,67,67)]=0b11010101;
+	char2int[functionwihtoutcoll(67,67,71)]=0b11010110;
+	char2int[functionwihtoutcoll(67,67,84)]=0b11010111;
+	char2int[functionwihtoutcoll(67,71,65)]=0b11011000;
+	char2int[functionwihtoutcoll(67,71,67)]=0b11011001;
+	char2int[functionwihtoutcoll(67,71,71)]=0b11011010;
+	char2int[functionwihtoutcoll(67,71,84)]=0b11011011;
+	char2int[functionwihtoutcoll(67,84,65)]=0b11011100;
+	char2int[functionwihtoutcoll(67,84,67)]=0b11011101;
+	char2int[functionwihtoutcoll(67,84,71)]=0b11011110;
+	char2int[functionwihtoutcoll(67,84,84)]=0b11011111;
+	char2int[functionwihtoutcoll(71,65,65)]=0b11100000;
+	char2int[functionwihtoutcoll(71,65,67)]=0b11100001;
+	char2int[functionwihtoutcoll(71,65,71)]=0b11100010;
+	char2int[functionwihtoutcoll(71,65,84)]=0b11100011;
+	char2int[functionwihtoutcoll(71,67,65)]=0b11100100;
+	char2int[functionwihtoutcoll(71,67,67)]=0b11100101;
+	char2int[functionwihtoutcoll(71,67,71)]=0b11100110;
+	char2int[functionwihtoutcoll(71,67,84)]=0b11100111;
+	char2int[functionwihtoutcoll(71,71,65)]=0b11101000;
+	char2int[functionwihtoutcoll(71,71,67)]=0b11101001;
+	char2int[functionwihtoutcoll(71,71,71)]=0b11101010;
+	char2int[functionwihtoutcoll(71,71,84)]=0b11101011;
+	char2int[functionwihtoutcoll(71,84,65)]=0b11101100;
+	char2int[functionwihtoutcoll(71,84,67)]=0b11101101;
+	char2int[functionwihtoutcoll(71,84,71)]=0b11101110;
+	char2int[functionwihtoutcoll(71,84,84)]=0b11101111;
+	char2int[functionwihtoutcoll(84,65,65)]=0b11110000;
+	char2int[functionwihtoutcoll(84,65,67)]=0b11110001;
+	char2int[functionwihtoutcoll(84,65,71)]=0b11110010;
+	char2int[functionwihtoutcoll(84,65,84)]=0b11110011;
+	char2int[functionwihtoutcoll(84,67,65)]=0b11110100;
+	char2int[functionwihtoutcoll(84,67,67)]=0b11110101;
+	char2int[functionwihtoutcoll(84,67,71)]=0b11110110;
+	char2int[functionwihtoutcoll(84,67,84)]=0b11110111;
+	char2int[functionwihtoutcoll(84,71,65)]=0b11111000;
+	char2int[functionwihtoutcoll(84,71,67)]=0b11111001;
+	char2int[functionwihtoutcoll(84,71,71)]=0b11111010;
+	char2int[functionwihtoutcoll(84,71,84)]=0b11111011;
+	char2int[functionwihtoutcoll(84,84,65)]=0b11111100;
+	char2int[functionwihtoutcoll(84,84,67)]=0b11111101;
+	char2int[functionwihtoutcoll(84,84,71)]=0b11111110;
+	char2int[functionwihtoutcoll(84,84,84)]=0b11111111;
+}
+
+
+
 const unordered_map<string,unsigned >  string2Byte={
 	{"A",0b01000000},{"C",0b01000001},{"G",0b01000010},{"T",0b01000011},
 
@@ -144,150 +255,12 @@ uint8_t char2Byte[85]={
 
 
 
-//~ const unsigned char first
-
-
-
-char revcompnadine (char s) {
-	if (s == 'A') return 'T';
-	else if (s == 'C') return 'G';
-	else if (s == 'G') return 'C';
-	else if (s == 'T') return 'A';
-	else if (s == 'a') return 't';
-	else if (s == 'c') return 'g';
-	else if (s == 'g') return 'c';
-	else if (s == 't') return 'a';
-	return 'X';
-}
-
-
-//string revcomp (const string &s) {
-//	string rc;
-//	for (int i = (int)s.length() - 1; i >= 0; i--) rc += revcomp(s[i]);
-//	return rc;
-//}
-
-
-string reversecomplementnadine (const string &s){
-	string rc;
-	for (int i = (int)s.length() - 1; i >= 0; i--) rc += revcompnadine(s[i]);
-	return rc;
-}
-
-
-
-
-
 
 void printUC(uint8_t a){
 	for (int i = 0; i < 8; i++) {
 		printf("%d", !!((a << i) & 0x80));
 	}
 	printf("\n");
-
-}
-
-
-
-uint8_t char2int( uint8_t c){
-	switch (c) {
-		case 'A':
-			return 0;
-		case 'C':
-			return 1;
-		case 'G':
-			return 2;
-		case 'T':
-			return 3;
-	}
-	//~ if(c<'G'){
-		//~ if(c=='A'){
-			//~ return 0;
-		//~ }
-		//~ return 1;
-	//~ }
-	//~ if(c=='G'){
-		//~ return 2;
-	//~ }
-	//~ return 3;
-	//~ return 3;
-}
-
-uint8_t char2int1( uint8_t c){
-	switch (c) {
-		case 'A':
-			return 0;
-		case 'C':
-			return 1<<2;
-		case 'G':
-			return 2<<2;
-		default:
-			return 3<<2;
-	}
-	//~ if(c<'G'){
-		//~ if(c=='A'){
-			//~ return 0;
-		//~ }
-		//~ return 1<<2;
-	//~ }
-	//~ if(c=='G'){
-		//~ return 2<<2;
-	//~ }
-	//~ return 3<<2;
-
-	//~ return 3<<2;
-}
-
-uint8_t char2int2( uint8_t c){
-	switch (c) {
-		case 'A':
-			return 0;
-		case 'C':
-			return 1<<4;
-		case 'G':
-			return 2<<4;
-		default:
-			return 3<<4;
-	}
-	//~ if(c<'G'){
-		//~ if(c=='A'){
-			//~ return 0;
-		//~ }
-		//~ return 1<<4;
-	//~ }
-	//~ if(c=='G'){
-		//~ return 2<<4;
-	//~ }
-	//~ return 3<<4;
-	//~ return 3<<4;
-}
-
-
-
-uint8_t int2char(uint8_t c){
-	switch (c) {
-		case 0:
-			return 'A';
-		case 1:
-			return 'C';
-		case 2:
-			return 'G';
-		default:
-		//~ case 3:
-			return 'T';
-	}
-	//~ return 'T';
-//~
-	//~ if(c<2){
-		//~ if(c==0){
-			//~ return 'A';
-		//~ }
-		//~ return 'C';
-	//~ }
-	//~ if(c==2){
-		//~ return 'G';
-	//~ }
-	//~ return 'T';
 }
 
 
@@ -296,62 +269,19 @@ uint8_t int2char(uint8_t c){
 binSeq::binSeq(const string& str){
 	isNumber=false;
 	uint8_t mod(str.size()%3);
-	uint8_t c;
 	size_t i(0);
-	size_t j(0);
-	vect.reserve(str.size()/3+mod);
-	//~ vect.resize(str.size()/3+mod);
+	vect.reserve((str.size()/3)+mod);
 	for (; i<str.size()-mod; i+=3){
-		//~ vect.push_back(string2Byte.at(str.substr(i,3)));
-
-		//~ c=12;
-		//~ c+=char2int(str[i]);
-		//~ c<<=2;
-		//~ c+=char2int(str[i+1]);
-		//~ c<<=2;
-		//~ c+=char2int(str[i+2]);
-		c=(3<<6)+char2Byte2[str[i]]+char2Byte1[str[i+1]]+char2Byte[str[i+2]];
-
-		vect.push_back(c);
-		//~ vect[j++]=c;
-		//~ if(c!=vect[vect.size()-1]){
-			//~ printUC(vect[vect.size()-1]);
-			//~ printUC(c);
-			//~ cin.get();
-		//~ }
+		vect.push_back(char2int[functionwihtoutcoll(str[i],str[i+1],str[i+2])]);
 	}
 
-	//~ vect.push_back(string2Byte.at(str.substr(i)));
-
-	//~ switch (mod) {
-		//~ case 0:
-			//~ break;
-		//~ case 1:
-			//c=1<<6;
-			//c+=char2int(str[str.size()-1]);
-//~
-			//~ break;
-		//~ case 2:
-			//c=1<<5;
-			//c+=char2int(str[str.size()-2]);
-			//c<<=2;
-			//~ c=1<<5+char2int1(str[str.size()-2])+char2int(str[str.size()-1]);
-			//c+=char2int(str[str.size()-1]);
-			//~ vect.push_back(c);
-			//~ break;
-	//~ }
 	if(mod!=0){
 		if(mod==1){
-			c=(1<<6)+char2Byte[str[str.size()-1]];
-			//~ vect[j]=c;
+			vect.push_back(char2int1[str[i]]);
 		}else{
-			c=(1<<7)+char2Byte1[str[str.size()-2]]+char2Byte[str[str.size()-1]];
-			//~ vect[j]=c;
+			vect.push_back(char2int2[functionwihtoutcoll(str[i-1],str[i])]);
 		}
-		vect.push_back(c);
-		//~ vect[j]=c;
 	}
-
 }
 
 
@@ -366,34 +296,20 @@ binSeq::binSeq(const binSeq& bs){
 string binSeq::str(){
 	string res;
 	res.reserve(vect.size());
-//	cout<<vect.size()<<endl;
 	for(size_t i(0);i<vect.size();++i){
-		uint8_t c(vect[i]);
-		uint8_t mod(c/(1<<6));
-//		printUC(c);
-		c%=1<<6;
-//		cout<<"mod : ";
-//		printUC(mod);
 
-		switch (mod) {
-			case 1:
-				//~ res.push_back(int2char(c/(1<<2)));
-				res+=(int2string1[c]);
+		switch (vect[i]>>6) {
+			case 3:
+				//~ res+=(int2string3[c]);
+				res.append(int2string3[vect[i]&0b00111111]);
 				break;
 			case 2:
-				//~ res.push_back(int2char(c/(1<<4)));
-				//~ c<<=2;
-				//~ res.push_back(int2char((c/(1<<4))%4));
-				res+=(int2string2[c]);
+				res.append(int2string2[vect[i]&0b00001111]);
+				//~ res+=(int2string2[c]);
 				break;
-
 			default:
-				//~ res.push_back(int2char(c/(1<<6)));
-				//~ c<<=2;
-				//~ res.push_back(int2char(c/(1<<6)));
-				//~ c<<=2;
-				//~ res.push_back(int2char(c/(1<<6)));
-				res+=(int2string3[c]);
+				//~ res+=(int2string1[c]);
+				res.append(int2string1[vect[i]&0b00000011]);
 				break;
 		}
 	}
@@ -401,219 +317,206 @@ string binSeq::str(){
 }
 
 
-binSeq binSeq::sub(size_t begin){
+binSeq binSeq::sub(uint8_t begin){
 	binSeq res;
 	res.vect.reserve(vect.size());
-	size_t count(0);
+	uint8_t count(0);
 	bool go(true);
 	size_t i(0);
-	for(; i<vect.size() and go; ++i){
+	for(; go; ++i){
 		uint8_t c(vect[i]);
-		uint8_t n(c/(1<<6));
+		uint8_t n(c>>6);
 		if(count+n<begin){
 			count+=n;
 		}else{
 			go=false;
-			if(count+n==begin){
-			}else{
-				//~ unsigned char toGet((unsigned char)());
+			if(count+n!=begin){
 				if(count+n-begin==1){
-					res.vect.push_back((1<<6)+c%(1<<2));
+					res.vect.push_back((1<<6)| c&0b00000011);
 				}else{
-					res.vect.push_back((2<<6)+c%(1<<4));
+					res.vect.push_back((2<<6)| c&0b00001111);
 				}
 			}
 		}
 	}
 	res.vect.insert(res.vect.end(), vect.begin()+i, vect.end());
-
 	return res;
 }
 
 
-binSeq binSeq::sub(size_t begin, size_t size){
+//~ binSeq binSeq::sub(size_t begin, size_t size){
+	//~ binSeq res;
+	//~ res.vect.reserve(vect.size());
+	//~ size_t i(0);
+	//~ size_t countBegin(0);
+	//~ bool go(false);
+	//~ for (size_t count(0); count<size;) {
+		//~ uint8_t ch(vect[i]);
+		//~ uint8_t mod(ch/(1<<6));
+//~
+		//~ if(!go){
+			//~ if(countBegin+mod<begin){
+				//~ countBegin+=mod;
+			//~ }else{
+				//~ if(countBegin+mod==begin){
+					//~ go=true;
+				//~ }else{
+					//~ go=true;
+					//~ if(countBegin+mod-begin==1){
+						//~ res.vect.push_back((1<<6)+ch%(1<<2));
+						//~ ++count;
+					//~ }else{
+						//~ res.vect.push_back((2<<6)+ch%(1<<4));
+						//~ count+=2;
+					//~ }
+				//~ }
+			//~ }
+		//~ }else{
+			//~ if(count+mod<=size){
+				//~ res.vect.push_back(ch);
+				//~ count+=mod;
+			//~ }else{
+				//~ ch<<=2;
+				//~ if(size-count==1){
+					//~ res.vect.push_back((1<<6)+ch/(1<<6));
+					//~ ++count;
+				//~ }else{
+					//~ res.vect.push_back((2<<6)+ch/(1<<4));
+					//~ count+=2;
+				//~ }
+			//~ }
+		//~ }
+//~
+		//~ ++i;
+	//~ }
+	//~ return res;
+//~ }
+
+
+binSeq binSeq::getBegin(uint8_t size){
 	binSeq res;
-	res.vect.reserve(vect.size());
 	size_t i(0);
-	size_t countBegin(0);
-	bool go(false);
-	for (size_t count(0); count<size;) {
+	for(uint8_t c(0); c<size;++i){
 		uint8_t ch(vect[i]);
 		uint8_t mod(ch/(1<<6));
+		int8_t n(c+mod-size);
 
-		if(!go){
-			if(countBegin+mod<begin){
-				countBegin+=mod;
-			}else{
-				if(countBegin+mod==begin){
-					go=true;
-				}else{
-					go=true;
-					//~ unsigned char toGet((unsigned char)());
-					if(countBegin+mod-begin==1){
-						res.vect.push_back((1<<6)+ch%(1<<2));
-						++count;
-					}else{
-						res.vect.push_back((2<<6)+ch%(1<<4));
-						count+=2;
-					}
-				}
-			}
-		}else{
-			if(count+mod<=size){
+		switch (n){
+			case 1:
+				ch&=0b00111100;
+				res.vect.push_back((2<<6)|(ch>>2));
+				c+=2;
+				break;
+			case 2:
+				ch&=0b00110000;
+				res.vect.push_back((1<<6)|(ch>>4));
+				c++;
+				break;
+			default:
 				res.vect.push_back(ch);
-				count+=mod;
-//				cout<<1<<endl;
-			}else{
-//				cout<<2<<endl;
-				//~ unsigned char toGet((unsigned char)(size-count));
-//				printUC(toGet);
-				ch<<=2;
-				if(size-count==1){
-					res.vect.push_back((1<<6)+ch/(1<<6));
-					++count;
-				}else{
-					res.vect.push_back((2<<6)+ch/(1<<4));
-					count+=2;
-				}
-				//~ res.vect.push_back((unsigned char)(toGet<<6)+ch/(1<<(8-2*(toGet))));
-//				printUC((unsigned char)(toGet<<6)+ch%(1<<(6-2*(3-toGet))));
-				//~ count+=toGet;
-			}
+				c+=mod;
+				break;
 		}
-
-		++i;
 	}
-
 	return res;
 }
 
-
-/*
-uint64_t binSeq::getBegin(size_t size){
+uint64_t binSeq::getBeginInt(uint8_t size){
 	uint64_t res(0);
 	size_t i(0);
-	for(size_t c(0); c<size;){
-		unsigned char ch(vect[i]);
-		unsigned char mod(ch/(1<<6));
-		int64_t n(c+mod-size);
-		if(n<=0){
-			res<<=(2*mod);
-			res+=ch%(1<<6);
-			i++;
-			c+=mod;
-		}else{
-			if(n==2){
-				res<<=2;
-				ch<<=2;
-				res+=ch/(1<<6);
-				c++;
-				i++;
-			}else{
+	for(uint8_t c(0); c<size;++i){
+		uint8_t ch(vect[i]);
+		uint8_t mod(ch>>6);
+		int8_t n(c+mod-size);
+
+		switch (n){
+			case 1:
+				ch&=0b00111100;
+				//~ res.vect.push_back((2<<6)|(ch>>2));
 				res<<=4;
-				ch<<=2;
-				res+=ch/(1<<4);
+				res+=(ch>>2);
 				c+=2;
-				i++;
-			}
-		}
-	}
-	return res;
-}
-*/
-
-
-binSeq binSeq::getBegin(size_t size){
-	binSeq res;
-	size_t i(0);
-	for(size_t c(0); c<size;){
-		uint8_t ch(vect[i]);
-		uint8_t mod(ch/(1<<6));
-		int64_t n(c+mod-size);
-		if(n<=0){
-//			res<<=(2*mod);
-//			res+=ch%(1<<6);
-			res.vect.push_back(ch);
-			i++;
-			c+=mod;
-		}else{
-			if(n==2){
-//				res<<=2;
-				ch<<=2;
-//				res+=ch/(1<<6);
-				res.vect.push_back((1<<6)+ch/(1<<6));
+				break;
+			case 2:
+				ch&=0b00110000;
+				//~ res.vect.push_back((1<<6)|(ch>>4));
+				res<<=2;
+				res+=(ch>>4);
 				c++;
-				i++;
-			}else{
-//				res<<=4;
-				ch<<=2;
-//				res+=ch/(1<<4);
-				res.vect.push_back((2<<6)+ch/(1<<4));
-				c+=2;
-				i++;
-			}
+				break;
+			default:
+				//~ res.vect.push_back(ch);
+				res<<=(2*mod);
+				res+=(ch&0b00111111);
+				c+=mod;
+				break;
 		}
 	}
 	return res;
 }
 
 
-/*
-
-uint64_t binSeq::getEnd(size_t size){
-	uint64_t res(0);
-	size_t i(vect.size()-1);
-	for(size_t c(0); c<size;){
-		unsigned char ch(vect[i]);
-		unsigned char mod(ch/(1<<6));
-		int64_t n(c+mod-size);
-		if(n<=0){
-			res+=(ch%(1<<6)<<(2*c));
-			i--;
-			c+=mod;
-		}else{
-			if(n==2){
-				res+=(ch%(1<<2)<<(2*c));
-				c++;
-				i--;
-			}else{
-				res+=(ch%(1<<4)<<(2*c));
-				c+=2;
-				i--;
-			}
-		}
-	}
-	return res;
-}
-*/
-
-binSeq binSeq::getEnd(size_t size){
+binSeq binSeq::getEnd(uint8_t size){
 	binSeq res;
 	size_t i(vect.size()-1);
-	for(size_t c(0); c<size;){
+	for(uint8_t c(0); c<size;--i){
 		uint8_t ch(vect[i]);
-		uint8_t mod(ch/(1<<6));
-		int64_t n(c+mod-size);
-		if(n<=0){
-//			res+=(ch%(1<<6)<<(2*c));
-			res.vect.push_back(ch);
-			i--;
-			c+=mod;
-		}else{
-			if(n==2){
-//				res+=(ch%(1<<2)<<(2*c));
-				res.vect.push_back((1<<6)+ch%(1<<2));
-				c++;
-				i--;
-			}else{
-//				res+=(ch%(1<<4)<<(2*c));
-				res.vect.push_back((2<<6)+ch%(1<<4));
+		uint8_t mod(ch>>6);
+		uint8_t n(c+mod-size);
+		switch (n){
+			case 1:
+				res.vect.push_back((2<<6)|(ch&0b00001111));
 				c+=2;
-				i--;
-			}
+				break;
+			case 2:
+				res.vect.push_back((1<<6)|(ch&0b00000011));
+				c++;
+				break;
+			default:
+				res.vect.push_back(ch);
+				c+=mod;
+				break;
 		}
 	}
 	::reverse(res.vect.begin(),res.vect.end());
+	return res;
+}
+
+uint64_t binSeq::getEndInt(uint8_t size){
+	uint64_t res(0),inter;
+	size_t i(vect.size()-1);
+	for(uint8_t c(0); c<size;--i){
+		uint8_t ch(vect[i]);
+		uint8_t mod(ch>>6);
+		uint8_t n(c+mod-size);
+		switch (n){
+			case 1:
+				//~ res.vect.push_back((2<<6)|(ch&0b00001111));
+				inter=((ch&0b00001111));
+				inter<<=(2*c);
+				res+=inter;
+				c+=2;
+				break;
+			case 2:
+				//~ res.vect.push_back((1<<6)|(ch&0b00000011));
+				inter=((ch&0b00000011));
+				inter<<=(2*c);
+				res+=inter;
+				c++;
+				break;
+			default:
+				//~ res.vect.push_back(ch);
+				inter=((ch&0b00111111));
+				inter<<=(2*c);
+				res+=inter;
+				c+=mod;
+				break;
+		}
+		//~ printUC(c);
+		//~ cout<<c<<" "<<res<<endl;
+	}
+	//~ ::reverse(res.vect.begin(),res.vect.end());
+	//~ cin.get();
 	return res;
 }
 
@@ -623,19 +526,9 @@ void binSeq::add(const binSeq& bs){
 	vect.insert(vect.end(), bs.vect.begin(), bs.vect.end());
 }
 
-//~
-//~ void binSeq::reverse(){//TODO IMPROVE IN PLACE
-	//~ vector<uint8_t> V;
-	//~ V.reserve(vect.size());
-	//~ for(int i((int)vect.size()-1); i>-1; --i){
-		//~ V.push_back(rc[vect[i]]);
-	//~ }
-	//~ vect=V;
-//~ }
 
 void binSeq::reverse(){
 	uint32_t s(vect.size());
-	string str1(str());
 	uint32_t i(0);
 	for(; i<s/2 ;++i){
 		uint8_t inter (rc[vect[s-1-i]]);
@@ -645,9 +538,6 @@ void binSeq::reverse(){
 	if(s%2==1){
 		vect[i]=rc[vect[i]];
 	}
-	//~ if(str()!=reversecomplementnadine(str1)){
-		//~ cout<<str1<<" "<<str()<<endl;
-	//~ }
 }
 
 
@@ -673,9 +563,8 @@ binSeq::binSeq(uint32_t n){
 uint32_t binSeq::getNumber(){
 	uint32_t res(0);
 	for(int i(vect.size()-1); i>-1; --i){
-		uint8_t c(vect[i]);
 		res<<=8;
-		res+=c;
+		res+=vect[i];
 	}
 	return res;
 }
@@ -685,9 +574,9 @@ uint64_t binSeq::getInt(){
 	uint64_t res(0);
 	for(size_t i(0); i<vect.size(); ++i){
 		uint8_t c(vect[i]);
-		uint8_t mod(c/(1<<6));
-		res<<=(2*mod);
-		res+=c%(1<<(2*mod));
+		//~ uint8_t mod(c/(1<<6));
+		res<<=(2*(c>>6));
+		res+=c&0b00111111;
 	}
 	return res;
 }

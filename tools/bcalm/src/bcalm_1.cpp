@@ -120,7 +120,7 @@ void bcalm_1::execute (){
      * VARIOUS INIT
      *
      */
-
+	initBinSeq();
     /** We set BankBinary buffer. */
     BankBinary::setBufferSize (1000);
 
@@ -343,7 +343,7 @@ void bcalm_1::execute (){
                 /* distribute nodes (to other buckets, or output, or glue) */
                 auto start_cdistribution_t=get_wtime();
                 for(uint32_t i(0);i<g.unitigs.size();++i){
-                    if(g.unitigs[i].size()!=0){
+                    if(!g.unitigs[i].isNumber){
                         string seq = g.unitigs[i].str();
                         //~ string seq = g.unitigs[i];
 

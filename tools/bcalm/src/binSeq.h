@@ -25,10 +25,12 @@ public:
 	bool isNumber;
 
 	string str();
-	binSeq sub(size_t begin);
+	binSeq sub(uint8_t begin);
 	binSeq sub(size_t begin,size_t size);
-	binSeq getBegin(size_t size);
-	binSeq getEnd(size_t size);
+	binSeq getBegin(uint8_t size);
+	binSeq getEnd(uint8_t size);
+	uint64_t getEndInt(uint8_t size);
+	uint64_t getBeginInt(uint8_t size);
 //	uint64_t getBegin(size_t size);
 //	uint64_t getEnd(size_t size);
 //	uint64_t getBeginRc(size_t size);
@@ -69,9 +71,8 @@ inline binSeq operator+(binSeq lhs, const binSeq& rhs){
 }
 
 
+void initBinSeq();
 
-unsigned char char2int(unsigned char c);
-unsigned char int2char(unsigned char c);
 
 void testBinSeq();
 

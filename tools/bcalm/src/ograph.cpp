@@ -1468,70 +1468,52 @@ void graph4::compress(){
 		kmer2Indice k2i(compactions[i]);
 		uint32_t iL(k2i.indiceL);
 		uint32_t iR(k2i.indiceR);
-		//~ cout<<iL<<" "<<iR<<endl;
 		compaction(iL,iR);
 	}
 
-	for(size_t i(0);i<unitigs.size();++i){
-		if(unitigs[i].isNumber){
-			unitigs[i].clear();
-		}
-	}
+	//~ for(size_t i(0);i<unitigs.size();++i){
+		//~ if(unitigs[i].isNumber){
+			//~ unitigs[i].clear();
+		//~ }
+	//~ }
 }
 
 void graph4::addvertex(const string& unitigstr){
-	//~ cout<<"ADD "<<endl<<unitigstr<<endl;
-	//~ cout<<"------------------------------------------------------------------------------------------------------------"<<endl;
 	binSeq unitig(unitigstr);
-	//~ cout<<unitig.size()<<endl;
 	unitigs.push_back(unitig);
 	uint32_t i(unitigs.size()-1);
 
 	if(leftmins[i]){
 		binSeq beg(unitig.getBegin(k));
-		//~ cout<<beg.str()<<endl;
 		uint64_t leftKmer1(beg.getInt());
-		//~ cout<<leftKmer1<<endl;
 		beg.reverse();
-		//~ cout<<beg.str()<<endl;
 		uint64_t leftKmer2(beg.getInt());
-		//~ cout<<leftKmer2<<endl;
 		kmerIndice ki;
 		ki.indice=i;
 		if(leftKmer1<leftKmer2){
 			ki.kmmer=leftKmer1;
-			//~ cout<<"left"<<leftKmer1<<endl;
 			left.push_back(ki);
 		}else{
 			ki.kmmer=leftKmer2;
-			//~ cout<<"right"<<leftKmer2<<endl;
 			right.push_back(ki);
 		}
 	}
 
 	if(rightmins[i]){
 		binSeq end(unitig.getEnd(k));
-		//~ cout<<end.str()<<endl;
 		uint64_t rightKmer1(end.getInt());
 		end.reverse();
-		//~ cout<<rightKmer1<<endl;
-		//~ cout<<end.str()<<endl;
 		uint64_t rightKmer2(end.getInt());
-		//~ cout<<rightKmer2<<endl;
 		kmerIndice ki;
 		ki.indice=i;
 		if(rightKmer1<rightKmer2){
 			ki.kmmer=rightKmer1;
-			//~ cout<<"right"<<rightKmer1<<endl;
 			right.push_back(ki);
 		}else{
 			ki.kmmer=rightKmer2;
-			//~ cout<<"left"<<rightKmer2<<endl;
 			left.push_back(ki);
 		}
 	}
-
-	//~ cout<<"ADDED"<<endl<<endl;;
 }
 
 void graph4::addleftmin(int min){
@@ -1555,17 +1537,32 @@ void graph4::addrightmin(int min){
 void graph4::compaction(uint32_t iL, uint32_t iR){
 
     bool b1(unitigs[iL].isNumber),b2(unitigs[iR].isNumber);
-    if(b1 && b2){
-		compaction(unitigs[iL].getNumber(),unitigs[iR].getNumber());
-		return;
-	}
-    if(b1){
-		compaction(unitigs[iL].getNumber(),iR);
-		return;
-	}
-	if(b2){
-		compaction(iL,unitigs[iR].getNumber());
-		return;
+    //~ if(b1 && b2){
+		//~ compaction(unitigs[iL].getNumber(),unitigs[iR].getNumber());
+		//~ return;
+	//~ }
+    //~ if(b1){
+		//~ compaction(unitigs[iL].getNumber(),iR);
+		//~ return;
+	//~ }
+	//~ if(b2){
+		//~ compaction(iL,unitigs[iR].getNumber());
+		//~ return;
+	//~ }
+
+	if(b1){
+		if(b2){
+			compaction(unitigs[iL].getNumber(),unitigs[iR].getNumber());
+			return;
+		}else{
+			compaction(unitigs[iL].getNumber(),iR);
+			return;
+		}
+	}else{
+		if(b2){
+			compaction(iL,unitigs[iR].getNumber());
+			return;
+		}
 	}
 
 	if(unitigs[iL].size()<unitigs[iR].size()){
@@ -1574,29 +1571,29 @@ void graph4::compaction(uint32_t iL, uint32_t iR){
 
 	//~ binSeq seq1(unitigs[iL]),seq2(unitigs[iR]);
 
-		binSeq end1(unitigs[iL].getEnd(k));
+		uint64_t end1(unitigs[iL].getEndInt(k));
 		binSeq beg2(unitigs[iR].getBegin(k));
-		if(end1.getInt()==beg2.getInt()){
+		if(end1==beg2.getInt()){
 			unitigs[iL].add(unitigs[iR].sub(k));
 			unitigs[iR]=binSeq(iL);
 			return;
 		}
 
 		binSeq end2(unitigs[iR].getEnd(k));
-		if(end1.getInt()==end2.getReverse().getInt()){
+		if(end1==end2.getReverse().getInt()){
 			unitigs[iL].add(unitigs[iR].getReverse().sub(k));
 			unitigs[iR]=binSeq(iL);
 			return;
 		}
 
-		binSeq beg1(unitigs[iL].getBegin(k));
-		if(beg1.getInt()==end2.getInt()){
+		uint64_t beg1(unitigs[iL].getBeginInt(k));
+		if(beg1==end2.getInt()){
 			unitigs[iR].add(unitigs[iL].sub(k));
 			unitigs[iL]=binSeq(iR);
 			return;
 		}
 
-		if(beg1.getInt()==beg2.getReverse().getInt()){
+		if(beg1==beg2.getReverse().getInt()){
 			unitigs[iR].reverse();
 			unitigs[iR].add(unitigs[iL].sub(k));
 			unitigs[iL]=binSeq(iR);
