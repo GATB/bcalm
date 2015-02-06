@@ -14,7 +14,7 @@
 
 
 
-const uint8_t rc[]={
+static const uint8_t rc[]={
 
 	0b00000000,0b00000000,0b00000000,0b00000000,0b00000000,0b00000000,0b00000000,0b00000000,
 	0b00000000,0b00000000,0b00000000,0b00000000,0b00000000,0b00000000,0b00000000,0b00000000,
@@ -55,25 +55,20 @@ const uint8_t rc[]={
 };
 
 
-uint8_t char2int1[100];
+static uint8_t char2int1[100];
 
-uint8_t char2int[255];
+static uint8_t char2int[255];
 
-uint8_t char2int2[255];
+static uint8_t char2int2[255];
 
 uint8_t functionwihtoutcoll(uint8_t x,uint8_t y,uint8_t z){
 	return( (x&0b00000110)|((y&0b00000110)<<2)|((z&0b00000110)<<4) );
-	//~ return( x|(y<<2)|(z<<4));
 }
 
 uint8_t functionwihtoutcoll(uint8_t x,uint8_t y){
 	return(x|(y<<4));
-	//~ return( x|(y<<2)|(z<<4));
 }
 
-//~ uint8_t functionwihtoutcoll(uint8_t x){
-	//~ return(x&0b00000110);
-//~ }
 
 void initBinSeq(){
 	char2int1[65]=0b01000000;
@@ -199,23 +194,23 @@ const unordered_map<string,unsigned >  string2Byte={
 
 
 
-const string int2string1[]={"A","C","G","T"};
+static const string int2string1[]={"A","C","G","T"};
 
-const string int2string2[]={
+static const string int2string2[]={
 	"AA","AC","AG","AT",
 	"CA","CC","CG","CT",
 	"GA","GC","GG","GT",
 	"TA","TC","TG","TT"
 	};
 
-const string int2string3[]={
+static const string int2string3[]={
 	"AAA","AAC","AAG","AAT","ACA","ACC","ACG","ACT","AGA","AGC","AGG","AGT","ATA","ATC","ATG","ATT",
 	"CAA","CAC","CAG","CAT","CCA","CCC","CCG","CCT","CGA","CGC","CGG","CGT","CTA","CTC","CTG","CTT",
 	"GAA","GAC","GAG","GAT","GCA","GCC","GCG","GCT","GGA","GGC","GGG","GGT","GTA","GTC","GTG","GTT",
 	"TAA","TAC","TAG","TAT","TCA","TCC","TCG","TCT","TGA","TGC","TGG","TGT","TTA","TTC","TTG","TTT"
 	};
 
-//I'm so sorry...
+
 uint8_t char2Byte[85]={
 	0,0,0,0,0,0,0,0,0,0,
 	0,0,0,0,0,0,0,0,0,0,
@@ -228,7 +223,7 @@ uint8_t char2Byte[85]={
 	0,0,0,0,3
 	};
 
-	uint8_t char2Byte1[85]={
+uint8_t char2Byte1[85]={
 	0,0,0,0,0,0,0,0,0,0,
 	0,0,0,0,0,0,0,0,0,0,
 	0,0,0,0,0,0,0,0,0,0,
@@ -240,7 +235,7 @@ uint8_t char2Byte[85]={
 	0,0,0,0,3<<2
 	};
 
-	uint8_t char2Byte2[85]={
+uint8_t char2Byte2[85]={
 	0,0,0,0,0,0,0,0,0,0,
 	0,0,0,0,0,0,0,0,0,0,
 	0,0,0,0,0,0,0,0,0,0,
@@ -316,6 +311,28 @@ string binSeq::str(){
 	return res;
 }
 
+void binSeq::str2(string& res){
+	res.clear();
+	res.reserve(vect.size());
+	for(size_t i(0);i<vect.size();++i){
+
+		switch (vect[i]>>6) {
+			case 3:
+				//~ res+=(int2string3[c]);
+				res.append(int2string3[vect[i]&0b00111111]);
+				break;
+			case 2:
+				res.append(int2string2[vect[i]&0b00001111]);
+				//~ res+=(int2string2[c]);
+				break;
+			default:
+				//~ res+=(int2string1[c]);
+				res.append(int2string1[vect[i]&0b00000011]);
+				break;
+		}
+	}
+}
+
 
 binSeq binSeq::sub(uint8_t begin){
 	binSeq res;
@@ -342,6 +359,7 @@ binSeq binSeq::sub(uint8_t begin){
 	res.vect.insert(res.vect.end(), vect.begin()+i, vect.end());
 	return res;
 }
+
 
 
 //~ binSeq binSeq::sub(size_t begin, size_t size){
@@ -455,6 +473,38 @@ uint64_t binSeq::getBeginInt(uint8_t size){
 	return res;
 }
 
+uint64_t binSeq::getBeginRcInt(uint8_t size){
+	uint64_t res(0),inter;
+	size_t i(0);
+	for(uint8_t c(0); c<size;++i){
+		uint8_t ch(rc[vect[i]]);
+		uint8_t mod(ch>>6);
+		int8_t n(c+mod-size);
+
+		switch (n){
+			case 1:
+				inter=((ch&0b00001111));
+				inter<<=(2*c);
+				res+=inter;
+				c+=2;
+				break;
+			case 2:
+				inter=((ch&0b00000011));
+				inter<<=(2*c);
+				res+=inter;
+				c++;
+				break;
+			default:
+				inter=((ch&0b00111111));
+				inter<<=(2*c);
+				res+=inter;
+				c+=mod;
+				break;
+		}
+	}
+	return res;
+}
+
 
 binSeq binSeq::getEnd(uint8_t size){
 	binSeq res;
@@ -509,6 +559,40 @@ uint64_t binSeq::getEndInt(uint8_t size){
 				inter=((ch&0b00111111));
 				inter<<=(2*c);
 				res+=inter;
+				c+=mod;
+				break;
+		}
+		//~ printUC(c);
+		//~ cout<<c<<" "<<res<<endl;
+	}
+	//~ ::reverse(res.vect.begin(),res.vect.end());
+	//~ cin.get();
+	return res;
+}
+
+uint64_t binSeq::getEndRcInt(uint8_t size){
+	uint64_t res(0);
+	size_t i(vect.size()-1);
+	for(uint8_t c(0); c<size;--i){
+		uint8_t ch(rc[vect[i]]);
+		uint8_t mod(ch>>6);
+		uint8_t n(c+mod-size);
+		switch (n){
+			case 1:
+				ch&=0b00111100;
+				res<<=4;
+				res+=(ch>>2);
+				c+=2;
+				break;
+			case 2:
+				ch&=0b00110000;
+				res<<=2;
+				res+=(ch>>4);
+				++c;
+				break;
+			default:
+				res<<=(2*mod);
+				res+=(ch&0b00111111);
 				c+=mod;
 				break;
 		}

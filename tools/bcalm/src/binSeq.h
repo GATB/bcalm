@@ -21,16 +21,20 @@ class binSeq {
 public:
 	//~ static const unsigned char rc[];
 	//~ static const unordered_map<string,unsigned char> string2Byte;
-	vector<uint8_t> vect;
 	bool isNumber;
+	vector<uint8_t> vect;
+
 
 	string str();
+	void str2(string& res);
 	binSeq sub(uint8_t begin);
 	binSeq sub(size_t begin,size_t size);
 	binSeq getBegin(uint8_t size);
 	binSeq getEnd(uint8_t size);
 	uint64_t getEndInt(uint8_t size);
 	uint64_t getBeginInt(uint8_t size);
+	uint64_t getBeginRcInt(uint8_t size);
+	uint64_t getEndRcInt(uint8_t size);
 //	uint64_t getBegin(size_t size);
 //	uint64_t getEnd(size_t size);
 //	uint64_t getBeginRc(size_t size);
@@ -44,31 +48,31 @@ public:
 	uint32_t getNumber();
 	uint64_t getInt();
 
-	binSeq& operator+=(const binSeq& rhs){
-		this->add(rhs);
-		return *this;
-	}
+	//~ binSeq& operator+=(const binSeq& rhs){
+		//~ this->add(rhs);
+		//~ return *this;
+	//~ }
 
 
 
 
 
 
-	binSeq(const string& str);
+	explicit binSeq(const string& str);
 	binSeq();
 	binSeq(const binSeq& bs);
-	binSeq(uint32_t);
+	explicit binSeq(uint32_t);
 
 
 };
 
 
-inline bool operator==(const binSeq& lhs, const binSeq& rhs){return lhs.vect==rhs.vect;}
-inline bool operator!=(const binSeq& lhs, const binSeq& rhs){return !operator==(lhs,rhs);}
-inline binSeq operator+(binSeq lhs, const binSeq& rhs){
-	lhs += rhs;
-	return lhs;
-}
+//~ inline bool operator==(const binSeq& lhs, const binSeq& rhs){return lhs.vect==rhs.vect;}
+//~ inline bool operator!=(const binSeq& lhs, const binSeq& rhs){return !operator==(lhs,rhs);}
+//~ inline binSeq operator+(binSeq lhs, const binSeq& rhs){
+	//~ lhs += rhs;
+	//~ return lhs;
+//~ }
 
 
 void initBinSeq();

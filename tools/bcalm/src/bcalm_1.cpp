@@ -342,10 +342,12 @@ void bcalm_1::execute (){
 
                 /* distribute nodes (to other buckets, or output, or glue) */
                 auto start_cdistribution_t=get_wtime();
+                 string seq;
                 for(uint32_t i(0);i<g.unitigs.size();++i){
+                    //~ if(!g.unitigs[i].empty()){
                     if(!g.unitigs[i].isNumber){
-                        string seq = g.unitigs[i].str();
-                        //~ string seq = g.unitigs[i];
+                        seq= g.unitigs[i].str();
+                        //~ seq= g.unitigs[i];
 
                         int k = kmerSize;
                         Model::Kmer kmmerBegin = modelK1.codeSeed(seq.substr(0, k - 1).c_str(), Data::ASCII);

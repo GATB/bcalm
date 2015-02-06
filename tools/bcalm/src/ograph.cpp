@@ -936,7 +936,11 @@ void graph2::addvertex(const string& unitig){
 	}
 }
 
-bool kmerIndiceCompare(kmerIndice a ,kmerIndice b) { return a.kmmer < b.kmmer; }
+struct comparator{
+
+bool operator()(const kmerIndice& a , const kmerIndice& b) { return a.kmmer < b.kmmer; }
+
+};
 
 bool isNumber(const string& str){
 	switch (str[0]){
@@ -1038,8 +1042,8 @@ void graph3::compaction(uint32_t iL, uint32_t iR){
 
 
 void graph3::debruijn(){
-        sort(left.begin(),left.end(),kmerIndiceCompare);
-        sort(right.begin(),right.end(),kmerIndiceCompare);
+        sort(left.begin(),left.end(),comparator());
+        sort(right.begin(),right.end(),comparator());
 
         kmerIndice kL,kR;
         while(left.size()!=0 and right.size()!=0){
@@ -1369,8 +1373,8 @@ void graph2::chainCompaction2(uint32_t i, string unitig, uint32_t next){
 
 
 void graph4::debruijn(){
-        sort(left.begin(),left.end(),kmerIndiceCompare);
-        sort(right.begin(),right.end(),kmerIndiceCompare);
+        sort(left.begin(),left.end(),comparator());
+        sort(right.begin(),right.end(),comparator());
 
         kmerIndice kL,kR;
         while(left.size()!=0 and right.size()!=0){
@@ -1470,7 +1474,8 @@ void graph4::compress(){
 		uint32_t iR(k2i.indiceR);
 		compaction(iL,iR);
 	}
-
+	//~ cout<<a<<" "<<b<<" "<<c<<" "<<d<<endl;
+	//~ cin.get();
 	//~ for(size_t i(0);i<unitigs.size();++i){
 		//~ if(unitigs[i].isNumber){
 			//~ unitigs[i].clear();
@@ -1572,31 +1577,37 @@ void graph4::compaction(uint32_t iL, uint32_t iR){
 	//~ binSeq seq1(unitigs[iL]),seq2(unitigs[iR]);
 
 		uint64_t end1(unitigs[iL].getEndInt(k));
-		binSeq beg2(unitigs[iR].getBegin(k));
-		if(end1==beg2.getInt()){
+		uint64_t beg2(unitigs[iR].getBeginInt(k));
+		if(end1==beg2){
 			unitigs[iL].add(unitigs[iR].sub(k));
 			unitigs[iR]=binSeq(iL);
+			//~ a++;
 			return;
 		}
 
-		binSeq end2(unitigs[iR].getEnd(k));
-		if(end1==end2.getReverse().getInt()){
+		uint64_t end2rc(unitigs[iR].getEndRcInt(k));
+		if(end1==end2rc){
 			unitigs[iL].add(unitigs[iR].getReverse().sub(k));
 			unitigs[iR]=binSeq(iL);
+			//~ b++;
 			return;
 		}
 
 		uint64_t beg1(unitigs[iL].getBeginInt(k));
-		if(beg1==end2.getInt()){
+		uint64_t end2(unitigs[iR].getEndInt(k));
+		if(beg1==end2){
 			unitigs[iR].add(unitigs[iL].sub(k));
 			unitigs[iL]=binSeq(iR);
+			//~ c++;
 			return;
 		}
 
-		if(beg1==beg2.getReverse().getInt()){
+		uint64_t beg2s(unitigs[iR].getBeginRcInt(k));
+		if(beg1==beg2s){
 			unitigs[iR].reverse();
 			unitigs[iR].add(unitigs[iL].sub(k));
 			unitigs[iL]=binSeq(iR);
+			//~ d++;
 			return;
 		}
 

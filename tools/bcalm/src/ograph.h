@@ -158,8 +158,9 @@ class graph2
 
 
 struct kmerIndice{
-	__uint128_t kmmer;
 	uint32_t indice;
+	uint64_t kmmer;
+
 };
 
 struct kmer2Indice{
@@ -201,6 +202,7 @@ class graph3
 class graph4
 {
 	public:
+		//~ uint32_t a,b,c,d;
 		uint32_t k;
 		uint32_t minimizer;
 		uint32_t minsize;
@@ -220,6 +222,7 @@ class graph4
 		uint32_t size();
 
 		graph4(uint32_t ka, uint32_t min,uint32_t size){
+			//~ a=b=c=d=0;
 			minsize=size;
 			k=ka;
 			minimizer=min;
