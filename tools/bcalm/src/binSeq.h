@@ -21,7 +21,7 @@ class binSeq {
 public:
 	//~ static const unsigned char rc[];
 	//~ static const unordered_map<string,unsigned char> string2Byte;
-	bool isNumber;
+	//~ bool isNumber;
 	vector<uint8_t> vect;
 
 

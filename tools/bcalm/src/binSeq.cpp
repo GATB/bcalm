@@ -211,7 +211,7 @@ static const string int2string3[]={
 	};
 
 
-uint8_t char2Byte[85]={
+uint8_t char2Byte[]={
 	0,0,0,0,0,0,0,0,0,0,
 	0,0,0,0,0,0,0,0,0,0,
 	0,0,0,0,0,0,0,0,0,0,
@@ -223,7 +223,7 @@ uint8_t char2Byte[85]={
 	0,0,0,0,3
 	};
 
-uint8_t char2Byte1[85]={
+uint8_t char2Byte1[]={
 	0,0,0,0,0,0,0,0,0,0,
 	0,0,0,0,0,0,0,0,0,0,
 	0,0,0,0,0,0,0,0,0,0,
@@ -235,7 +235,7 @@ uint8_t char2Byte1[85]={
 	0,0,0,0,3<<2
 	};
 
-uint8_t char2Byte2[85]={
+uint8_t char2Byte2[]={
 	0,0,0,0,0,0,0,0,0,0,
 	0,0,0,0,0,0,0,0,0,0,
 	0,0,0,0,0,0,0,0,0,0,
@@ -262,12 +262,13 @@ void printUC(uint8_t a){
 
 
 binSeq::binSeq(const string& str){
-	isNumber=false;
+	//~ isNumber=false;
 	uint8_t mod(str.size()%3);
 	size_t i(0);
 	vect.reserve((str.size()/3)+mod);
 	for (; i<str.size()-mod; i+=3){
 		vect.push_back(char2int[functionwihtoutcoll(str[i],str[i+1],str[i+2])]);
+		//~ vect.push_back(0x11000000 | char2Byte[str[i]] | char2Byte1[str[i+1]] | char2Byte2[str[i+2]]);
 	}
 
 	if(mod!=0){
@@ -282,7 +283,7 @@ binSeq::binSeq(const string& str){
 
 
 binSeq::binSeq(const binSeq& bs){
-	isNumber=bs.isNumber;
+	//~ isNumber=bs.isNumber;
 	vect=bs.vect;
 }
 
@@ -626,7 +627,7 @@ void binSeq::reverse(){
 
 
 binSeq::binSeq(){
-	isNumber=false;
+	//~ isNumber=false;
 }
 
 
@@ -636,7 +637,7 @@ size_t binSeq::size(){
 
 
 binSeq::binSeq(uint32_t n){
-	isNumber=true;
+	//~ isNumber=true;
 	while(n!=0){
 		vect.push_back((uint8_t)n%(1<<8));
 		n>>=8;

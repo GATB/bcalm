@@ -206,12 +206,15 @@ class graph4
 		uint32_t k;
 		uint32_t minimizer;
 		uint32_t minsize;
+		uint64_t maximum;
+		//~ uint32_t nbKmer;
 		vector<binSeq> unitigs;
 		vector<bool> leftmins;
 		vector<bool> rightmins;
+		vector<bool> isNumber;
 		vector<kmerIndice> left;
 		vector<kmerIndice> right;
-		vector<kmer2Indice> compactions;
+		//~ vector<kmer2Indice> compactions;
 
 		void addvertex(const string& str);
 		void addleftmin(int mini);
@@ -223,10 +226,46 @@ class graph4
 
 		graph4(uint32_t ka, uint32_t min,uint32_t size){
 			//~ a=b=c=d=0;
+			//~ nbKmer=kmerInGraph;
+			maximum=0;
 			minsize=size;
 			k=ka;
 			minimizer=min;
+			//~ unitigs.reserve(nbKmer);
+			//~ leftmins.reserve(nbKmer);
+			//~ rightmins.reserve(nbKmer);
+			//~ left.reserve(nbKmer);
+			//~ right.reserve(nbKmer);
+			//~ isNumber.assign(nbKmer,false);
 		}
 };
+
+//~ class graph5
+//~ {
+	//~ public:
+		//~ uint32_t k;
+		//~ uint32_t minimizer;
+		//~ uint32_t minsize;
+		//~ uint64_t maxR,maxL;
+		//~ vector<binSeq2> unitigs;
+		//~ vector<bool> leftmins;
+		//~ vector<bool> rightmins;
+		//~ vector<kmer2Indice> compactions;
+//~
+		//~ void addvertex(const string& str);
+		//~ void addleftmin(int mini);
+		//~ void addrightmin(int mini);
+		//~ void debruijn();
+		//~ void compress();
+		//~ void compaction(uint32_t iR, uint32_t iL);
+		//~ uint32_t size();
+//~
+		//~ graph4(uint32_t ka, uint32_t min,uint32_t size){
+			//~ maxR=maxL=0;
+			//~ minsize=size;
+			//~ k=ka;
+			//~ minimizer=min;
+		//~ }
+//~ };
 
 #endif

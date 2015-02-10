@@ -241,12 +241,16 @@ void bcalm_1::execute (){
 
         std::atomic<long> nb_left_min_diff_right_min;
         nb_left_min_diff_right_min = 0;
+        std::atomic<uint32_t> kmerInGraph;
+        kmerInGraph = 0;
 
-        auto insertIntoQueues = [p, &minimizerMax, &minimizerMin, &add_to_bucket_queue, &bucket_queues, &modelK1, &k, &repart, &nb_left_min_diff_right_min](string seq) {
+        auto insertIntoQueues = [p, &minimizerMax, &minimizerMin, &add_to_bucket_queue, &bucket_queues, &modelK1, &k, &repart, &nb_left_min_diff_right_min,&kmerInGraph](string seq) {
             Model::Kmer kmmerBegin = modelK1.codeSeed(seq.substr(0, k - 1).c_str(), Data::ASCII);
             size_t leftMin(modelK1.getMinimizerValue(kmmerBegin.value()));
             Model::Kmer kmmerEnd = modelK1.codeSeed(seq.substr(seq.size() - k + 1, k - 1).c_str(), Data::ASCII);
             size_t rightMin(modelK1.getMinimizerValue(kmmerEnd.value()));
+
+            ++kmerInGraph;
 
             if (repart(leftMin) == p)
                 add_to_bucket_queue(leftMin, seq, leftMin, rightMin, p);
@@ -320,11 +324,11 @@ void bcalm_1::execute (){
                 std::tuple<string,size_t,size_t> bucket_elt;
                 while (bucket_queues[actualMinimizer].try_dequeue(bucket_elt))
                 {
-                    size_t leftMin(std::get<1>(bucket_elt));
-                    size_t rightMin(std::get<2>(bucket_elt));
+                    //~ size_t leftMin(std::get<1>(bucket_elt));
+                    //~ size_t rightMin(std::get<2>(bucket_elt));
 
-                    g.addleftmin(leftMin);
-                    g.addrightmin(rightMin);
+                    g.addleftmin(std::get<1>(bucket_elt));
+                    g.addrightmin(std::get<2>(bucket_elt));
                     g.addvertex(std::get<0>(bucket_elt));
                 }
                 auto end_nodes_t=get_wtime();
@@ -345,7 +349,7 @@ void bcalm_1::execute (){
                  string seq;
                 for(uint32_t i(0);i<g.unitigs.size();++i){
                     //~ if(!g.unitigs[i].empty()){
-                    if(!g.unitigs[i].isNumber){
+                    if(!g.isNumber[i]){
                         seq= g.unitigs[i].str();
                         //~ seq= g.unitigs[i];
 
