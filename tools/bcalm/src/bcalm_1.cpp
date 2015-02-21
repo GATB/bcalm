@@ -271,7 +271,7 @@ void bcalm_1::execute (){
 
                     // sanity check
                     if (repart(max_minimizer) < repart(min_minimizer))
-                    {                printf("wtf? traveller kmer\n");                exit(1);            }
+                    {                printf("wtf? traveller kmer = %s, min_minimizer=%d max_minimizer=%d, repart(min_minimizer)=%d, repart(max_minimizer)=%d\n", seq.c_str(), min_minimizer, max_minimizer, repart(min_minimizer), repart(max_minimizer));                exit(1);            }
                 }
             }
 
