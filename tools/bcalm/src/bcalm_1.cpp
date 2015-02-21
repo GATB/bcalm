@@ -133,10 +133,9 @@ void bcalm_1::execute (){
 
     LOCAL (storage);
     Group& dskGroup = storage->getGroup("dsk");
-    string nbPartitionsStrg = dskGroup.getProperty ("nb_partitions");
-    size_t nbPartitions = atol (nbPartitionsStrg.c_str());
     typedef Kmer<SPAN>::Count Count;
-    Partition<Count>& partition = dskGroup.getPartition<Count> ("solid", nbPartitions);
+    Partition<Count>& partition = dskGroup.getPartition<Count> ("solid");
+    size_t nbPartitions = partition.size();
     cout << "DSK created " << nbPartitions << " partitions" << endl;
 
     /** We retrieve the minimizers distribution from the solid kmers storage. */
