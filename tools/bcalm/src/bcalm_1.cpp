@@ -59,14 +59,14 @@ std::mutex lambda_timing_mutex, active_minimizers_mutex;
 
 
 bcalm_1::bcalm_1 ()  : Tool ("bcalm_1"){
-	getParser()->add (new OptionOneParam ("-in", "input file",  true));
-	getParser()->add (new OptionOneParam ("-out", "output file",  false,"out.fa"));
-	getParser()->add (new OptionOneParam ("-k", "kmer size",  false,"31"));
-	getParser()->add (new OptionOneParam ("-m", "minimizer size",  false,"8"));
-	getParser()->add (new OptionOneParam ("-abundance", "abundance threeshold",  false,"3"));
-	getParser()->add (new OptionOneParam ("-threads-simulate", "(debug) number of threads to compute scheduling for",  false,"1"));
-	getParser()->add (new OptionOneParam ("-minimizer-type", "use lexicographical minimizers (0) or frequency based (1)",  false,"1"));
-	getParser()->add (new OptionOneParam ("-dsk-memory", "max memory for dsk (MB)", false, "1000"));
+	getParser()->push_back (new OptionOneParam ("-in", "input file",  true));
+	getParser()->push_back (new OptionOneParam ("-out", "output file",  false,"out.fa"));
+	getParser()->push_back (new OptionOneParam ("-k", "kmer size",  false,"31"));
+	getParser()->push_back (new OptionOneParam ("-m", "minimizer size",  false,"8"));
+	getParser()->push_back (new OptionOneParam ("-abundance", "abundance threeshold",  false,"3"));
+	getParser()->push_back (new OptionOneParam ("-threads-simulate", "(debug) number of threads to compute scheduling for",  false,"1"));
+	getParser()->push_back (new OptionOneParam ("-minimizer-type", "use lexicographical minimizers (0) or frequency based (1)",  false,"1"));
+	getParser()->push_back (new OptionOneParam ("-dsk-memory", "max memory for dsk (MB)", false, "1000"));
 }
 
 void bcalm_1::execute (){
@@ -105,7 +105,7 @@ void bcalm_1::execute (){
 
         if (!is_kmercounted)
         {
-            Graph graph = Graph::create ("-in %s -kmer-size %d -minimizer-size %d  -bloom none -out solidKmers.h5  -abundance-min %d -verbose 1 -minimizer-type %d -max-memory %d", inputFile.c_str(), kmerSize, minSize, abundance, minimizer_type, dsk_memory);
+            Graph graph = Graph::create ("-in %s -kmer-size %d -minimizer-size %d  -bloom none -out solidKmers.h5  -abundance-min %d -verbose 1 -minimizer-type %d -repartition-type 1 -max-memory %d", inputFile.c_str(), kmerSize, minSize, abundance, minimizer_type, dsk_memory);
         }
     }
     auto end_kc=chrono::system_clock::now();
