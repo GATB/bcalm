@@ -21,12 +21,3 @@ Then, you should get a binary in
     tools/bcalm
 
 Note: the first compilation should take some time since the GATB-CORE library is generated.
-
-
-# Documentation
-
-If doxygen is installed, you can generate the gatb-core documentation with 'make doc'
-
-The documention is available in HTML, the entry point being 'ext/gatb-core/doc/html/index.html'
-
-
