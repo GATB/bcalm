@@ -137,7 +137,7 @@ class GlueCommander
 {
     public:
         // to compute minimizers
-        const static size_t SPAN = KSIZE_2; // TODO: should be shared with bcalm_1.cpp
+        const static size_t SPAN = KMER_SPAN(1); // TODO: should be shared with bcalm_1.cpp
         typedef Kmer<SPAN>::ModelCanonical ModelCanon;
         typedef Kmer<SPAN>::ModelMinimizer <ModelCanon> Model;
 

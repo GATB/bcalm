@@ -24,7 +24,7 @@
 
 using namespace std;
 
-const size_t SPAN = KSIZE_2;
+const size_t SPAN = KMER_SPAN(1);
 
 /** Shortcuts. */
 typedef Kmer<SPAN>::Type  Type;
