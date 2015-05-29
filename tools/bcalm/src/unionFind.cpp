@@ -7,86 +7,63 @@
 
 using namespace std;
 
-unionFind::unionFind(unsigned long n)
-{
-    numElements=n;
-    sets=new unsigned long[numElements];
-    for (unsigned long i=0; i<numElements; i++)
-    {
-        sets[i]=i;
-    }
-    numLocks=0;
-    set_mutex=NULL;
-}
+template<class T> 
+T unionFind<T>::find (T key) {
+	if (data.find(key) == data.end()) {
+		data[key] = key;
+	}
 
-unionFind::unionFind(unsigned long n, unsigned long nlocks)
-{
-    numElements=n;
-    sets=new unsigned long[numElements];
-    for (unsigned long i=0; i<numElements; i++)
-    {
-        sets[i]=i;
-    }
-    numLocks = nlocks;
-    if (nlocks > 0)
-    {
-        set_mutex = new mutex[numLocks];
-    }
-    else
-    {
-        set_mutex = NULL;
-    }
-}
-unsigned long unionFind::find (unsigned long key)
-{
-    assert(key<numElements);
+    T tmpKey = key;
+	while (data[tmpKey] == key) {
+		tmpKey = data[tmpKey];
+	}
 
-    unsigned long tmpKey=key;
-    while (sets[tmpKey]!=tmpKey)
-    {
-//        if (key==997768)
-//           printf ("tmpkey %ld parent %ld\n", tmpKey, sets[tmpKey]);
-        tmpKey=sets[tmpKey];
-    }
+
     unsigned long mutexIndex = 0;
+
     if (numLocks > 0)
     {
-        mutexIndex = key%numLocks;
-//        set_mutex[mutexIndex].lock();
+		mutexIndex = getMutex(key);
+		//set_mutex[mutexIndex].lock();
     }
-    sets[key]=tmpKey;
+    data[key] = tmpKey;
+
     if (numLocks > 0)
     {
 //        set_mutex[mutexIndex].unlock();
     }
     return tmpKey;
 }
-void unionFind::union_ (unsigned long set1, unsigned long set2)
-{
-    unsigned long big, small;
-    if (sets[set1] < sets[set2])
-    {
-        small=set1;
-        big=set2;
-    }
-    else
-    {
-        small=set2;
-        big=set1;
-    }
+
+template<class T> 
+void unionFind<T>::union_ (T set1, T set2) {
+	T big, small;
+	if (getSet(set1) < getSet(set2)) {
+		small = set1;
+		big = set2;
+	} else {
+		small = set2;
+		big = set1;
+	}
+
+
 //    cout << "small " << small << " big " << big << endl;
     unsigned long mutexIndex = 0;
     if (numLocks > 0)
     {
-        mutexIndex = big%numLocks;
+        mutexIndex = getMutex(big);
 //        set_mutex[big].lock();
     }
-    sets[big]=sets[small];
+    data[big] = data[small];
     if (numLocks > 0)
     {
 //        set_mutex[big].unlock();
     }
 }
+
+//The following function was implemented but not used in the array implementation.
+//I (PM) did not port it because it is not used and its not immediately clear how to port it to a hash table implementation.
+/*
 void unionFind::compress (unsigned long start, unsigned long end)
 {
     unsigned long key=0,key1=0;
@@ -109,3 +86,4 @@ void unionFind::compress (unsigned long start, unsigned long end)
         }
     }
 }
+*/

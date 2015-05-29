@@ -3,36 +3,50 @@
 #include <mutex>
 #include <thread>
 #include <string.h>
+#include <unordered_map>
 
 
 
 
 using namespace std;
 
-class unionFind
-{
-private:
-    unsigned long numElements;
-    unsigned long *sets;
-    unsigned long numLocks;
-    mutex *set_mutex;
+
+//#define SPARSEHASH
+#ifdef SPARSEHASH
+#include <sparsehash/sparse_hash_map>
+using google::sparse_hash_map;
+#endif
+
+
+template<class T> 
+class unionFind {
 public:
     unionFind()
     {
-        numElements=0;
-        sets=NULL;
         numLocks=0;
         set_mutex=NULL;
+#ifdef SPARSEHASH
+		data.set_deleted_key("");
+#endif
+
     }
+
+	unionFind(unsigned long nlocks)
+	{
+		numLocks = nlocks;
+		if (nlocks > 0)
+		{
+			set_mutex = new mutex[numLocks];
+		}
+		else
+		{
+			set_mutex = NULL;
+		}
+	}
 
     ~unionFind()
     {
         cout << "destructor" << endl;
-        if (sets != NULL)
-        {
-            delete sets;
-            sets=NULL;
-        }
         if (set_mutex != NULL)
         {
 //            delete set_mutex;
@@ -41,20 +55,43 @@ public:
         cout << "destructor end" << endl;
     }
     
-    unionFind(unsigned long n);
-    unionFind(unsigned long n, unsigned long numLocks);
     
-    unsigned long find(unsigned long);
-    void union_(unsigned long set1, unsigned long set2);
-    void compress (unsigned long start, unsigned long end);
     unsigned long getNumElements()
     {
-        return numElements;
+		return data.size();
     }
-    unsigned long getSet(unsigned long set)
+    T getSet(T set)
     {
-        assert(set < numElements);
-        return sets[set];
+		auto it  = data.find (set);
+		if (it == data.end()) {
+			cerr << "Invalid reference to unionFind getSet()" << endl;
+			exit(1);
+		}
+		return *it;
     }
+
+
+
+private:
+#ifdef SPARSEHASH
+	typedef sparse_hash_map<T, T> ufDS;
+#else
+	typedef unordered_map<T, T> ufDS;
+#endif
+
+	ufDS data; 
+	unsigned long numLocks;
+	mutex *set_mutex;
+
+	T find(T key);
+	void union_(T set1, T set2);
+	//void compress (unsigned long start, unsigned long end);
+	
+	unsigned long getMutex(T key) {
+		//TODO this function needs to be written for parallelism to work efficiently.
+		//When T was an int type, this would return key%numLocks
+		//But, in case T is not an int type, we need another way to get an arbitrary mutex.
+		return 0;
+	}
 };
 
