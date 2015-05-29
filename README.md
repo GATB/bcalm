@@ -14,7 +14,7 @@ To retrieve bcalm and its submodule (gatb-core), type
 
 For building your project, you should do the following
     
-    mkdir build;  cd build;  cmake ..;  make
+    mkdir build;  cd build;  cmake ..;  make -j 8
     
 Then, you should get a binary in
 
