@@ -105,7 +105,7 @@ void bcalm_1::execute (){
 
         if (!is_kmercounted)
         {
-            Graph graph = Graph::create ("-in %s -kmer-size %d -minimizer-size %d  -bloom none -out solidKmers.h5  -abundance-min %d -verbose 1 -minimizer-type %d -repartition-type 1 -max-memory %d", inputFile.c_str(), kmerSize, minSize, abundance, minimizer_type, dsk_memory);
+            Graph graph = Graph::create ("-in %s -kmer-size %d -minimizer-size %d  -bloom none -out solidKmers.h5  -abundance-min %d -verbose 1 -minimizer-type %d -repartition-type 1 -max-memory %d", inputFile.c_str(), kmerSize, minSize, abundance, minimizer_type, dsk_memory); // Todo replace solidKmers.h5 by hmm.. inputFile I guess? or whatever Minia does
         }
     }
     auto end_kc=chrono::system_clock::now();
@@ -132,7 +132,10 @@ void bcalm_1::execute (){
     Storage* storage = StorageFactory(STORAGE_HDF5).load ( is_kmercounted ? inputFile.c_str() : "solidKmers.h5");
 
     LOCAL (storage);
+    /** We get the dsk and minimizers hash group in the storage object. */
     Group& dskGroup = storage->getGroup("dsk");
+    Group& minimizersGroup = storage->getGroup("minimizers");
+
     typedef Kmer<SPAN>::Count Count;
     Partition<Count>& partition = dskGroup.getPartition<Count> ("solid");
     size_t nbPartitions = partition.size();
@@ -140,7 +143,7 @@ void bcalm_1::execute (){
 
     /** We retrieve the minimizers distribution from the solid kmers storage. */
     Repartitor repart;
-    repart.load (dskGroup);
+    repart.load (minimizersGroup);
 
     u_int64_t rg = ((u_int64_t)1 << (2*minSize));
 
@@ -151,7 +154,7 @@ void bcalm_1::execute (){
     if (minimizer_type == 1)
     {
         freq_order = new uint32_t[rg];
-        Storage::istream is (dskGroup, "minimFrequency");
+        Storage::istream is (minimizersGroup, "minimFrequency");
         is.read ((char*)freq_order, sizeof(uint32_t) * rg);
     }
 
