@@ -363,53 +363,6 @@ binSeq binSeq::sub(uint8_t begin){
 
 
 
-//~ binSeq binSeq::sub(size_t begin, size_t size){
-	//~ binSeq res;
-	//~ res.vect.reserve(vect.size());
-	//~ size_t i(0);
-	//~ size_t countBegin(0);
-	//~ bool go(false);
-	//~ for (size_t count(0); count<size;) {
-		//~ uint8_t ch(vect[i]);
-		//~ uint8_t mod(ch/(1<<6));
-//~
-		//~ if(!go){
-			//~ if(countBegin+mod<begin){
-				//~ countBegin+=mod;
-			//~ }else{
-				//~ if(countBegin+mod==begin){
-					//~ go=true;
-				//~ }else{
-					//~ go=true;
-					//~ if(countBegin+mod-begin==1){
-						//~ res.vect.push_back((1<<6)+ch%(1<<2));
-						//~ ++count;
-					//~ }else{
-						//~ res.vect.push_back((2<<6)+ch%(1<<4));
-						//~ count+=2;
-					//~ }
-				//~ }
-			//~ }
-		//~ }else{
-			//~ if(count+mod<=size){
-				//~ res.vect.push_back(ch);
-				//~ count+=mod;
-			//~ }else{
-				//~ ch<<=2;
-				//~ if(size-count==1){
-					//~ res.vect.push_back((1<<6)+ch/(1<<6));
-					//~ ++count;
-				//~ }else{
-					//~ res.vect.push_back((2<<6)+ch/(1<<4));
-					//~ count+=2;
-				//~ }
-			//~ }
-		//~ }
-//~
-		//~ ++i;
-	//~ }
-	//~ return res;
-//~ }
 
 
 binSeq binSeq::getBegin(uint8_t size){
@@ -440,8 +393,8 @@ binSeq binSeq::getBegin(uint8_t size){
 	return res;
 }
 
-uint64_t binSeq::getBeginInt(uint8_t size){
-	uint64_t res(0);
+__uint128_t binSeq::getBeginInt(uint8_t size){
+	__uint128_t res(0);
 	size_t i(0);
 	for(uint8_t c(0); c<size;++i){
 		uint8_t ch(vect[i]);
@@ -474,8 +427,8 @@ uint64_t binSeq::getBeginInt(uint8_t size){
 	return res;
 }
 
-uint64_t binSeq::getBeginRcInt(uint8_t size){
-	uint64_t res(0),inter;
+__uint128_t binSeq::getBeginRcInt(uint8_t size){
+	__uint128_t res(0),inter;
 	size_t i(0);
 	for(uint8_t c(0); c<size;++i){
 		uint8_t ch(rc[vect[i]]);
@@ -533,8 +486,8 @@ binSeq binSeq::getEnd(uint8_t size){
 	return res;
 }
 
-uint64_t binSeq::getEndInt(uint8_t size){
-	uint64_t res(0),inter;
+__uint128_t binSeq::getEndInt(uint8_t size){
+	__uint128_t res(0),inter;
 	size_t i(vect.size()-1);
 	for(uint8_t c(0); c<size;--i){
 		uint8_t ch(vect[i]);
@@ -571,8 +524,8 @@ uint64_t binSeq::getEndInt(uint8_t size){
 	return res;
 }
 
-uint64_t binSeq::getEndRcInt(uint8_t size){
-	uint64_t res(0);
+__uint128_t binSeq::getEndRcInt(uint8_t size){
+	__uint128_t res(0);
 	size_t i(vect.size()-1);
 	for(uint8_t c(0); c<size;--i){
 		uint8_t ch(rc[vect[i]]);
@@ -655,8 +608,8 @@ uint32_t binSeq::getNumber(){
 }
 
 
-uint64_t binSeq::getInt(){
-	uint64_t res(0);
+__uint128_t binSeq::getInt(){
+	__uint128_t res(0);
 	for(size_t i(0); i<vect.size(); ++i){
 		uint8_t c(vect[i]);
 		//~ uint8_t mod(c/(1<<6));

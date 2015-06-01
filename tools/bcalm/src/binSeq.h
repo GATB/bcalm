@@ -31,14 +31,10 @@ public:
 	binSeq sub(size_t begin,size_t size);
 	binSeq getBegin(uint8_t size);
 	binSeq getEnd(uint8_t size);
-	uint64_t getEndInt(uint8_t size);
-	uint64_t getBeginInt(uint8_t size);
-	uint64_t getBeginRcInt(uint8_t size);
-	uint64_t getEndRcInt(uint8_t size);
-//	uint64_t getBegin(size_t size);
-//	uint64_t getEnd(size_t size);
-//	uint64_t getBeginRc(size_t size);
-//	uint64_t getEndRc(size_t size);
+	__uint128_t getEndInt(uint8_t size);
+	__uint128_t getBeginInt(uint8_t size);
+	__uint128_t getBeginRcInt(uint8_t size);
+	__uint128_t getEndRcInt(uint8_t size);
 	void reverse();
 	binSeq getReverse();
 	void add(const binSeq& b);
@@ -46,7 +42,7 @@ public:
 	void clear();
 	size_t size();
 	uint32_t getNumber();
-	uint64_t getInt();
+	__uint128_t getInt();
 
 	//~ binSeq& operator+=(const binSeq& rhs){
 		//~ this->add(rhs);
