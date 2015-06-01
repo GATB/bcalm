@@ -159,7 +159,7 @@ class graph2
 
 struct kmerIndice{
 	uint32_t indice;
-	uint64_t kmmer;
+	__uint128_t kmmer;
 
 };
 
@@ -206,7 +206,7 @@ class graph4
 		uint32_t k;
 		uint32_t minimizer;
 		uint32_t minsize;
-		uint64_t maximum;
+		__uint128_t maximum;
 		//~ uint32_t nbKmer;
 		vector<binSeq> unitigs;
 		vector<bool> leftmins;

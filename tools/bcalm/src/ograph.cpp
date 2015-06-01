@@ -1584,9 +1584,9 @@ void graph4::addvertex(const string& unitigstr){
 
 	if(leftmins[i]){
 		//~ binSeq beg(unitig.getBegin(k));
-		uint64_t leftKmer1(unitig.getBeginInt(k));
+		__uint128_t leftKmer1(unitig.getBeginInt(k));
 		//~ beg.reverse();
-		uint64_t leftKmer2(unitig.getBeginRcInt(k));
+		__uint128_t leftKmer2(unitig.getBeginRcInt(k));
 		kmerIndice ki;
 		ki.indice=i;
 
@@ -1601,9 +1601,9 @@ void graph4::addvertex(const string& unitigstr){
 
 	if(rightmins[i]){
 		//~ binSeq end(unitig.getEnd(k));
-		uint64_t rightKmer1(unitig.getEndInt(k));
+		__uint128_t rightKmer1(unitig.getEndInt(k));
 		//~ end.reverse();
-		uint64_t rightKmer2(unitig.getEndRcInt(k));
+		__uint128_t rightKmer2(unitig.getEndRcInt(k));
 		kmerIndice ki;
 		ki.indice=i;
 		if(rightKmer1<rightKmer2){
@@ -1654,8 +1654,8 @@ void graph4::compaction(uint32_t iL, uint32_t iR){
 	}
 
 
-		uint64_t end1(unitigs[iL].getEndInt(k));
-		uint64_t beg2(unitigs[iR].getBeginInt(k));
+		__uint128_t end1(unitigs[iL].getEndInt(k));
+		__uint128_t beg2(unitigs[iR].getBeginInt(k));
 		if(end1==beg2){
 			unitigs[iL].add(unitigs[iR].sub(k));
 			unitigs[iR]=binSeq(iL);
@@ -1665,7 +1665,7 @@ void graph4::compaction(uint32_t iL, uint32_t iR){
 			return;
 		}
 
-		uint64_t end2rc(unitigs[iR].getEndRcInt(k));
+		__uint128_t end2rc(unitigs[iR].getEndRcInt(k));
 		if(end1==end2rc){
 			unitigs[iL].add(unitigs[iR].getReverse().sub(k));
 			unitigs[iR]=binSeq(iL);
@@ -1676,8 +1676,8 @@ void graph4::compaction(uint32_t iL, uint32_t iR){
 			return;
 		}
 
-		uint64_t beg1(unitigs[iL].getBeginInt(k));
-		uint64_t end2(unitigs[iR].getEndInt(k));
+		__uint128_t beg1(unitigs[iL].getBeginInt(k));
+		__uint128_t end2(unitigs[iR].getEndInt(k));
 		if(beg1==end2){
 			unitigs[iR].add(unitigs[iL].sub(k));
 			unitigs[iL]=binSeq(iR);
@@ -1685,7 +1685,7 @@ void graph4::compaction(uint32_t iL, uint32_t iR){
 			return;
 		}
 
-		uint64_t beg2s(unitigs[iR].getBeginRcInt(k));
+		__uint128_t beg2s(unitigs[iR].getBeginRcInt(k));
 		if(beg1==beg2s){
 			unitigs[iR].reverse();
 			unitigs[iR].add(unitigs[iL].sub(k));

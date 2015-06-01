@@ -319,7 +319,7 @@ void bcalm_1::execute (){
             auto lambdaCompact = [&bucket_queues, actualMinimizer, &glue_commander, &maxBucket, &lambda_timings, &repart, &modelK1]() {
                 auto start_nodes_t=get_wtime();
 
-                graph3 g(kmerSize-1,actualMinimizer,minSize);
+                graph4 g(kmerSize-1,actualMinimizer,minSize);
                 //~ //graph1 g(kmerSize);
 
                 /* add nodes to graph */
@@ -350,10 +350,11 @@ void bcalm_1::execute (){
                 auto start_cdistribution_t=get_wtime();
                  string seq;
                 for(uint32_t i(0);i<g.unitigs.size();++i){
-                    if(!g.unitigs[i].empty()){ // graph3
-                    //if(!g.isNumber[i]){ // graph4
-                        // seq= g.unitigs[i].str(); // graph4
-                        seq= g.unitigs[i]; // graph3
+                    //~ if(!g.unitigs[i].empty()){ // graph3
+						//~ seq= g.unitigs[i]; // graph3
+					if(!g.isNumber[i]){ // graph4
+						seq=g.unitigs[i].str(); // graph4
+
 
                         int k = kmerSize;
                         Model::Kmer kmmerBegin = modelK1.codeSeed(seq.substr(0, k - 1).c_str(), Data::ASCII);
