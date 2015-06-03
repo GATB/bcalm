@@ -1632,11 +1632,16 @@ void graph4::addrightmin(int min){
 	}
 }
 
-
+void print_bytes(void *p)
+{
+    size_t i;
+    printf("(");
+    for (i = 0; i < 8; ++i)
+        printf("%02X", ((unsigned char*)p)[i]);
+    printf(")");
+}
 
 void graph4::compaction(uint32_t iL, uint32_t iR){
-	//~ cout<<iL<<" "<<iR<<endl;
-
     bool b1(isNumber[iL]),b2(isNumber[iR]);
 	if(b1){
 		if(b2){
@@ -1659,64 +1664,61 @@ void graph4::compaction(uint32_t iL, uint32_t iR){
 		if(end1==beg2){
 			unitigs[iL].add(unitigs[iR].sub(k));
 			unitigs[iR]=binSeq(iL);
-			//~ isNumber[iR]=true;
-			//~ swap(unitigs[iL],unitigs[iR]);
 			isNumber[iR]=true;
 			return;
 		}
 
-		__uint128_t end2rc(unitigs[iR].getEndRcInt(k));
-		if(end1==end2rc){
-			unitigs[iL].add(unitigs[iR].getReverse().sub(k));
+
+		binSeq rc2(unitigs[iR].getReverse());
+		__uint128_t begrc2(unitigs[iR].getEndRcInt(k));
+		//~ __uint128_t begrc2(rc2.getBeginInt(k));
+		if(end1==begrc2){
+			unitigs[iL].add(rc2.sub(k));
 			unitigs[iR]=binSeq(iL);
 			isNumber[iR]=true;
-			//~ unitigs[iR]=binSeq(iR);
-			//~ swap(unitigs[iL],unitigs[iR]);
-			//~ isNumber[iR]=true;
 			return;
 		}
 
 		__uint128_t beg1(unitigs[iL].getBeginInt(k));
 		__uint128_t end2(unitigs[iR].getEndInt(k));
-		if(beg1==end2){
+		if(end2==beg1){
 			unitigs[iR].add(unitigs[iL].sub(k));
 			unitigs[iL]=binSeq(iR);
 			isNumber[iL]=true;
 			return;
 		}
 
-		__uint128_t beg2s(unitigs[iR].getBeginRcInt(k));
-		if(beg1==beg2s){
-			unitigs[iR].reverse();
-			unitigs[iR].add(unitigs[iL].sub(k));
+		//~ __uint128_t endrc2(rc2.getEndInt(k));
+		__uint128_t endrc2(unitigs[iR].getBeginRcInt(k));
+		if(endrc2==beg1){
+			rc2.add(unitigs[iL].sub(k));
+			unitigs[iR]=rc2;
 			unitigs[iL]=binSeq(iR);
 			isNumber[iL]=true;
 			return;
 		}
-
-
     cout<<"WUT"<<endl;
-    cout<<"+"<<unitigs[iL].str()<<"+ +"<<unitigs[iR].str()<<"+"<<endl;
+    cout<<"+"<<unitigs[iL].str()<<"+ +"<<unitigs[iR].str()<<"+"<<endl<<endl<<endl;
+    //~ string str1(unitigs[iL].str()),str2(unitigs[iR].str());
+    //~ cout<<str1<<endl;
+    //~ cout<<reversecompletment(str1)<<endl;
+    //~ cout<<str2<<endl;
+    //~ cout<<reversecompletment(str2)<<endl;
+    //~ binSeq bs1(str1),bs2(str2);
+    //~ cout<<(uint64_t)bs1.getBeginInt(k);cout<<" ";cout<<str1.substr(0,k)<<endl;
+    //~ cout<<(uint64_t)bs2.getBeginInt(k);cout<<" ";cout<<str2.substr(0,k)<<endl;
+    //~ cout<<(uint64_t)bs1.getEndInt(k);cout<<" ";cout<<str1.substr(str1.size()-k,k)<<endl;
+    //~ cout<<(uint64_t)bs2.getEndInt(k);cout<<" ";cout<<str2.substr(str2.size()-k,k)<<endl;
+    //~ binSeq rbs2=bs2;
+    //~ rbs2.reverse();
+    //~ binSeq rbs1=bs1;
+    //~ rbs1.reverse();
+    //~ str1=reversecompletment(str1);
+    //~ str2=reversecompletment(str2);
+    //~ cout<<(uint64_t)rbs1.getBeginInt(k);cout<<" ";cout<<str1.substr(0,k)<<endl;
+    //~ cout<<(uint64_t)rbs2.getBeginInt(k);cout<<" ";cout<<str2.substr(0,k)<<endl;
+    //~ cout<<(uint64_t)rbs1.getEndInt(k);cout<<" ";cout<<str1.substr(str1.size()-k,k)<<endl;
+    //~ cout<<(uint64_t)rbs2.getEndInt(k);cout<<" ";cout<<str2.substr(str2.size()-k,k)<<endl;
+    //~ cin.get();
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 

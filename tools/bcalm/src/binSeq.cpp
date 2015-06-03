@@ -11,7 +11,19 @@
 #include <iostream>
 #include <algorithm>
 
-
+string RCnadine(const string& str){
+	string res(str);
+	int n = str.size();
+	for(int i(n-1), j(0); i > -1; i--, j++){
+		unsigned char c = str[i];
+		unsigned char d = (c >> 4)&7;
+		c ^= 4;
+		if ((c&3) != 3)
+			c ^= 17;
+		res[j] = c;
+		}
+	return res;
+}
 
 
 static const uint8_t rc[]={
@@ -51,8 +63,8 @@ static const uint8_t rc[]={
 	0b11110101,0b11100101,0b11010101,0b11000101,0b11110001,0b11100001,0b11010001,0b11000001,
 	0b11111100,0b11101100,0b11011100,0b11001100,0b11111000,0b11101000,0b11011000,0b11001000,
 	0b11110100,0b11100100,0b11010100,0b11000100,0b11110000,0b11100000,0b11010000,0b11000000,
-
 };
+
 
 
 static uint8_t char2int1[100];
@@ -255,7 +267,7 @@ void printUC(uint8_t a){
 	for (int i = 0; i < 8; i++) {
 		printf("%d", !!((a << i) & 0x80));
 	}
-	printf("\n");
+	printf(" ");
 }
 
 
@@ -312,6 +324,7 @@ string binSeq::str(){
 	return res;
 }
 
+
 void binSeq::str2(string& res){
 	res.clear();
 	res.reserve(vect.size());
@@ -362,16 +375,13 @@ binSeq binSeq::sub(uint8_t begin){
 }
 
 
-
-
-
 binSeq binSeq::getBegin(uint8_t size){
 	binSeq res;
 	size_t i(0);
 	for(uint8_t c(0); c<size;++i){
 		uint8_t ch(vect[i]);
-		uint8_t mod(ch/(1<<6));
-		int8_t n(c+mod-size);
+		uint8_t mod(ch>>6);
+		uint8_t n(c+mod-size);
 
 		switch (n){
 			case 1:
@@ -393,6 +403,7 @@ binSeq binSeq::getBegin(uint8_t size){
 	return res;
 }
 
+
 __uint128_t binSeq::getBeginInt(uint8_t size){
 	__uint128_t res(0);
 	size_t i(0);
@@ -400,33 +411,91 @@ __uint128_t binSeq::getBeginInt(uint8_t size){
 		uint8_t ch(vect[i]);
 		uint8_t mod(ch>>6);
 		int8_t n(c+mod-size);
-
-		switch (n){
-			case 1:
-				ch&=0b00111100;
-				//~ res.vect.push_back((2<<6)|(ch>>2));
-				res<<=4;
-				res+=(ch>>2);
-				c+=2;
-				break;
-			case 2:
+		if(n<=0){
+			res<<=(2*mod);
+			res+=(ch&0b00111111);
+			c+=mod;
+		}else{
+			if(n==2){
 				ch&=0b00110000;
-				//~ res.vect.push_back((1<<6)|(ch>>4));
 				res<<=2;
 				res+=(ch>>4);
-				c++;
-				break;
-			default:
-				//~ res.vect.push_back(ch);
-				res<<=(2*mod);
-				res+=(ch&0b00111111);
-				c+=mod;
-				break;
+				//~ c++;
+				return res;
+			}else{
+				ch&=0b00111100;
+				res<<=(2*mod-2);
+				res+=(ch>>2);
+				//~ c+=2;
+				return res;
+			}
 		}
 	}
 	return res;
 }
 
+
+//~ __uint128_t binSeq::getBeginInt(uint8_t size){
+	//~ __uint128_t res(0);
+	//~ size_t i(0);
+	//~ for(uint8_t c(0); c<size;++i){
+		//~ uint8_t ch(vect[i]);
+		//~ uint8_t mod(ch>>6);
+		//~ int8_t n(c+mod-size);
+		//~ switch (n){
+			//~ case 1:
+				//~ ch&=0b00111100;
+				//~ res<<=4;
+				//~ res+=(ch>>2);
+				//~ c+=2;
+				//~ break;
+			//~ case 2:
+				//~ ch&=0b00110000;
+				//~ res<<=2;
+				//~ res+=(ch>>4);
+				//~ c++;
+				//~ break;
+			//~ default:
+				//~ res<<=(2*mod);
+				//~ res+=(ch&0b00111111);
+				//~ c+=mod;
+				//~ break;
+		//~ }
+	//~ }
+	//~ return res;
+//~ }
+
+
+//~ __uint128_t binSeq::getBeginRcInt(uint8_t size){
+	//~ __uint128_t res(0),inter;
+	//~ size_t i(0);
+	//~ for(uint8_t c(0); c<size;++i){
+		//~ uint8_t ch(rc[vect[i]]);
+		//~ uint8_t mod(ch>>6);
+		//~ int8_t n(c+mod-size);
+		//~ switch (n){
+			//~ case 1:
+				//~ inter=((ch&0b00001111));
+				//~ inter<<=(2*c);
+				//~ res+=inter;
+				//~ c+=2;
+				//~ break;
+			//~ case 2:
+				//~ inter=((ch&0b00000011));
+				//~ inter<<=(2*c);
+				//~ res+=inter;
+				//~ c++;
+				//~ break;
+			//~ default:
+				//~ inter=((ch&0b00111111));
+				//~ inter<<=(2*c);
+				//~ res+=inter;
+				//~ c+=mod;
+				//~ break;
+		//~ }
+	//~ }
+	//~ return res;
+//~ }
 __uint128_t binSeq::getBeginRcInt(uint8_t size){
 	__uint128_t res(0),inter;
 	size_t i(0);
@@ -434,26 +503,27 @@ __uint128_t binSeq::getBeginRcInt(uint8_t size){
 		uint8_t ch(rc[vect[i]]);
 		uint8_t mod(ch>>6);
 		int8_t n(c+mod-size);
-
-		switch (n){
-			case 1:
-				inter=((ch&0b00001111));
-				inter<<=(2*c);
-				res+=inter;
-				c+=2;
-				break;
-			case 2:
-				inter=((ch&0b00000011));
-				inter<<=(2*c);
-				res+=inter;
-				c++;
-				break;
-			default:
-				inter=((ch&0b00111111));
+		if(n<=0){
+			inter=(ch&0b00111111);
 				inter<<=(2*c);
 				res+=inter;
 				c+=mod;
-				break;
+		}else{
+			if(n==1){
+				if(mod==3){
+					inter=(ch&0b00001111);
+				}else{
+					inter=(ch&0b0000011);
+				}
+				inter<<=(2*c);
+				res+=inter;
+				return res;
+			}else{
+				inter=((ch&0b00000011));
+				inter<<=(2*c);
+				res+=inter;
+				return res;
+			}
 		}
 	}
 	return res;
@@ -466,7 +536,7 @@ binSeq binSeq::getEnd(uint8_t size){
 	for(uint8_t c(0); c<size;--i){
 		uint8_t ch(vect[i]);
 		uint8_t mod(ch>>6);
-		uint8_t n(c+mod-size);
+		int8_t n(c+mod-size);
 		switch (n){
 			case 1:
 				res.vect.push_back((2<<6)|(ch&0b00001111));
@@ -486,75 +556,137 @@ binSeq binSeq::getEnd(uint8_t size){
 	return res;
 }
 
+//~ __uint128_t binSeq::getEndInt(uint8_t size){
+	//~ __uint128_t res(0),inter;
+	//~ size_t i(vect.size()-1);
+	//~ for(uint8_t c(0); c<size;--i){
+		//~ uint8_t ch(vect[i]);
+		//~ uint8_t mod(ch>>6);
+		//~ int8_t n(c+mod-size);
+		//~ switch (n){
+			//~ case 1:
+				//~ inter=((ch&0b00001111));
+				//~ inter<<=(2*c);
+				//~ res+=inter;
+				//~ c+=2;
+				//~ break;
+			//~ case 2:
+				//~ inter=((ch&0b00000011));
+				//~ inter<<=(2*c);
+				//~ res+=inter;
+				//~ c++;
+				//~ break;
+			//~ default:
+				//~ inter=((ch&0b00111111));
+				//~ inter<<=(2*c);
+				//~ res+=inter;
+				//~ c+=mod;
+				//~ break;
+		//~ }
+	//~ }
+	//~ return res;
+//~ }
+
 __uint128_t binSeq::getEndInt(uint8_t size){
-	__uint128_t res(0),inter;
+	__uint128_t res(0),inter(0);
 	size_t i(vect.size()-1);
 	for(uint8_t c(0); c<size;--i){
 		uint8_t ch(vect[i]);
 		uint8_t mod(ch>>6);
-		uint8_t n(c+mod-size);
-		switch (n){
-			case 1:
-				//~ res.vect.push_back((2<<6)|(ch&0b00001111));
-				inter=((ch&0b00001111));
+		int8_t n(c+mod-size);
+
+		if(n<=0){
+			inter=(ch&0b00111111);
+			inter<<=(2*c);
+			res+=inter;
+			c+=mod;
+		}else{
+			if(n==1){
+				if(mod==2){
+					inter=(ch&0b00000011);
+				}else{
+					inter=(ch&0b00001111);
+				}
 				inter<<=(2*c);
 				res+=inter;
-				c+=2;
-				break;
-			case 2:
-				//~ res.vect.push_back((1<<6)|(ch&0b00000011));
-				inter=((ch&0b00000011));
+				//~ c+=2;
+				return res;
+			}else{
+				inter=(ch&0b00000011);
 				inter<<=(2*c);
 				res+=inter;
-				c++;
-				break;
-			default:
-				//~ res.vect.push_back(ch);
-				inter=((ch&0b00111111));
-				inter<<=(2*c);
-				res+=inter;
-				c+=mod;
-				break;
+				//~ c++;
+				return res;
+			}
 		}
-		//~ printUC(c);
-		//~ cout<<c<<" "<<res<<endl;
 	}
-	//~ ::reverse(res.vect.begin(),res.vect.end());
-	//~ cin.get();
 	return res;
 }
 
+
+//~ __uint128_t binSeq::getEndRcInt(uint8_t size){
+	//~ __uint128_t res(0);
+	//~ size_t i(vect.size()-1);
+	//~ for(uint8_t c(0); c<size;--i){
+		//~ uint8_t ch(rc[vect[i]]);
+		//~ uint8_t mod(ch>>6);
+		//~ int8_t n(c+mod-size);
+		//~ switch (n){
+			//~ case 1:
+				//~ ch&=0b00111100;
+				//~ res<<=4;
+				//~ res+=(ch>>2);
+				//~ c+=2;
+				//~ break;
+			//~ case 2:
+				//~ ch&=0b00110000;
+				//~ res<<=2;
+				//~ res+=(ch>>4);
+				//~ ++c;
+				//~ break;
+			//~ default:
+				//~ res<<=(2*mod);
+				//~ res+=(ch&0b00111111);
+				//~ c+=mod;
+				//~ break;
+		//~ }
+	//~ }
+	//~ return res;
+//~ }
+//~ //~
+//~ //~
 __uint128_t binSeq::getEndRcInt(uint8_t size){
 	__uint128_t res(0);
 	size_t i(vect.size()-1);
 	for(uint8_t c(0); c<size;--i){
 		uint8_t ch(rc[vect[i]]);
 		uint8_t mod(ch>>6);
-		uint8_t n(c+mod-size);
-		switch (n){
-			case 1:
-				ch&=0b00111100;
-				res<<=4;
-				res+=(ch>>2);
-				c+=2;
-				break;
-			case 2:
+		int8_t n(c+mod-size);
+		if(n<=0){
+			res<<=(2*mod);
+			res+=(ch&0b00111111);
+			c+=mod;
+		}else{
+			if(n==1){
+				if(mod==3){
+					ch&=0b00111100;
+					res<<=4;
+					res+=(ch>>2);
+					return res;
+				}else{
+					ch&=0b00110000;
+					res<<=2;
+					res+=(ch>>4);
+					return res;
+				}
+			}else{
 				ch&=0b00110000;
 				res<<=2;
 				res+=(ch>>4);
-				++c;
-				break;
-			default:
-				res<<=(2*mod);
-				res+=(ch&0b00111111);
-				c+=mod;
-				break;
+				return res;
+			}
 		}
-		//~ printUC(c);
-		//~ cout<<c<<" "<<res<<endl;
 	}
-	//~ ::reverse(res.vect.begin(),res.vect.end());
-	//~ cin.get();
 	return res;
 }
 
@@ -565,18 +697,6 @@ void binSeq::add(const binSeq& bs){
 }
 
 
-void binSeq::reverse(){
-	uint32_t s(vect.size());
-	uint32_t i(0);
-	for(; i<s/2 ;++i){
-		uint8_t inter (rc[vect[s-1-i]]);
-		vect[s-1-i]=rc[vect[i]];
-		vect[i]=inter;
-	}
-	if(s%2==1){
-		vect[i]=rc[vect[i]];
-	}
-}
 
 
 binSeq::binSeq(){
@@ -632,6 +752,29 @@ binSeq binSeq::getReverse(){
 		res.vect.push_back(rc[vect[i]]);
 	}
 	return res;
+}
+
+
+void binSeq::reverse(){
+	//~ cout<<str()<<endl;
+	string lol(RCnadine(str()));
+	uint32_t s(vect.size());
+	uint32_t i(0);
+	for(; i<s/2 ;++i){
+		uint8_t inter (rc[vect[s-1-i]]);
+		vect[s-1-i]=rc[vect[i]];
+		vect[i]=inter;
+	}
+	if(s%2==1){
+		vect[i]=rc[vect[i]];
+	}
+	//~ if(str()!=lol){
+		//~ cout<<"fail"<<endl;
+		//~ cout<<lol<<endl<<str()<<endl;
+		//~ cin.get();
+	//~ }
+	//~ cout<<str()<<endl;
+	//~ cin.get();
 }
 
 
