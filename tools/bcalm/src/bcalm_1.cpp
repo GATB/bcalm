@@ -158,10 +158,10 @@ void bcalm_1::execute (){
         is.read ((char*)freq_order, sizeof(uint32_t) * rg);
     }
 
-    Model model(kmerSize, minSize, Kmer<SPAN>::ComparatorMinimizerFrequency(), freq_order);
-    Model modelK1(kmerSize-1, minSize,  Kmer<SPAN>::ComparatorMinimizerFrequency(), freq_order);
-    Model modelK2(kmerSize-2, minSize,  Kmer<SPAN>::ComparatorMinimizerFrequency(), freq_order);
-    Model modelM(minSize, minSize,  Kmer<SPAN>::ComparatorMinimizerFrequency(), freq_order);
+    Model model(kmerSize, minSize, Kmer<SPAN>::ComparatorMinimizerFrequencyOrLex(), freq_order);
+    Model modelK1(kmerSize-1, minSize,  Kmer<SPAN>::ComparatorMinimizerFrequencyOrLex(), freq_order);
+    Model modelK2(kmerSize-2, minSize,  Kmer<SPAN>::ComparatorMinimizerFrequencyOrLex(), freq_order);
+    Model modelM(minSize, minSize,  Kmer<SPAN>::ComparatorMinimizerFrequencyOrLex(), freq_order);
 
     auto minimizerMin = [&repart, &model] (size_t a, size_t b)
     {

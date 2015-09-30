@@ -21,3 +21,4 @@ Then, you should get a binary in
     tools/bcalm
 
 Note: the first compilation should take some time since the GATB-CORE library is generated.
+
