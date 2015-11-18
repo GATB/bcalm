@@ -184,8 +184,8 @@ class graph3
 		vector<kmer2Indice> compactions;
 
 		void addvertex(const string& str);
-		void addleftmin(int mini);
-		void addrightmin(int mini);
+		void addleftmin(unsigned int mini);
+		void addrightmin(unsigned int mini);
 		void debruijn();
 		void compress();
 		void compaction(uint32_t iR, uint32_t iL);
@@ -217,8 +217,8 @@ class graph4
 		//~ vector<kmer2Indice> compactions;
 
 		void addvertex(const string& str);
-		void addleftmin(int mini);
-		void addrightmin(int mini);
+		void addleftmin(unsigned int mini);
+		void addrightmin(unsigned int mini);
 		void debruijn();
 		void compress();
 		void compaction(uint32_t iR, uint32_t iL);

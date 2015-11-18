@@ -1248,7 +1248,7 @@ void graph3::addvertex(const string& unitig){
 	}
 }
 
-void graph3::addleftmin(int min){
+void graph3::addleftmin(unsigned int min){
 	if(min==minimizer){
 		leftmins.push_back(true);
 	}else{
@@ -1256,7 +1256,7 @@ void graph3::addleftmin(int min){
 	}
 }
 
-void graph3::addrightmin(int min){
+void graph3::addrightmin(unsigned int min){
 	if(min==minimizer){
 		rightmins.push_back(true);
 	}else{
@@ -1616,7 +1616,7 @@ void graph4::addvertex(const string& unitigstr){
 	}
 }
 
-void graph4::addleftmin(int min){
+void graph4::addleftmin(unsigned int min){
 	if(min==minimizer){
 		leftmins.push_back(true);
 	}else{
@@ -1624,7 +1624,7 @@ void graph4::addleftmin(int min){
 	}
 }
 
-void graph4::addrightmin(int min){
+void graph4::addrightmin(unsigned int min){
 	if(min==minimizer){
 		rightmins.push_back(true);
 	}else{

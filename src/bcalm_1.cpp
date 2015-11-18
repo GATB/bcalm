@@ -24,7 +24,7 @@
 
 using namespace std;
 
-const size_t SPAN = KMER_SPAN(1);
+const size_t SPAN = KMER_SPAN(1); // TODO: adapt span using Minia's technique
 
 /** Shortcuts. */
 typedef Kmer<SPAN>::Type  Type;
@@ -131,7 +131,6 @@ void bcalm_1::execute (){
     BankBinary::setBufferSize (1000);
 
     auto start_t=chrono::system_clock::now();
-    auto start_part=chrono::system_clock::now();
     size_t maxBucket(0);
     unsigned long nbKmers(0);
 
@@ -187,6 +186,7 @@ void bcalm_1::execute (){
 
     int nb_glues = 2;
     GlueCommander glue_commander(kmerSize, &out, nb_glues, &model);
+    BankFasta outToGlue ("out_to_glue");
 
     double weighted_best_theoretical_speedup_cumul = 0;
     double weighted_best_theoretical_speedup_sum_times = 0;
@@ -312,7 +312,7 @@ void bcalm_1::execute (){
         /**FOREACH BUCKET **/
         for(auto actualMinimizer : active_minimizers[p])
         {
-            auto lambdaCompact = [&bucket_queues, actualMinimizer, &glue_commander, &maxBucket, &lambda_timings, &repart, &modelK1]() {
+            auto lambdaCompact = [&bucket_queues, actualMinimizer, &glue_commander, &maxBucket, &lambda_timings, &repart, &modelK1, &outToGlue]() {
                 auto start_nodes_t=get_wtime();
 
                 //graph4 g(kmerSize-1,actualMinimizer,minSize); // graph4
@@ -355,13 +355,28 @@ void bcalm_1::execute (){
                         size_t leftMin(modelK1.getMinimizerValue(kmmerBegin.value()));
                         Model::Kmer kmmerEnd = modelK1.codeSeed(seq.substr(seq.size() - k + 1, k - 1).c_str(), Data::ASCII);
                         size_t rightMin(modelK1.getMinimizerValue(kmmerEnd.value()));
-
                         bool lmark = actualMinimizer != leftMin;
                         bool rmark = actualMinimizer != rightMin;
-                        time_glue_overhead_start();
-                        GlueEntry e(seq, lmark, rmark, kmerSize);
-                        glue_commander.insert(e);
-                        time_glue_overhead_stop();
+
+                        bool write_to_disk_instead_of_glueing = true;
+                        if (write_to_disk_instead_of_glueing)
+                        {
+                            if (seq.size() == 0) 
+                            {
+                                std::cout<< "compacted unitig smaller than k?! (seq.size() = " << seq.size() << ")" << std::endl;
+                                continue;
+                            }
+                            Sequence s (Data::ASCII);
+                            s.getData().setRef ((char*)seq.c_str(), seq.size());
+                            outToGlue.insert(s);
+                        }
+                        else
+                        {
+                            time_glue_overhead_start();
+                            GlueEntry e(seq, lmark, rmark, kmerSize);
+                            glue_commander.insert(e);
+                            time_glue_overhead_stop();
+                        }
                     }
                 }
                 auto end_cdistribution_t=get_wtime();
@@ -459,7 +474,7 @@ void bcalm_1::execute (){
     time_glue_overhead_stop();
 
     // check if buckets are indeed empty
-    for (int minimizer = 0; minimizer < rg; minimizer++)
+    for (unsigned int minimizer = 0; minimizer < rg; minimizer++)
     {
         if  (bucket_queues[minimizer].size_approx() != 0)
         {
@@ -495,9 +510,10 @@ void bcalm_1::execute (){
     cout<<"Max bucket : "<<maxBucket<<endl;
     if (time_lambdas)
     {
-        cout<<"\n                 Wallclock time spent in parallel section : "<< global_wtime_parallel / unit << " secs"<<endl;
+        cout<<"Performance of compaction step:\n"<<endl;
+        cout<<"                 Wallclock time spent in parallel section : "<< global_wtime_parallel / unit << " secs"<<endl;
         cout<<"             Best theoretical speedup in parallel section : "<< weighted_best_theoretical_speedup << "x" <<endl;
-        cout<<"Best theoretical speedup in parallel section using " << nb_threads_simulate << " threads : "<< weighted_actual_theoretical_speedup << "x" <<endl;
+        cout<<"Best theor. speedup in parallel section using " << nb_threads_simulate << " threads : "<< weighted_actual_theoretical_speedup << "x" <<endl;
         cout<<"             Sum of longest bucket compaction for each sb : "<< global_wtime_longest_lambda / unit << " secs"<<endl;
         cout<<"                       Sum of best scheduling for each sb : "<< global_wtime_best_sched / unit << " secs"<<endl;
     }

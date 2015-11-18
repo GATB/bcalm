@@ -285,7 +285,7 @@ binSeq::binSeq(const string& str){
 
 	if(mod!=0){
 		if(mod==1){
-			vect.push_back(char2int1[str[i]]);
+			vect.push_back(char2int1[(uint8_t)(str[i])]);
 		}else{
 			vect.push_back(char2int2[functionwihtoutcoll(str[i-1],str[i])]);
 		}

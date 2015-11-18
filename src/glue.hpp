@@ -143,7 +143,7 @@ class GlueCommander
 
 
     void insert(GlueEntry &e);
-    bool insert_aux(GlueEntry newEntry, string key);
+    void insert_aux(GlueEntry newEntry, string key);
     void cleanup_force();
     void cleanup_threaded();
     bool not_yet_cleaned();
@@ -176,7 +176,7 @@ class Glue
     public:
 		GlueStorage glueStorage; //this should really be treated as private. It is only public to allow calling updateMemStats and such
 
-		Glue(size_t _kmerSize, GlueCommander *commander) : kmerSize(_kmerSize), glueStorage(_kmerSize), commander(commander), nbGlueInserts(0), needs_cleanup(false) {
+		Glue(size_t _kmerSize, GlueCommander *commander) : glueStorage(_kmerSize), needs_cleanup(false), kmerSize(_kmerSize), commander(commander), nbGlueInserts(0) {
 #ifdef TWOBITGLUEHASH 
 			cout << "Glue: using TWOBITBLUEHASH.\n";
 #else

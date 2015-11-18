@@ -49,7 +49,7 @@ string add_commas(T num) {
 	ostringstream o;
 	o << num;
 	s = o.str();
-	for (int i = 0; i < s.length(); i++) {
+	for (unsigned int i = 0; i < s.length(); i++) {
 		retval.push_back(s.at(i));
 		int j = s.length() - 1 - i;
 		if (((j % 3) == 0) && (j != 0)) {
@@ -66,7 +66,7 @@ ostream & operator << (ostream & out, const vector<T> & v) {
 	out << v.size() << '\t';
 	if (v.size() != 0) {
 		out << int(v[0]);
-		for (int i = 1; i < v.size(); i++) out << '\t' << int(v[i]);
+		for (unsigned int i = 1; i < v.size(); i++) out << '\t' << int(v[i]);
 	}
 	return out;
 }
@@ -85,14 +85,14 @@ char revcomp (char s) {
 
 string revcomp (string &s) {
 	string rc;
-	for (int i = s.length() - 1; i >= 0; i--) rc += revcomp(s[i]);
+	for (unsigned int i = s.length() - 1; i >= 0; i--) rc += revcomp(s[i]);
 	return rc;
 }
 
 //this short-circuits the computation as soon as the difference is found
 string rcnorm (string &s) {
 	string rc;
-	for (int i = 0; i < s.length(); i++) {
+	for (unsigned int i = 0; i < s.length(); i++) {
 		char c = revcomp(s[s.length() - 1 - i]);
 		if (s[i] < c) {
 			return s;
@@ -168,7 +168,7 @@ GlueEntry::GlueEntry(RawEntry raw, size_t _kmerSize){
 	} else {
 		seq[seqCounter++] = vals[2];
 		seq[seqCounter++] = vals[3];
-		for (int i = 1; i < raw.size() - 1; i++) {
+		for (unsigned int i = 1; i < raw.size() - 1; i++) {
 			vals =  byteLookupTable[raw[i]];
 			seq[seqCounter++] = vals[0];
 			seq[seqCounter++] = vals[1];
@@ -230,7 +230,7 @@ RawEntry GlueEntry::getRaw() {
 		cout << "GlueEntry::getRaw(): Unexpected leftover bits: " << leftoverbits << ".\n";
 		exit(1);
 	}
-	for (int i = 0; i < seq.length(); i++) {
+	for (unsigned int i = 0; i < seq.length(); i++) {
 		if ((seq[i] == 'A') || (seq[i] == 'C')) {
 			bits[4 + 2*i] = 0;
 		} else {
@@ -244,7 +244,7 @@ RawEntry GlueEntry::getRaw() {
 	}
 	//encode bits in a 2bit compacted string.
 	RawEntry raw;
-	for (int i = 0; i < bits.size(); i += 8) {
+	for (unsigned int i = 0; i < bits.size(); i += 8) {
 		raw.push_back(bits2byteTable[bits[i]][bits[i+1]][bits[i+2]][bits[i+3]][bits[i+4]][bits[i+5]][bits[i+6]][bits[i+7]]);
 	}
 	//cout << "bits: " << bits << ".\n";
@@ -591,7 +591,7 @@ void GlueCommander::spawn_threads()
 
 }
 
-GlueCommander::GlueCommander(size_t _kmerSize, BankFasta *out, int nb_glues, Model *model) : nb_glues(nb_glues), model(model), out(out)
+GlueCommander::GlueCommander(size_t _kmerSize, BankFasta *out, int nb_glues, Model *model) : out(out), model(model), nb_glues(nb_glues) 
 {
 
     for (int i = 0; i < nb_glues; i++)
@@ -666,7 +666,7 @@ void GlueCommander::insert(GlueEntry &e) {
 	glueDebug = oldGlueDebug; 
 }
 
-bool GlueCommander::insert_aux(GlueEntry newEntry, string key) { 
+void GlueCommander::insert_aux(GlueEntry newEntry, string key) { 
 
     Model::Kmer kmer= model->codeSeed(key.c_str(), Data::ASCII);
     size_t minimizer(model->getMinimizerValue(kmer.value()));

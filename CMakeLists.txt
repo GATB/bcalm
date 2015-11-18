@@ -21,19 +21,13 @@ ENDFOREACH(path)
 ################################################################################
 
 # We don't want to install some GATB-CORE artifacts
-#SET (GATB_CORE_EXCLUDE_TOOLS     1)
+SET (GATB_CORE_EXCLUDE_TOOLS     1) # no need to compile dbgh5, etc..
 SET (GATB_CORE_EXCLUDE_TESTS     1)
 SET (GATB_CORE_EXCLUDE_EXAMPLES  1)
 
 
 # GATB CORE
 include (GatbCore)
-
-################################################################################
-# TOOLS
-################################################################################
-
-ADD_SUBDIRECTORY(tools)
 
 ################################################################################
 # DELIVERY
@@ -63,3 +57,44 @@ SET (CPACK_SOURCE_IGNORE_FILES
 )
 
 include (Delivery)
+
+
+################################################################################
+#  TOOLS
+################################################################################
+
+MACRO(SUBDIRLIST result curdir)
+    FILE(GLOB children RELATIVE ${curdir} ${curdir}/*)
+    SET (dirlist "")
+    FOREACH(child ${children})
+      IF(IS_DIRECTORY ${curdir}/${child})
+          LIST(APPEND dirlist ${child})
+      ENDIF()
+    ENDFOREACH()
+    SET(${result} ${dirlist})
+ENDMACRO()
+
+# We add the compilation options for the library
+add_definitions (${gatb-core-flags})
+
+# We add the gatb-core include directory
+include_directories (${gatb-core-includes})
+
+# We add the path for extra libraries
+link_directories (${gatb-core-extra-libraries-path})
+
+set (program "bcalm")
+set (PROGRAM_SOURCE_DIR ${PROJECT_SOURCE_DIR}/src)
+include_directories (${PROGRAM_SOURCE_DIR})
+file (GLOB_RECURSE  ProjectFiles  ${PROGRAM_SOURCE_DIR}/*.cpp)
+add_executable(${program} ${ProjectFiles})
+target_link_libraries(${program} ${gatb-core-libraries})
+
+set (program "bglue")
+set (PROGRAM_SOURCE_DIR ${PROJECT_SOURCE_DIR}/bglue)
+include_directories (${PROGRAM_SOURCE_DIR})
+file (GLOB_RECURSE  ProjectFiles    FOLLOW_SYMLINKS ${PROGRAM_SOURCE_DIR}/*.cpp )
+add_executable(${program} ${ProjectFiles})
+target_link_libraries(${program} ${gatb-core-libraries})
+
+
