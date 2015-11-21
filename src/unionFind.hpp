@@ -102,6 +102,15 @@ public:
         mean /= reverseData.size();
     }
 
+    void printStats(string prefix)
+    {
+        std::cout << prefix + " data structure has " << getNumKeys() << " inserted elements, and made " << getNumSets() << " partitions." << std::endl;
+        unsigned long mean, max;
+        setStats(mean, max);
+        std::cout << "mean/max number of elements in partitions: " << mean << "/" << max << std::endl;
+    }
+
+
 
 
     T find(T key){

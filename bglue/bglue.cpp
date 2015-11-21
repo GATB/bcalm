@@ -69,7 +69,10 @@ void bglue::execute (){
     Model modelM(minSize, minSize,  Kmer<SPAN>::ComparatorMinimizerFrequencyOrLex(), freq_order);
 
     // create a UF data structure
-    unionFind<unsigned int> uf;
+    unionFind<unsigned int> ufmin;
+    unionFind<std::string> ufkmers; 
+    unionFind<std::string> ufprefixes; 
+    unsigned int prefix_length = 10;
     
     // We create an iterator over this bank.
     BankFasta::Iterator it (in);
@@ -87,22 +90,35 @@ void bglue::execute (){
         }
 
 
-        Model::Kmer kmmerBegin = modelK1.codeSeed(seq.substr(0, k - 1).c_str(), Data::ASCII);
+        string kmerBegin = seq.substr(0, k - 1);
+        string kmerEnd = seq.substr(seq.size() - k + 1, k - 1);
+
+        Model::Kmer kmmerBegin = modelK1.codeSeed(kmerBegin.c_str(), Data::ASCII);
         size_t leftMin(modelK1.getMinimizerValue(kmmerBegin.value()));
-        Model::Kmer kmmerEnd = modelK1.codeSeed(seq.substr(seq.size() - k + 1, k - 1).c_str(), Data::ASCII);
+        Model::Kmer kmmerEnd = modelK1.codeSeed(kmerEnd.c_str(), Data::ASCII);
         size_t rightMin(modelK1.getMinimizerValue(kmmerEnd.value()));
        
-        uf.union_(leftMin, rightMin);
+        ufmin.union_(leftMin, rightMin);
+       
+        string canonicalKmerBegin = modelK1.toString(kmmerBegin.value());
+        string canonicalKmerEnd = modelK1.toString(kmmerEnd.value());
+
+        ufkmers.union_(canonicalKmerBegin, canonicalKmerEnd);
+        
+        string prefixCanonicalKmerBegin = canonicalKmerBegin.substr(0, prefix_length);
+        string prefixCanonicalKmerEnd = canonicalKmerEnd.substr(0, prefix_length);
+
+        ufprefixes.union_(prefixCanonicalKmerBegin, prefixCanonicalKmerEnd);
     }
 
     if (nbSmall)
         std::cout<< nbSmall << " compacted unitig were smaller than k?! " << std::endl;
 
-    std::cout << "done, UF data structure has " << uf.getNumKeys() << " inserted elements, and made " << uf.getNumSets() << " partitions." << endl;
+    ufmin.printStats("uf minimizers");
 
-    unsigned long mean, max;
-    uf.setStats(mean, max);
-    std::cout << "mean/max number of elements in partitions: " << mean << "/" << max << endl;
+    ufkmers.printStats("uf kmers");
+   
+    ufprefixes.printStats("uf " + to_string(prefix_length) + "-prefixes of kmers");
 }
 
 int main (int argc, char* argv[])

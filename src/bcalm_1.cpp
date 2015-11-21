@@ -52,7 +52,7 @@ typedef double atomic_double;
 atomic_double global_wtime_compactions (0), global_wtime_cdistribution (0), global_wtime_add_nodes (0), global_wtime_create_buckets (0), global_wtime_glue_overheads (0), global_wtime_foreach_bucket (0), global_wtime_lambda (0), global_wtime_parallel (0), global_wtime_longest_lambda (0), global_wtime_best_sched(0);
 
 bool time_lambdas = true;
-std::mutex lambda_timing_mutex, active_minimizers_mutex;
+std::mutex lambda_timing_mutex, active_minimizers_mutex, write_to_glue_mutex;
 
 #define time_glue_overhead_start_2() start_glue_t = get_wtime();
 #define time_glue_overhead_start() std::chrono::time_point<std::chrono::system_clock> start_glue_t; time_glue_overhead_start_2();
@@ -368,7 +368,10 @@ void bcalm_1::execute (){
                             }
                             Sequence s (Data::ASCII);
                             s.getData().setRef ((char*)seq.c_str(), seq.size());
+                            write_to_glue_mutex.lock();
                             outToGlue.insert(s);
+                            outToGlue.flush();
+                            write_to_glue_mutex.unlock();
                         }
                         else
                         {
