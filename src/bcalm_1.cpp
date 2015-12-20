@@ -315,8 +315,9 @@ void bcalm_1::execute (){
             auto lambdaCompact = [&bucket_queues, actualMinimizer, &glue_commander, &maxBucket, &lambda_timings, &repart, &modelK1, &outToGlue]() {
                 auto start_nodes_t=get_wtime();
 
+                // (make sure to change other places labelled "// graph3" and "// graph4" as well)
                 //graph4 g(kmerSize-1,actualMinimizer,minSize); // graph4
-                graph3 g(kmerSize-1,actualMinimizer,minSize);
+                graph3 g(kmerSize-1,actualMinimizer,minSize); // graph3
                 //~ //graph1 g(kmerSize);
 
                 /* add nodes to graph */
@@ -368,6 +369,7 @@ void bcalm_1::execute (){
                             }
                             Sequence s (Data::ASCII);
                             s.getData().setRef ((char*)seq.c_str(), seq.size());
+                            s._comment = string(lmark?"1":"0")+string(rmark?"1":"0"); /** We set the sequence comment. */
                             write_to_glue_mutex.lock();
                             outToGlue.insert(s);
                             outToGlue.flush();

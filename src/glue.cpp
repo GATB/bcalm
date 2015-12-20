@@ -85,7 +85,7 @@ char revcomp (char s) {
 
 string revcomp (string &s) {
 	string rc;
-	for (unsigned int i = s.length() - 1; i >= 0; i--) rc += revcomp(s[i]);
+	for (signed int i = s.length() - 1; i >= 0; i--) {rc += revcomp(s[i]);}
 	return rc;
 }
 
@@ -380,7 +380,8 @@ bool Glue::insert_aux(GlueEntry newEntry, string key, GlueEntry & glueResult, bo
 	return true; 
 
 	//if (key == key_of_interest) cout << "after\t" << glueStorage.dump(key,false ) << endl;
-	if (glueDebug) cout << "after\t" << glueStorage.dump(key_norm,false ) << endl;
+
+    //if (glueDebug) cout << "after\t" << glueStorage.dump(key_norm,false ) << endl;
 
 }
 

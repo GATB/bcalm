@@ -1,5 +1,6 @@
 #include <gatb/gatb_core.hpp>
 #include "unionFind.hpp"
+#include "glue.hpp"
 
 class bglue : public Tool
 {
@@ -7,6 +8,7 @@ public:
     bglue() : Tool ("bglue"){
 	getParser()->push_back (new OptionOneParam ("-k", "kmer size",  false,"31"));
 	getParser()->push_back (new OptionOneParam ("-in", "input file",  true)); // necessary for repartitor
+	getParser()->push_back (new OptionOneParam ("-out", "output file",  false,"out.fa"));
     };
 
     // Actual job done by the tool is here
@@ -97,16 +99,18 @@ void bglue::execute (){
         size_t leftMin(modelK1.getMinimizerValue(kmmerBegin.value()));
         Model::Kmer kmmerEnd = modelK1.codeSeed(kmerEnd.c_str(), Data::ASCII);
         size_t rightMin(modelK1.getMinimizerValue(kmmerEnd.value()));
-       
-        ufmin.union_(leftMin, rightMin);
-       
+      
         string canonicalKmerBegin = modelK1.toString(kmmerBegin.value());
         string canonicalKmerEnd = modelK1.toString(kmmerEnd.value());
 
-        ufkmers.union_(canonicalKmerBegin, canonicalKmerEnd);
-        
         string prefixCanonicalKmerBegin = canonicalKmerBegin.substr(0, prefix_length);
         string prefixCanonicalKmerEnd = canonicalKmerEnd.substr(0, prefix_length);
+
+#if 0 
+        ufmin.union_(leftMin, rightMin);
+
+        ufkmers.union_(canonicalKmerBegin, canonicalKmerEnd);
+#endif    
 
         ufprefixes.union_(prefixCanonicalKmerBegin, prefixCanonicalKmerEnd);
     }
@@ -114,11 +118,30 @@ void bglue::execute (){
     if (nbSmall)
         std::cout<< nbSmall << " compacted unitig were smaller than k?! " << std::endl;
 
+
+#if 0
     ufmin.printStats("uf minimizers");
 
     ufkmers.printStats("uf kmers");
-   
+#endif
+
     ufprefixes.printStats("uf " + to_string(prefix_length) + "-prefixes of kmers");
+
+
+    // We loop again over sequences
+    // but this time we glue!
+    int nb_glues = 1;
+    BankFasta out (getInput()->getStr("-out"));
+    GlueCommander glue_commander(kmerSize, &out, nb_glues, &model);
+    for (it.first(); !it.isDone(); it.next())
+    {
+        string seq = it->toString();
+        string comment = it->getComment();
+        bool lmark = comment[0] == '1';
+        bool rmark = comment[1] == '1';
+        GlueEntry e(seq, lmark, rmark, kmerSize);
+        glue_commander.insert(e);
+    }
 }
 
 int main (int argc, char* argv[])
