@@ -142,6 +142,14 @@ void bglue::execute (){
         GlueEntry e(seq, lmark, rmark, kmerSize);
         glue_commander.insert(e);
     }
+
+    glue_commander.stop();
+    cout << "Final glue:\n";
+    glue_commander.dump();
+    cout << "*****\n";
+    glue_commander.printMemStats();
+
+
 }
 
 int main (int argc, char* argv[])
