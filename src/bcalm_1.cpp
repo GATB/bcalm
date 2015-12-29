@@ -66,7 +66,7 @@ std::mutex lambda_timing_mutex, active_minimizers_mutex, write_to_glue_mutex;
 
 bcalm_1::bcalm_1 ()  : Tool ("bcalm_1"){
 	getParser()->push_back (new OptionOneParam ("-in", "input file",  true));
-	getParser()->push_back (new OptionOneParam ("-out", "output file",  false,"out.fa"));
+	getParser()->push_back (new OptionOneParam ("-out", "output prefix",  false, "unitigs"));
 	getParser()->push_back (new OptionOneParam ("-k", "kmer size",  false,"31"));
 	getParser()->push_back (new OptionOneParam ("-m", "minimizer size",  false,"8"));
 	getParser()->push_back (new OptionOneParam ("-abundance", "abundance threeshold",  false,"3"));
@@ -79,7 +79,7 @@ void bcalm_1::execute (){
     static char tableASCII[] = {'A', 'C', 'T', 'G'};
 
     string inputFile(getInput()->getStr("-in"));
-    BankFasta out (getInput()->getStr("-out"));
+    BankFasta out (getInput()->getStr("-out") + ".fa");
     kmerSize=getInput()->getInt("-k");
     size_t abundance=getInput()->getInt("-abundance");
     minSize=getInput()->getInt("-m");
@@ -104,6 +104,12 @@ void bcalm_1::execute (){
         dsk_memory = 500;
 
     bool is_kmercounted = inputFile.substr(inputFile.size()-2,2) == "h5";
+    string prefix= getInput()->getStr("-out"); 
+    if ((!(getInput()->get("-out"))) && is_kmercounted)
+    {
+        prefix = inputFile.substr(0,inputFile.size()-2);
+        cout<< "no -out specified and input is kmercounted: output is  "<< prefix << endl;
+    }
 
     /** kmer counting **/
     auto start_kc=chrono::system_clock::now();
@@ -111,7 +117,7 @@ void bcalm_1::execute (){
 
         if (!is_kmercounted)
         {
-            Graph graph = Graph::create ("-in %s -kmer-size %d -minimizer-size %d  -bloom none -out solidKmers.h5  -abundance-min %d -verbose 1 -minimizer-type %d -repartition-type 1 -max-memory %d", inputFile.c_str(), kmerSize, minSize, abundance, minimizer_type, dsk_memory); // Todo replace solidKmers.h5 by hmm.. inputFile I guess? or whatever Minia does
+            Graph graph = Graph::create ("-in %s -kmer-size %d -minimizer-size %d  -bloom none -out %s.h5  -abundance-min %d -verbose 1 -minimizer-type %d -repartition-type 1 -max-memory %d", inputFile.c_str(), kmerSize, minSize, prefix.c_str(), abundance, minimizer_type, dsk_memory);
         }
     }
     auto end_kc=chrono::system_clock::now();
@@ -134,7 +140,7 @@ void bcalm_1::execute (){
     size_t maxBucket(0);
     unsigned long nbKmers(0);
 
-    Storage* storage = StorageFactory(STORAGE_HDF5).load ( is_kmercounted ? inputFile.c_str() : "solidKmers.h5");
+    Storage* storage = StorageFactory(STORAGE_HDF5).load ( is_kmercounted ? inputFile.c_str() : (prefix + ".h5"));
 
     LOCAL (storage);
     /** We get the dsk and minimizers hash group in the storage object. */
@@ -186,7 +192,7 @@ void bcalm_1::execute (){
 
     int nb_glues = 2;
     GlueCommander glue_commander(kmerSize, &out, nb_glues, &model);
-    BankFasta outToGlue ("out_to_glue");
+    BankFasta outToGlue (prefix + ".glue");
 
     double weighted_best_theoretical_speedup_cumul = 0;
     double weighted_best_theoretical_speedup_sum_times = 0;
@@ -237,6 +243,7 @@ void bcalm_1::execute (){
         /* lambda function to add a kmer to a bucket */
         auto add_to_bucket_queue = [&active_minimizers, &bucket_queues](size_t minimizer, string seq, size_t leftmin, size_t rightmin, int p)
         {
+            //std::cout << "adding elt to bucket: " << seq << " "<< minimizer<<std::endl;
             bucket_queues[minimizer].enqueue(std::make_tuple(seq,leftmin,rightmin));
 
             if (active_minimizers[p].find(minimizer) == active_minimizers[p].end())
@@ -364,7 +371,7 @@ void bcalm_1::execute (){
                         {
                             if (seq.size() == 0) 
                             {
-                                std::cout<< "compacted unitig smaller than k?! (seq.size() = " << seq.size() << ")" << std::endl;
+                                cout<< "compacted unitig smaller than k?! (seq.size() = " << seq.size() << ")" << endl;
                                 continue;
                             }
                             Sequence s (Data::ASCII);
@@ -504,13 +511,14 @@ void bcalm_1::execute (){
     cout <<"                                 creating buckets from superbuckets: "<< global_wtime_create_buckets / unit <<" secs"<<endl;
     cout <<"                      bucket compaction (wall-clock during threads): "<< global_wtime_foreach_bucket / unit <<" secs" <<endl;
     cout <<"                                               overhead due to glue: "<< global_wtime_glue_overheads / unit <<" secs"<<endl;
-    cout <<"\n                within bucket compaction threads,\n";
+    cout <<"\n                within all bucket compaction threads,\n";
     cout <<"                       adding nodes to subgraphs: "<< global_wtime_add_nodes / unit <<" secs" <<endl;
     cout <<"         subgraphs constructions and compactions: "<< global_wtime_compactions / unit <<" secs"<<endl;
     cout <<"                  compacted nodes redistribution: "<< global_wtime_cdistribution / unit <<" secs"<<endl;
     double sum = global_wtime_glue_overheads + global_wtime_cdistribution + global_wtime_compactions + global_wtime_add_nodes + global_wtime_create_buckets;
-    cout<<"Sum of the above fine-grained timings: "<< sum / unit <<" secs"<<endl;
-    cout<<"Discrepancy between sum of fine-grained timings and total wallclock of buckets compactions step: "<< (chrono::duration_cast<chrono::nanoseconds>(end_t-start_buckets).count() - sum ) / unit <<" secs"<<endl;
+    cout<<"Sum of CPU times for bucket compactions: "<< sum / unit <<" secs"<<endl;
+    if (nb_threads == 1)
+        cout<<"Discrepancy between sum of fine-grained timings and total wallclock of buckets compactions step: "<< (chrono::duration_cast<chrono::nanoseconds>(end_t-start_buckets).count() - sum ) / unit <<" secs"<<endl;
     cout<<"BCALM total wallclock (excl kmer counting): "<<chrono::duration_cast<chrono::nanoseconds>(end_t-start_t).count() / unit <<" secs"<<endl;
     cout<<"Max bucket : "<<maxBucket<<endl;
     if (time_lambdas)
