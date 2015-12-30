@@ -166,6 +166,7 @@ string glue_sequences(vector<markedSeq> chain)
     string res;
     string previous_kmer = "";
     unsigned int k = kmerSize;
+    bool last_rmark = false;
 
     for (auto it = chain.begin(); it != chain.end(); it++)
     {
@@ -184,7 +185,11 @@ string glue_sequences(vector<markedSeq> chain)
         
         previous_kmer = seq.substr(seq.size() - k);
         assert(previous_kmer.size() == k);
+        last_rmark = it->rmark;
     }
+    assert(last_rmark == false);
+    if (last_rmark) { cout<<"bad gluing, missed an element" << endl; exit(1); } // in case assert()'s are disabled
+
     return res;
 }
 
@@ -327,75 +332,95 @@ void bglue::execute (){
     // now glue using the UF
     BankFasta out (getInput()->getStr("-out"));
 
-    // TODO: do a for loop over a number of passes
-    // each pass is responsible for a subset of the UF partitions
-
-    // but for now, we do a single pass, just to see memory usage
-    //
-    unordered_map<int,vector<markedSeq>> msInPart;
-    for (it.first(); !it.isDone(); it.next())
+    auto decide_if_process_seq_in_partition = [](bool found_partition, uint32_t partition, uint32_t pass, uint32_t nb_passes)
     {
-        string seq = it->toString();
-
-        string kmerBegin = seq.substr(0, k );
-        string kmerEnd = seq.substr(seq.size() - k , k );
-
-        // make canonical kmer
-        Model::Kmer kmmerBegin = model.codeSeed(kmerBegin.c_str(), Data::ASCII);
-        Model::Kmer kmmerEnd = model.codeSeed(kmerEnd.c_str(), Data::ASCII);
-         
-        string comment = it->getComment();
-        bool lmark = comment[0] == '1';
-        bool rmark = comment[1] == '1';
-
-        string ks = model.toString(kmmerBegin.value());
-        string ke = model.toString(kmmerEnd  .value());
-        markedSeq ms(seq, lmark, rmark, ks, ke);
-
-        partition_t partition = 0;
-        bool found_partition = false;
-
-        if (lmark)
-        {
-            found_partition = true;
-            partition = ufkmers.find(hasher(kmmerBegin));
+        if (!found_partition)
+        {   
+            return (pass == (nb_passes - 1)); // no-partition sequences (those who do need to be glued) are output at the very end.
         }
 
-        if (rmark)
+        return (partition % nb_passes) == pass;
+    };
+
+    int nb_passes = 4; // TODO: tune that
+
+    // to reduce memory usage, process the glued file in multiple passes.
+    for (int pass = 0; pass < nb_passes; pass++)
+    {
+        cout << "pass " << pass << endl;
+        unordered_map<int,vector<markedSeq>> msInPart;
+        for (it.first(); !it.isDone(); it.next()) // I don't think this loop could be parallelized at all. if it did, all threads would compute the same partition index.
         {
-            if (found_partition) // just do a small check
-            {   
-                if (ufkmers.find(hasher(kmmerEnd)) != partition)
-                    std::cout << "bad UF! left kmer has partition " << partition << " but right kmer has partition " << ufkmers.find(hasher(kmmerEnd)) << std::endl;
-                
-                assert(ufkmers.find(hasher(kmmerEnd)) == partition);
+            string seq = it->toString();
+
+            string kmerBegin = seq.substr(0, k );
+            string kmerEnd = seq.substr(seq.size() - k , k );
+
+            // make canonical kmer
+            Model::Kmer kmmerBegin = model.codeSeed(kmerBegin.c_str(), Data::ASCII);
+            Model::Kmer kmmerEnd = model.codeSeed(kmerEnd.c_str(), Data::ASCII);
+
+            partition_t partition = 0;
+            bool found_partition = false;
+
+            string comment = it->getComment();
+            bool lmark = comment[0] == '1';
+            bool rmark = comment[1] == '1';
+
+
+            if (lmark)
+            {
+                found_partition = true;
+                partition = ufkmers.find(hasher(kmmerBegin));
             }
 
-            partition = ufkmers.find(hasher(kmmerEnd));
-            found_partition = true;
+            if (rmark)
+            {
+                if (found_partition) // just do a small check
+                {   
+                    if (ufkmers.find(hasher(kmmerEnd)) != partition)
+                    { std::cout << "bad UF! left kmer has partition " << partition << " but right kmer has partition " << ufkmers.find(hasher(kmmerEnd)) << std::endl; exit(1); }
+                }
+
+                partition = ufkmers.find(hasher(kmmerEnd));
+                found_partition = true;
+            }
+
+            // at this point, decide if we process this sequence in this pass or not
+            if (!decide_if_process_seq_in_partition(found_partition, partition, pass, nb_passes))
+                continue;
+
+            string ks = model.toString(kmmerBegin.value());
+            string ke = model.toString(kmmerEnd  .value());
+            markedSeq ms(seq, lmark, rmark, ks, ke);
+
+
+
+            if (!found_partition) // this one doesn't need to be glued 
+            {
+                output(ms.seq, out);
+            }
+
+            msInPart[partition].push_back(ms);
         }
 
-        if (!found_partition) // this one doesn't need to be glued 
+
+        // now iterates all sequences in a partition to glue them in clever order (avoid intermediate gluing)
+        for (auto it = msInPart.begin(); it != msInPart.end(); it++)
         {
-            output(ms.seq, out);
-        }
-    
-        msInPart[partition].push_back(ms);
-    }
+            // TODO: do a task based parallelism here!!! perfect opportunity.
 
+            //std::cout << "1.processing partition " << it->first << std::endl;
+            vector<vector<markedSeq>> ordered_sequences = determine_order_sequences(it->second);
+            //std::cout << "2.processing partition " << it->first << " nb ordered sequences: " << ordered_sequences.size() << std::endl;
 
-    // now iterates all sequences in a partition to glue them in clever order (avoid intermediate gluing)
-    for (auto it = msInPart.begin(); it != msInPart.end(); it++)
-    {
-        //std::cout << "1.processing partition " << it->first << std::endl;
-        vector<vector<markedSeq>> ordered_sequences = determine_order_sequences(it->second);
-        //std::cout << "2.processing partition " << it->first << " nb ordered sequences: " << ordered_sequences.size() << std::endl;
+            for (auto itO = ordered_sequences.begin(); itO != ordered_sequences.end(); itO++)
+            {
+                string seq = glue_sequences(*itO);
 
-        for (auto itO = ordered_sequences.begin(); itO != ordered_sequences.end(); itO++)
-        {
-            string seq = glue_sequences(*itO);
-
-            output(seq, out);
+                // TODO: use a output queue, or a lock, or a task based output again, i don't know
+                output(seq, out);
+            }
         }
     }
 

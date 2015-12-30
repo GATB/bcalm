@@ -87,7 +87,7 @@ public:
             set_mutex.lock();
             if (!mData[id1].compare_exchange_strong(oldEntry, newEntry))
             {
-            set_mutex.unlock();
+                set_mutex.unlock();
                 continue;
             }
             set_mutex.unlock();
