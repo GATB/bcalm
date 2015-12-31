@@ -1,3 +1,5 @@
+/* remaining issue: 
+ * - inconsistency of results between machines (laptop lifl vs cyberstar231) */
 #include <gatb/gatb_core.hpp>
 #include "unionFind.hpp"
 #include "glue.hpp"
@@ -68,7 +70,7 @@ struct markedSeq
 
 vector<vector<markedSeq> > determine_order_sequences(vector<markedSeq> sequences)
 {
-    bool debug = false;
+    bool debug = false ;
     unordered_map<string, set<int> > kmerIndex;
     set<int> usedSeq;
     vector<vector<markedSeq>> res;
@@ -350,6 +352,7 @@ void bglue::execute (){
         cout << "pass " << pass << endl;
         unordered_map<int,vector<markedSeq>> msInPart;
         for (it.first(); !it.isDone(); it.next()) // I don't think this loop could be parallelized at all. if it did, all threads would compute the same partition index.
+            // par contre; pourrait y avoir une iteration en parallele (avec un autre set de threads) qui calculeraient l'index de partition.
         {
             string seq = it->toString();
 
@@ -394,11 +397,10 @@ void bglue::execute (){
             string ke = model.toString(kmmerEnd  .value());
             markedSeq ms(seq, lmark, rmark, ks, ke);
 
-
-
             if (!found_partition) // this one doesn't need to be glued 
             {
                 output(ms.seq, out);
+                continue;
             }
 
             msInPart[partition].push_back(ms);
