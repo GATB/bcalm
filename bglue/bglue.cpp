@@ -43,6 +43,21 @@ size_t minSize=8;
                 }
     };
 
+unsigned long memory_usage(string message="")
+{
+    // using Progress.cpp of gatb-core
+
+    /** We get the memory used by the current process. */
+    u_int64_t mem = System::info().getMemorySelfUsed() / 1024;
+    u_int64_t memMaxProcess = System::info().getMemorySelfMaxUsed() / 1024;
+    /** We format the string to be displayed. */
+    char tmp[128];
+    snprintf (tmp, sizeof(tmp), "   memory [current, maximum (maxRSS)]: [%4lu, %4lu] MB ",
+            mem, memMaxProcess
+            );
+    std::cout << message << " " << tmp << std::endl;
+    return mem;
+}
 
 extern char revcomp (char s); // glue.cpp
 
@@ -331,10 +346,14 @@ void bglue::execute (){
 #endif
     
 
+    unsigned long memUF = memory_usage("UF constructed");
+
     if (getParser()->saw("--only-uf")) // for debugging
         return;
 
     ufkmers.printStats("uf kmers");
+    
+    unsigned long memUFpostStats = memory_usage("after computing UF stats");
 
     // now glue using the UF
     BankFasta out (getInput()->getStr("-out"));
@@ -429,6 +448,8 @@ void bglue::execute (){
                 output(seq, out);
             }
         }
+    
+        memory_usage("end of pass");
     }
 
 //#define ORIGINAL_GLUE
