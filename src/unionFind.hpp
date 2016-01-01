@@ -146,6 +146,7 @@ public:
         std::cout << prefix + " data structure has " << getNumKeys << " inserted elements, and made " << getNumSets << " partitions." << std::endl;
         std::cout << "mean/max number of elements in partitions: " << mean << "/" << max << std::endl;
         std::cout << "raw space of UF hash data: " << ( 2*getNumKeys * sizeof(T)  ) /1024/1024 << " MB" << std::endl; // 2x because each key of type T is associated to a value of type T
+        std::cout << "bucket count: " << mData.bucket_count() << ", sizeof(std::atomic<uint64_t>>) = " << sizeof(std::atomic<uint64_t>) << std::endl;
 
     }
 
