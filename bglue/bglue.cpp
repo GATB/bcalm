@@ -260,11 +260,12 @@ void bglue::execute (){
         is.read ((char*)freq_order, sizeof(uint32_t) * rg);
     }
 
-    
+#if 0  // all those models are for creating UF with k-1 mers or minimizers, we don't do that anymore. legacy/debugging code, that can be removed later.
     Model model(kmerSize, minSize, Kmer<SPAN>::ComparatorMinimizerFrequencyOrLex(), freq_order);
     Model modelK1(kmerSize-1, minSize,  Kmer<SPAN>::ComparatorMinimizerFrequencyOrLex(), freq_order);
     Model modelK2(kmerSize-2, minSize,  Kmer<SPAN>::ComparatorMinimizerFrequencyOrLex(), freq_order);
     Model modelM(minSize, minSize,  Kmer<SPAN>::ComparatorMinimizerFrequencyOrLex(), freq_order);
+#endif
 
     // create a hasher for UF
     ModelCanon modelCanon(kmerSize); // i'm a bit lost with those models.. I think GATB could be made more simple here.
@@ -293,8 +294,8 @@ void bglue::execute (){
     /*for (it.first(); !it.isDone(); it.next())
     {
         string seq = it->toString();*/
-    auto createUF = [k, &modelK1 /* crashes if copied!*/, &model, \
-        &ufkmerstr, &ufkmers, &hasher](const Sequence& sequence)
+    auto createUF = [k, &modelCanon /* crashes if copied!*/, \
+        &ufkmers, &hasher](const Sequence& sequence)
     {
         string seq = sequence.toString();
 
@@ -312,12 +313,15 @@ void bglue::execute (){
         string kmerBegin = seq.substr(0, k );
         string kmerEnd = seq.substr(seq.size() - k , k );
 
-        Model::Kmer kmmerBegin = model.codeSeed(kmerBegin.c_str(), Data::ASCII);
-        Model::Kmer kmmerEnd = model.codeSeed(kmerEnd.c_str(), Data::ASCII);
-      
-        ufkmers.union_(hasher(kmmerBegin), hasher(kmmerEnd));
+        ModelCanon::Kmer kmmerBegin = modelCanon.codeSeed(kmerBegin.c_str(), Data::ASCII);
+        ModelCanon::Kmer kmmerEnd = modelCanon.codeSeed(kmerEnd.c_str(), Data::ASCII);
+
+       ufkmers.union_(hasher(kmmerBegin), hasher(kmmerEnd));
 
 #if 0 
+        Model::Kmer kmmerBegin = model.codeSeed(kmerBegin.c_str(), Data::ASCII);
+        Model::Kmer kmmerEnd = model.codeSeed(kmerEnd.c_str(), Data::ASCII);
+ 
         string canonicalKmerBegin = modelK1.toString(kmmerBegin.value());
         string canonicalKmerEnd = modelK1.toString(kmmerEnd.value());
         ufkmerstr.union_(canonicalKmerBegin, canonicalKmerEnd);
@@ -386,8 +390,8 @@ void bglue::execute (){
             string kmerEnd = seq.substr(seq.size() - k , k );
 
             // make canonical kmer
-            Model::Kmer kmmerBegin = model.codeSeed(kmerBegin.c_str(), Data::ASCII);
-            Model::Kmer kmmerEnd = model.codeSeed(kmerEnd.c_str(), Data::ASCII);
+            ModelCanon::Kmer kmmerBegin = modelCanon.codeSeed(kmerBegin.c_str(), Data::ASCII);
+            ModelCanon::Kmer kmmerEnd = modelCanon.codeSeed(kmerEnd.c_str(), Data::ASCII);
 
             partition_t partition = 0;
             bool found_partition = false;
@@ -419,8 +423,8 @@ void bglue::execute (){
             if (!decide_if_process_seq_in_partition(found_partition, partition, pass, nb_passes))
                 continue;
 
-            string ks = model.toString(kmmerBegin.value());
-            string ke = model.toString(kmmerEnd  .value());
+            string ks = modelCanon.toString(kmmerBegin.value());
+            string ke = modelCanon.toString(kmmerEnd  .value());
             markedSeq ms(seq, lmark, rmark, ks, ke);
 
             if (!found_partition) // this one doesn't need to be glued 
