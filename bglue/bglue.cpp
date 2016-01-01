@@ -13,6 +13,7 @@ public:
 	getParser()->push_back (new OptionOneParam ("-in", "input file",  true)); // necessary for repartitor
 	getParser()->push_back (new OptionOneParam ("-out", "output file",  false, "out.fa"));
 	getParser()->push_front (new OptionNoParam  ("--only-uf",   "(for debugging only) stop after UF construction", false));
+	getParser()->push_front (new OptionNoParam  ("--uf-stats",   "display UF statistics", false));
     };
 
     // Actual job done by the tool is here
@@ -351,7 +352,8 @@ void bglue::execute (){
     if (getParser()->saw("--only-uf")) // for debugging
         return;
 
-    ufkmers.printStats("uf kmers");
+    if (getParser()->saw("--uf-stats")) // for debugging
+        ufkmers.printStats("uf kmers");
     
     unsigned long memUFpostStats = memory_usage("after computing UF stats");
 
