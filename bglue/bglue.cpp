@@ -4,6 +4,7 @@
 #include "unionFind.hpp"
 #include "glue.hpp"
 #include <atomic>
+#include "../thirdparty/ThreadPool.h"
 
 class bglue : public Tool
 {
@@ -212,16 +213,21 @@ string glue_sequences(vector<markedSeq> chain)
     return res;
 }
 
-void output(string seq, BankFasta &out)
+void output(string seq, BankFasta &out, string comment = "")
 {
     Sequence s (Data::ASCII);
     s.getData().setRef ((char*)seq.c_str(), seq.size());
+    s._comment = comment;   
     out.insert(s);
+    out.flush(); // TODO: see if we can do without this flush; would require a dedicated thread for writing to file
 }
 
 
+/* main */
 void bglue::execute (){
 
+    int nb_threads = getInput()->getInt("-nb-cores");
+    std::cout << "Nb threads: " << nb_threads <<endl;
     kmerSize=getInput()->getInt("-k");
     size_t k = kmerSize;
     string inputFile(getInput()->getStr("-in")); // necessary for repartitor
@@ -278,14 +284,12 @@ void bglue::execute (){
     unsigned int prefix_length = 10;
     unionFind<std::string> ufkmerstr; 
 #endif
-    unionFind<std::string> ufkmerstr(100); 
     // those were toy one, here is the real one:
 
-    typedef uint32_t partition_t;
-    unionFind<partition_t> ufkmers(1000); 
-    // instead of UF of kmers, do a union find of hashes of kmers. less memory. will have collisions, but that's okay i think. let's see.
-    // also, use many locks
-
+    typedef uint32_t partition_t; 
+    unionFind<partition_t> ufkmers(0); 
+    // instead of UF of kmers, we do a union find of hashes of kmers. less memory. will have collisions, but that's okay i think. let's see.
+    // actually, in the current implementation, partition_t is not used, but values are indeed hardcoded in 32 bits (the UF implementation uses a 64 bits hash table for internal stuff)
     
     // We create an iterator over this bank.
     BankFasta::Iterator it (in);
@@ -343,7 +347,7 @@ void bglue::execute (){
     };
 
     //setDispatcher (new SerialDispatcher()); // force single thread
-    setDispatcher (  new Dispatcher (getInput()->getInt(STR_NB_CORES)) );
+    setDispatcher (  new Dispatcher (nb_threads) );
     getDispatcher()->iterate (it, createUF);
 
 #if 0
@@ -361,48 +365,23 @@ void bglue::execute (){
         return;
 
     if (getParser()->saw("--uf-stats")) // for debugging
+    {
         ufkmers.printStats("uf kmers");
-    
-    unsigned long memUFpostStats = memory_usage("after computing UF stats");
+        unsigned long memUFpostStats = memory_usage("after computing UF stats");
+    }
 
-    // now glue using the UF
-    BankFasta out (getInput()->getStr("-out"));
+    // setup output file
+    string output_prefix = getInput()->getStr("-out");
+    BankFasta out (output_prefix);
 
-    auto decide_if_process_seq_in_partition = [](bool found_partition, uint32_t partition, uint32_t pass, uint32_t nb_passes)
-    {
-        if (!found_partition)
-        {   
-            return (pass == (nb_passes - 1)); // no-partition sequences (those who do need to be glued) are output at the very end.
-        }
-
-        return (partition % nb_passes) == pass;
-    };
-
-    int nb_passes = 4; // TODO: tune that
-
-    // to reduce memory usage, process the glued file in multiple passes.
-    for (int pass = 0; pass < nb_passes; pass++)
-    {
-        cout << "pass " << pass << endl;
-        unordered_map<int,vector<markedSeq>> msInPart;
-        for (it.first(); !it.isDone(); it.next()) // I don't think this loop could be parallelized at all. if it did, all threads would compute the same partition index.
-            // par contre; pourrait y avoir une iteration en parallele (avec un autre set de threads) qui calculeraient l'index de partition.
+    auto get_partition = [&modelCanon, &ufkmers, &hasher]
+        (string &kmerBegin, string &kmerEnd, 
+         bool lmark, bool rmark,
+         ModelCanon::Kmer &kmmerBegin, ModelCanon::Kmer &kmmerEnd,  // those will be populated based on lmark and rmark
+         bool &found_partition)
         {
-            string seq = it->toString();
-
-            string kmerBegin = seq.substr(0, k );
-            string kmerEnd = seq.substr(seq.size() - k , k );
-
+            found_partition = false;
             partition_t partition = 0;
-            bool found_partition = false;
-
-            string comment = it->getComment();
-            bool lmark = comment[0] == '1';
-            bool rmark = comment[1] == '1';
-
-            // make canonical kmer
-            ModelCanon::Kmer kmmerBegin;
-            ModelCanon::Kmer kmmerEnd;
 
             if (lmark)
             {
@@ -426,51 +405,159 @@ void bglue::execute (){
                 }
             }
 
-            // at this point, decide if we process this sequence in this pass or not
-            if (!decide_if_process_seq_in_partition(found_partition, partition, pass, nb_passes))
-                continue;
+            return partition;
+        };
 
-            // compute kmer extremities if we have not already
-            if (!lmark)
-                kmmerBegin = modelCanon.codeSeed(kmerBegin.c_str(), Data::ASCII);
-            if (!rmark)
-                kmmerEnd = modelCanon.codeSeed(kmerEnd.c_str(), Data::ASCII);
+    int nbGluePartitions=50;
+    std::mutex *gluePartitionsLock = new std::mutex[nbGluePartitions];
+    std::mutex outLock; // for the main output file
+    std::vector<BankFasta*> gluePartitions(nbGluePartitions);
+    std::string gluePartition_prefix = output_prefix + ".gluePartition.";
+    for (int i = 0; i < nbGluePartitions; i++)
+        gluePartitions[i] = new BankFasta(gluePartition_prefix + std::to_string(i));
 
-            string ks = modelCanon.toString(kmmerBegin.value());
-            string ke = modelCanon.toString(kmmerEnd  .value());
-            markedSeq ms(seq, lmark, rmark, ks, ke);
+    // partition the glue into many files, à la dsk
+    auto partitionGlue = [k, &modelCanon /* crashes if copied!*/, \
+        &ufkmers, &hasher, &get_partition, &gluePartitions, &gluePartitionsLock,
+        nbGluePartitions, &out, &outLock]
+            (const Sequence& sequence)
+    {
+        string seq = sequence.toString();
 
-            if (!found_partition) // this one doesn't need to be glued 
-            {
-                output(ms.seq, out);
-                continue;
-            }
+        string comment = sequence.getComment();
+        bool lmark = comment[0] == '1';
+        bool rmark = comment[1] == '1';
 
-            msInPart[partition].push_back(ms);
-        }
+        string kmerBegin = seq.substr(0, k );
+        string kmerEnd = seq.substr(seq.size() - k , k );
 
+        // make canonical kmer
+        ModelCanon::Kmer kmmerBegin;
+        ModelCanon::Kmer kmmerEnd;
 
-        // now iterates all sequences in a partition to glue them in clever order (avoid intermediate gluing)
-        for (auto it = msInPart.begin(); it != msInPart.end(); it++)
+        bool found_partition = false;
+
+        partition_t partition = get_partition(kmerBegin, kmerEnd, lmark, rmark, kmmerBegin, kmmerEnd, found_partition);
+
+        // compute kmer extremities if we have not already
+        if (!lmark)
+            kmmerBegin = modelCanon.codeSeed(kmerBegin.c_str(), Data::ASCII);
+        if (!rmark)
+            kmmerEnd = modelCanon.codeSeed(kmerEnd.c_str(), Data::ASCII);
+
+        if (!found_partition) // this one doesn't need to be glued 
         {
-            // TODO: do a task based parallelism here!!! perfect opportunity.
-
-            //std::cout << "1.processing partition " << it->first << std::endl;
-            vector<vector<markedSeq>> ordered_sequences = determine_order_sequences(it->second);
-            //std::cout << "2.processing partition " << it->first << " nb ordered sequences: " << ordered_sequences.size() << std::endl;
-
-            for (auto itO = ordered_sequences.begin(); itO != ordered_sequences.end(); itO++)
-            {
-                string seq = glue_sequences(*itO);
-
-                // TODO: use a output queue, or a lock, or a task based output again, i don't know
-                output(seq, out);
-            }
+            outLock.lock();
+            output(seq, out); // maybe could optimize writing by using queues
+            outLock.unlock();
+            return;
         }
+
+        int index = partition % nbGluePartitions;
+        gluePartitionsLock[index].lock();
+        //stringstream ss1; // to save partition later
+        //ss1 << blabla;
+        output(seq, *gluePartitions[index], comment);
+        gluePartitionsLock[index].unlock();
+    };
+
+    cout << "Disk partitioning of glue " << endl;
+
+    setDispatcher (  new Dispatcher (getInput()->getInt(STR_NB_CORES)) );
+    getDispatcher()->iterate (it, partitionGlue);
+
+    cout << "Glueing partitions" << endl;
+   
+    // glue all partitions using a thread pool     
+    ThreadPool pool(nb_threads - 1);
+
+    for (int partition = 0; partition < nbGluePartitions; partition++)
+    {
+        auto glue_partition = [&modelCanon, &ufkmers, &hasher, partition, &gluePartition_prefix,
+        &get_partition, &out, &outLock]()
+        {
+            int k = kmerSize;
+
+            string partitionFile = gluePartition_prefix + std::to_string(partition);
+            BankFasta partitionBank (partitionFile);
+
+            outLock.lock(); // should use a printlock..
+            std::cout << "Loading partition " << partition << " (size: " << System::file().getSize(partitionFile)/1024/1024 << " MB)" << std::endl;
+            outLock.unlock();
+
+            BankFasta::Iterator it (partitionBank);
+
+            unordered_map<int,vector<markedSeq>> msInPart;
+
+            for (it.first(); !it.isDone(); it.next()) 
+            {
+                string seq = it->toString();
+
+                string kmerBegin = seq.substr(0, k );
+                string kmerEnd = seq.substr(seq.size() - k , k );
+
+                partition_t partition = 0;
+                bool found_partition = false;
+
+                string comment = it->getComment();
+                bool lmark = comment[0] == '1';
+                bool rmark = comment[1] == '1';
+
+                // TODO get partition id from sequence header (save it previously)
+
+                // make canonical kmer
+                ModelCanon::Kmer kmmerBegin;
+                ModelCanon::Kmer kmmerEnd;
+
+                partition = get_partition(kmerBegin, kmerEnd, lmark, rmark, kmmerBegin, kmmerEnd, found_partition);
+
+                // compute kmer extremities if we have not already
+                if (!lmark)
+                    kmmerBegin = modelCanon.codeSeed(kmerBegin.c_str(), Data::ASCII);
+                if (!rmark)
+                    kmmerEnd = modelCanon.codeSeed(kmerEnd.c_str(), Data::ASCII);
+
+                string ks = modelCanon.toString(kmmerBegin.value());
+                string ke = modelCanon.toString(kmmerEnd  .value());
+                markedSeq ms(seq, lmark, rmark, ks, ke);
+
+                msInPart[partition].push_back(ms);
+            }
+
+
+            // now iterates all sequences in a partition to glue them in clever order (avoid intermediate gluing)
+            for (auto it = msInPart.begin(); it != msInPart.end(); it++)
+            {
+                //std::cout << "1.processing partition " << it->first << std::endl;
+                vector<vector<markedSeq>> ordered_sequences = determine_order_sequences(it->second);
+                //std::cout << "2.processing partition " << it->first << " nb ordered sequences: " << ordered_sequences.size() << std::endl;
+
+                for (auto itO = ordered_sequences.begin(); itO != ordered_sequences.end(); itO++)
+                {
+                    string seq = glue_sequences(*itO);
+
+                    outLock.lock();
+                    output(seq, out); // maybe could optimize writing by using queues
+                    outLock.unlock();
+                }
+            }
+
+            partitionBank.finalize();
+
+            System::file().remove (partitionFile);
+
+        };
     
-        memory_usage("end of pass");
+        pool.enqueue(glue_partition);
     }
 
+    pool.join();
+
+    memory_usage("end");
+
+
+
+   
 //#define ORIGINAL_GLUE
 #ifdef ORIGINAL_GLUE
     // We loop again over sequences

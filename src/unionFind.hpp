@@ -127,6 +127,7 @@ public:
 
     // compatibility with original unionFind.cpp
     uint32_t getSet(uint32_t key) { return find(key); }
+
     void printStats(std::string prefix) 
     {
         std::unordered_map<T, std::set<T>> reverseData;

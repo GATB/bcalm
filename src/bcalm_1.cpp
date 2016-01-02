@@ -16,8 +16,8 @@
 
 #include <thread>
 #include <atomic>
-#include <../../../thirdparty/concurrentqueue.h>
-#include "../../../thirdparty/ThreadPool.h"
+#include "../thirdparty/concurrentqueue.h"
+#include "../thirdparty/ThreadPool.h"
 
 #define get_wtime() chrono::system_clock::now()
 #define diff_wtime(x,y) chrono::duration_cast<chrono::nanoseconds>(y - x).count()
@@ -311,7 +311,7 @@ void bcalm_1::execute (){
 
         cout << "Iterated " << partition[p].getNbItems() << " kmers, among them " << nb_left_min_diff_right_min << " has leftmin!=rightmin" << endl;
 
-        ThreadPool pool(nb_threads - 1);
+        ThreadPool pool(nb_threads); // FIXME: this used to be "nb_threads-1", but I'm testing without the -1.
 
         std::vector<double> lambda_timings;
         auto start_foreach_bucket_t=get_wtime();
