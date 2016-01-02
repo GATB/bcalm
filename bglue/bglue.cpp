@@ -30,7 +30,7 @@ typedef Kmer<SPAN>::ModelMinimizer <ModelCanon> Model;
 size_t kmerSize=31;
 size_t minSize=8;
 
-    // a hash wrapper for hashing kmers
+   // a hash wrapper for hashing kmers in Model form
     template <typename ModelType>
     class Hasher_T 
     {
@@ -313,23 +313,27 @@ void bglue::execute (){
         string kmerBegin = seq.substr(0, k );
         string kmerEnd = seq.substr(seq.size() - k , k );
 
+        // UF of canonical kmers in ModelCanon form, then hashed 
         ModelCanon::Kmer kmmerBegin = modelCanon.codeSeed(kmerBegin.c_str(), Data::ASCII);
         ModelCanon::Kmer kmmerEnd = modelCanon.codeSeed(kmerEnd.c_str(), Data::ASCII);
-
-       ufkmers.union_(hasher(kmmerBegin), hasher(kmmerEnd));
+        ufkmers.union_(hasher(kmmerBegin), hasher(kmmerEnd));
 
 #if 0 
+
         Model::Kmer kmmerBegin = model.codeSeed(kmerBegin.c_str(), Data::ASCII);
         Model::Kmer kmmerEnd = model.codeSeed(kmerEnd.c_str(), Data::ASCII);
  
+        // UF of canonical kmers in string form, not hashed
         string canonicalKmerBegin = modelK1.toString(kmmerBegin.value());
         string canonicalKmerEnd = modelK1.toString(kmmerEnd.value());
         ufkmerstr.union_(canonicalKmerBegin, canonicalKmerEnd);
 
+        // UF of minimizers of kmers
         size_t leftMin(modelK1.getMinimizerValue(kmmerBegin.value()));
         size_t rightMin(modelK1.getMinimizerValue(kmmerEnd.value()));
         ufmin.union_(leftMin, rightMin);
 
+        // UF of prefix of kmers in string form
         string prefixCanonicalKmerBegin = canonicalKmerBegin.substr(0, prefix_length);
         string prefixCanonicalKmerEnd = canonicalKmerEnd.substr(0, prefix_length);
         ufprefixes.union_(prefixCanonicalKmerBegin, prefixCanonicalKmerEnd);
@@ -389,10 +393,6 @@ void bglue::execute (){
             string kmerBegin = seq.substr(0, k );
             string kmerEnd = seq.substr(seq.size() - k , k );
 
-            // make canonical kmer
-            ModelCanon::Kmer kmmerBegin = modelCanon.codeSeed(kmerBegin.c_str(), Data::ASCII);
-            ModelCanon::Kmer kmmerEnd = modelCanon.codeSeed(kmerEnd.c_str(), Data::ASCII);
-
             partition_t partition = 0;
             bool found_partition = false;
 
@@ -400,28 +400,41 @@ void bglue::execute (){
             bool lmark = comment[0] == '1';
             bool rmark = comment[1] == '1';
 
+            // make canonical kmer
+            ModelCanon::Kmer kmmerBegin;
+            ModelCanon::Kmer kmmerEnd;
 
             if (lmark)
             {
+                kmmerBegin = modelCanon.codeSeed(kmerBegin.c_str(), Data::ASCII);
                 found_partition = true;
                 partition = ufkmers.find(hasher(kmmerBegin));
             }
 
             if (rmark)
             {
+                kmmerEnd = modelCanon.codeSeed(kmerEnd.c_str(), Data::ASCII);
                 if (found_partition) // just do a small check
                 {   
                     if (ufkmers.find(hasher(kmmerEnd)) != partition)
                     { std::cout << "bad UF! left kmer has partition " << partition << " but right kmer has partition " << ufkmers.find(hasher(kmmerEnd)) << std::endl; exit(1); }
                 }
-
-                partition = ufkmers.find(hasher(kmmerEnd));
-                found_partition = true;
+                else
+                {
+                    partition = ufkmers.find(hasher(kmmerEnd));
+                    found_partition = true;
+                }
             }
 
             // at this point, decide if we process this sequence in this pass or not
             if (!decide_if_process_seq_in_partition(found_partition, partition, pass, nb_passes))
                 continue;
+
+            // compute kmer extremities if we have not already
+            if (!lmark)
+                kmmerBegin = modelCanon.codeSeed(kmerBegin.c_str(), Data::ASCII);
+            if (!rmark)
+                kmmerEnd = modelCanon.codeSeed(kmerEnd.c_str(), Data::ASCII);
 
             string ks = modelCanon.toString(kmmerBegin.value());
             string ke = modelCanon.toString(kmmerEnd  .value());
