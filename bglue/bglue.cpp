@@ -48,15 +48,11 @@ size_t minSize=8;
 unsigned long memory_usage(string message="")
 {
     // using Progress.cpp of gatb-core
-
-    /** We get the memory used by the current process. */
     u_int64_t mem = System::info().getMemorySelfUsed() / 1024;
     u_int64_t memMaxProcess = System::info().getMemorySelfMaxUsed() / 1024;
-    /** We format the string to be displayed. */
     char tmp[128];
     snprintf (tmp, sizeof(tmp), "   memory [current, maximum (maxRSS)]: [%4lu, %4lu] MB ",
-            mem, memMaxProcess
-            );
+            mem, memMaxProcess);
     std::cout << message << " " << tmp << std::endl;
     return mem;
 }
@@ -168,8 +164,8 @@ vector<vector<markedSeq> > determine_order_sequences(vector<markedSeq> sequences
             rmark = current.rmark;
             assert((usedSeq.find(current_index) == usedSeq.end()));
             usedSeq.insert(current_index);
-
         }
+
         res.push_back(chain);
         nb_chained += chain.size();
     }
@@ -554,8 +550,6 @@ void bglue::execute (){
     pool.join();
 
     memory_usage("end");
-
-
 
    
 //#define ORIGINAL_GLUE

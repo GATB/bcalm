@@ -17,6 +17,7 @@
 #include <thread>
 #include <atomic>
 #include "../thirdparty/concurrentqueue.h"
+#include "../thirdparty/lockbasedqueue.h" // for debugging only
 #include "../thirdparty/ThreadPool.h"
 
 #define get_wtime() chrono::system_clock::now()
@@ -58,6 +59,18 @@ std::mutex lambda_timing_mutex, active_minimizers_mutex, write_to_glue_mutex;
 #define time_glue_overhead_start() std::chrono::time_point<std::chrono::system_clock> start_glue_t; time_glue_overhead_start_2();
 #define time_glue_overhead_stop_2()  end_glue_t=get_wtime(); atomic_double_add(global_wtime_glue_overheads, diff_wtime(start_glue_t, end_glue_t));
 #define time_glue_overhead_stop()  std::chrono::time_point<std::chrono::system_clock> end_glue_t; time_glue_overhead_stop_2();
+
+unsigned long memory_usage(string message="")
+{
+    // using Progress.cpp of gatb-core
+    u_int64_t mem = System::info().getMemorySelfUsed() / 1024;
+    u_int64_t memMaxProcess = System::info().getMemorySelfMaxUsed() / 1024;
+    char tmp[128];
+    snprintf (tmp, sizeof(tmp), "  --  memory [current, maximum (maxRSS)]: [%4lu, %4lu] MB ",
+            mem, memMaxProcess);
+    std::cout << message << " " << tmp << std::endl;
+    return mem;
+}
 
 
 
@@ -112,12 +125,14 @@ void bcalm_1::execute (){
     }
 
     /** kmer counting **/
+    bool did_kmercounting = false;
     auto start_kc=chrono::system_clock::now();
     {   /**DO NOT REMOVE THOSE BRACKETS**/
 
         if (!is_kmercounted)
         {
             Graph graph = Graph::create ("-in %s -kmer-size %d -minimizer-size %d  -bloom none -out %s.h5  -abundance-min %d -verbose 1 -minimizer-type %d -repartition-type 1 -max-memory %d", inputFile.c_str(), kmerSize, minSize, prefix.c_str(), abundance, minimizer_type, dsk_memory);
+            did_kmercounting = true;
         }
     }
     auto end_kc=chrono::system_clock::now();
@@ -125,7 +140,12 @@ void bcalm_1::execute (){
     double unit = 1000000000;
     cout.setf(ios_base::fixed);
     cout.precision(1);
-    cout<<"Kmer-counting wallclock: "<<chrono::duration_cast<chrono::nanoseconds>(waitedFor_kc).count() / unit <<" secs"<<endl;
+
+    if (did_kmercounting)
+    {
+        cout<<"Kmer-counting wallclock: "<<chrono::duration_cast<chrono::nanoseconds>(waitedFor_kc).count() / unit <<" secs"<< endl;
+        memory_usage("post-kmer counting");
+    }
 
     /*
      *
@@ -190,8 +210,11 @@ void bcalm_1::execute (){
      *
      */
 
+#ifdef OLD_GLUE
     int nb_glues = 2;
     GlueCommander glue_commander(kmerSize, &out, nb_glues, &model);
+#endif
+
     BankFasta outToGlue (prefix + ".glue");
 
     double weighted_best_theoretical_speedup_cumul = 0;
@@ -210,8 +233,18 @@ void bcalm_1::execute (){
     LOCAL (itParts);
 
     // create many queues in place of Buckets
-    std::vector<moodycamel::ConcurrentQueue<std::tuple<string,size_t,size_t> > > bucket_queues;
-    bucket_queues.resize(rg);
+    
+    // this implementation is supposedly efficient, but:
+    // - as fast as the lockbasedqueue below
+    // - uses much more memory
+    //std::vector<moodycamel::ConcurrentQueue<std::tuple<string,size_t,size_t> >* > bucket_queues;
+    //for (unsigned int i = 0; i < rg; i++)
+    //    bucket_queues.push_back(new moodycamel::ConcurrentQueue<std::tuple<string,size_t,size_t> >);
+    
+    // another queue system, very simple, with locks
+    std::vector<LockBasedQueue<std::tuple<string,size_t,size_t> >* > bucket_queues;
+    for (unsigned int i = 0; i < rg; i++)
+        bucket_queues.push_back(new LockBasedQueue<std::tuple<string,size_t,size_t> >);
 
     /*
      *
@@ -244,7 +277,7 @@ void bcalm_1::execute (){
         auto add_to_bucket_queue = [&active_minimizers, &bucket_queues](size_t minimizer, string seq, size_t leftmin, size_t rightmin, int p)
         {
             //std::cout << "adding elt to bucket: " << seq << " "<< minimizer<<std::endl;
-            bucket_queues[minimizer].enqueue(std::make_tuple(seq,leftmin,rightmin));
+            bucket_queues[minimizer]->enqueue(std::make_tuple(seq,leftmin,rightmin));
 
             if (active_minimizers[p].find(minimizer) == active_minimizers[p].end())
             {
@@ -319,7 +352,11 @@ void bcalm_1::execute (){
         /**FOREACH BUCKET **/
         for(auto actualMinimizer : active_minimizers[p])
         {
-            auto lambdaCompact = [&bucket_queues, actualMinimizer, &glue_commander, &maxBucket, &lambda_timings, &repart, &modelK1, &outToGlue]() {
+            auto lambdaCompact = [&bucket_queues, actualMinimizer, 
+#ifdef OLD_GLUE
+                 &glue_commander, 
+#endif
+                 &maxBucket, &lambda_timings, &repart, &modelK1, &outToGlue]() {
                 auto start_nodes_t=get_wtime();
 
                 // (make sure to change other places labelled "// graph3" and "// graph4" as well)
@@ -329,7 +366,7 @@ void bcalm_1::execute (){
 
                 /* add nodes to graph */
                 std::tuple<string,size_t,size_t> bucket_elt;
-                while (bucket_queues[actualMinimizer].try_dequeue(bucket_elt))
+                while (bucket_queues[actualMinimizer]->try_dequeue(bucket_elt))
                 {
                     g.addleftmin(std::get<1>(bucket_elt));
                     g.addrightmin(std::get<2>(bucket_elt));
@@ -382,6 +419,7 @@ void bcalm_1::execute (){
                             outToGlue.flush();
                             write_to_glue_mutex.unlock();
                         }
+#ifdef OLD_GLUE
                         else
                         {
                             time_glue_overhead_start();
@@ -389,6 +427,7 @@ void bcalm_1::execute (){
                             glue_commander.insert(e);
                             time_glue_overhead_stop();
                         }
+#endif
                     }
                 }
                 auto end_cdistribution_t=get_wtime();
@@ -417,14 +456,24 @@ void bcalm_1::execute (){
 
         } // end for each bucket
 
+#ifdef OLD_GLUE
         time_glue_overhead_start();
         glue_commander.cleanup_threaded();
         time_glue_overhead_stop();
+#endif 
         pool.join();
 
 
         if (partition[p].getNbItems() == 0)
             continue; // no stats to print here
+
+        memory_usage("Done with partition " + std::to_string(p));
+    
+        // total number of elements in bucket queues
+        unsigned long nb_elts_in_queues = 0;
+        for (unsigned int minimizer = 0; minimizer < rg; minimizer++)
+           nb_elts_in_queues += bucket_queues[minimizer]->size_approx();
+        cout << "Number of elements in bucket queues: " << nb_elts_in_queues<<  "  memory: " << (nb_elts_in_queues* (k + 4 + 4))/1024/1024 << " MB" << endl; 
 
         /* compute and print timings */
         {
@@ -457,7 +506,10 @@ void bcalm_1::execute (){
                 cout <<"                       best theoretical speedup: "<<  best_theoretical_speedup << "x" <<endl;
                 if (nb_threads_simulate > 1)
                     cout <<"     best theoretical speedup with "<< nb_threads_simulate << " thread(s): "<<  actual_theoretical_speedup << "x" <<endl;
+                
+#ifdef OLD_GLUE
                 glue_commander.queues_size();
+#endif
 
                 weighted_best_theoretical_speedup_cumul += best_theoretical_speedup * wallclock_sb;
                 weighted_best_theoretical_speedup_sum_times                        += wallclock_sb;
@@ -480,29 +532,33 @@ void bcalm_1::execute (){
      *
      */
 
+#ifdef OLD_GLUE
     // stop the glue thread
     time_glue_overhead_start();
     glue_commander.stop();
     time_glue_overhead_stop();
+#endif
 
     // check if buckets are indeed empty
     for (unsigned int minimizer = 0; minimizer < rg; minimizer++)
     {
-        if  (bucket_queues[minimizer].size_approx() != 0)
+        if  (bucket_queues[minimizer]->size_approx() != 0)
         {
-            printf("WARNING! bucket %d still has non-processed %d elements\n", minimizer, bucket_queues[minimizer].size_approx() );
+            printf("WARNING! bucket %d still has non-processed %d elements\n", minimizer, bucket_queues[minimizer]->size_approx() );
             std::tuple<string,size_t,size_t> bucket_elt;
-            while (bucket_queues[minimizer].try_dequeue(bucket_elt))
+            while (bucket_queues[minimizer]->try_dequeue(bucket_elt))
                 printf("    %s leftmin %d rightmin %d repartleft %d repartright %d repartmin %d\n", std::get<0>(bucket_elt).c_str(), std::get<1>(bucket_elt), std::get<2>(bucket_elt), repart(std::get<1>(bucket_elt)), repart(std::get<2>(bucket_elt)), repart(minimizer));
         }
     }
 
+#ifdef OLD_GLUE
     cout << "Final glue:\n";
     time_glue_overhead_start_2();
     glue_commander.dump();
     time_glue_overhead_stop_2();
     cout << "*****\n";
     glue_commander.printMemStats();
+#endif
 
     /* printing some timing stats */
     auto end_t=chrono::system_clock::now();
