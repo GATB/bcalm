@@ -361,6 +361,7 @@ void bglue::execute (){
     {
         uf_hashes.insert( uf_hashes.end(), uf_hashes_vectors[i].begin(), uf_hashes_vectors[i].end());
         uf_hashes_vectors[i].clear();
+        vector<uint32_t>().swap(uf_hashes_vectors[i]); // it's a trick to properly free the memory, as clear() doesn't cut it (http://stackoverflow.com/questions/3477715/c-vectorclear)
     }
 
     memory_usage("merged UF elements (" + std::to_string(uf_hashes.size()) + ") into a single vector");
@@ -371,6 +372,7 @@ void bglue::execute (){
     boomphf::mphf<uint32_t, hasher_t> uf_mphf(nb_uf_keys, uf_hashes, nb_threads);
    
     uf_hashes.clear();
+    vector<uint32_t>().swap(uf_hashes); // it's a trick to properly free the memory, as clear() doesn't cut it
 
     memory_usage("UF MPHF constructed");
    
