@@ -229,7 +229,7 @@ void bglue::execute (){
     string inputFile(getInput()->getStr("-in")); // necessary for repartitor
 
     string h5_prefix = inputFile.substr(0,inputFile.size()-2);
-    BankFasta in (h5_prefix + "glue");
+    IBank *in = Bank::open (h5_prefix + "glue");
 
 
     Storage* storage = StorageFactory(STORAGE_HDF5).load ( inputFile.c_str() );
@@ -288,7 +288,7 @@ void bglue::execute (){
     // actually, in the current implementation, partition_t is not used, but values are indeed hardcoded in 32 bits (the UF implementation uses a 64 bits hash table for internal stuff)
     
     // We create an iterator over this bank.
-    BankFasta::Iterator it (in);
+    Iterator<Sequence>* it = in->iterator();
 
     // We loop over sequences.
     /*for (it.first(); !it.isDone(); it.next())
@@ -303,6 +303,7 @@ void bglue::execute (){
         {
             std::cout << "unexpectedly small sequence found ("<<seq.size()<<"). did you set k correctly?" <<std::endl; exit(1);
         }
+
         string comment = sequence.getComment();
         bool lmark = comment[0] == '1';
         bool rmark = comment[1] == '1';
@@ -404,7 +405,7 @@ void bglue::execute (){
             return partition;
         };
 
-    int nbGluePartitions = 200;
+    int nbGluePartitions = 10;
     std::mutex *gluePartitionsLock = new std::mutex[nbGluePartitions];
     std::mutex outLock; // for the main output file
     std::vector<BankFasta*> gluePartitions(nbGluePartitions);
@@ -460,17 +461,18 @@ void bglue::execute (){
     cout << "Disk partitioning of glue " << endl;
 
     setDispatcher (  new Dispatcher (getInput()->getInt(STR_NB_CORES)) );
+    it = in->iterator(); // yeah so.. I think the old iterator cannot be reused
     getDispatcher()->iterate (it, partitionGlue);
 
     cout << "Glueing partitions" << endl;
    
     // glue all partitions using a thread pool     
-    ThreadPool pool(nb_threads - 1);
+    ThreadPool pool(nb_threads);
 
     for (int partition = 0; partition < nbGluePartitions; partition++)
     {
         auto glue_partition = [&modelCanon, &ufkmers, &hasher, partition, &gluePartition_prefix,
-        &get_partition, &out, &outLock]()
+        &get_partition, &out, &outLock]( int thread_id)
         {
             int k = kmerSize;
 

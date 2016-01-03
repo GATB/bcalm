@@ -1,3 +1,7 @@
+// https://github.com/progschj/ThreadPool/blob/master/ThreadPool.h
+//
+// modified so that a thread_id integer in [0..nb_threads] is passed to each task
+//
 #ifndef THREAD_POOL_H
 #define THREAD_POOL_H
 
@@ -16,14 +20,14 @@ public:
     ThreadPool(size_t);
     template<class F, class... Args>
     auto enqueue(F&& f, Args&&... args) 
-        -> std::future<typename std::result_of<F(Args...)>::type>;
+        -> std::future<typename std::result_of<F(int, Args...)>::type>;
     //~ThreadPool();
     void join();
 private:
     // need to keep track of threads so we can join them
     std::vector< std::thread > workers;
     // the task queue
-    std::queue< std::function<void()> > tasks;
+    std::queue< std::function<void(int)> > tasks;
     
     // synchronization
     std::mutex queue_mutex;
@@ -35,13 +39,13 @@ private:
 inline ThreadPool::ThreadPool(size_t threads)
     :   stop(false)
 {
-    for(size_t i = 0;i<threads;++i)
+    for(size_t thread_id = 0; thread_id<threads; ++ thread_id)
         workers.emplace_back(
-            [this]
+            [this, thread_id]
             {
                 for(;;)
                 {
-                    std::function<void()> task;
+                    std::function<void(int)> task;
 
                     {
                         std::unique_lock<std::mutex> lock(this->queue_mutex);
@@ -53,7 +57,7 @@ inline ThreadPool::ThreadPool(size_t threads)
                         this->tasks.pop();
                     }
 
-                    task();
+                    task(thread_id);
                 }
             }
         );
@@ -62,12 +66,12 @@ inline ThreadPool::ThreadPool(size_t threads)
 // add new work item to the pool
 template<class F, class... Args>
 auto ThreadPool::enqueue(F&& f, Args&&... args) 
-    -> std::future<typename std::result_of<F(Args...)>::type>
+    -> std::future<typename std::result_of<F(int, Args...)>::type>
 {
-    using return_type = typename std::result_of<F(Args...)>::type;
+    using return_type = typename std::result_of<F(int, Args...)>::type;
 
-    auto task = std::make_shared< std::packaged_task<return_type()> >(
-            std::bind(std::forward<F>(f), std::forward<Args>(args)...)
+    auto task = std::make_shared< std::packaged_task<return_type(int)> >(
+            std::bind(std::forward<F>(f), placeholders::_1, std::forward<Args>(args)...)
         );
         
     std::future<return_type> res = task->get_future();
@@ -78,7 +82,7 @@ auto ThreadPool::enqueue(F&& f, Args&&... args)
         if(stop)
             throw std::runtime_error("enqueue on stopped ThreadPool");
 
-        tasks.emplace([task](){ (*task)(); });
+        tasks.emplace([task](int thread_id){ (*task)(thread_id); });
     }
     condition.notify_one();
     return res;

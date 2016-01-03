@@ -26,7 +26,8 @@
 #define get_wtime() chrono::system_clock::now()
 #define diff_wtime(x,y) chrono::duration_cast<chrono::nanoseconds>(y - x).count()
 
-#define BINSEQ // use binseq in buckets instead of string (slower but uses less memory)
+//#define BINSEQ // use binseq in buckets instead of string (slower but uses less memory)
+// FIXME: buggy
 #ifdef BINSEQ
 #define BUCKET_STR_TYPE binSeq
 #define TO_BUCKET_STR(x) binSeq(x)
@@ -127,12 +128,13 @@ void bcalm_1::execute (){
     if (total_ram < 1500)
         dsk_memory = 500;
 
+    string input_prefix = inputFile.substr(0,inputFile.size()-3);
     bool is_kmercounted = inputFile.substr(inputFile.size()-2,2) == "h5";
-    string prefix= getInput()->getStr("-out"); 
-    if ((!(getInput()->get("-out"))) && is_kmercounted)
+    string prefix = getInput()->getStr("-out"); 
+    if ((input_prefix.compare("unitigs") != 0) && prefix.compare("unitigs") == 0 && is_kmercounted)
     {
-        prefix = inputFile.substr(0,inputFile.size()-2);
-        cout<< "no -out specified and input is kmercounted: output is  "<< prefix << endl;
+        prefix = input_prefix;
+        //cout<< "-out is 'unitigs' (default) and input is kmercounted (and not 'unitigs'): setting output to "<< prefix << endl;
     }
 
     /** kmer counting **/
@@ -142,7 +144,7 @@ void bcalm_1::execute (){
 
         if (!is_kmercounted)
         {
-            string dsk_disk = getParser()->saw("-dsk-disk") ? ("-max-disk " + getInput()->getStr("-dsk-disk")) : "";
+            string dsk_disk = (getInput()->getStr("-dsk-disk").compare("default") != 0) ? ("-max-disk " + getInput()->getStr("-dsk-disk")) : "";
 
             Graph graph = Graph::create ("-in %s -kmer-size %d -minimizer-size %d  -bloom none -out %s.h5  -abundance-min %d -verbose 1 -minimizer-type %d -repartition-type 1 -max-memory %d %s", inputFile.c_str(), kmerSize, minSize, prefix.c_str(), abundance, minimizer_type, dsk_memory, dsk_disk.c_str());
 
@@ -216,7 +218,17 @@ void bcalm_1::execute (){
         return (model.compareIntMinimizers(a,b)) ? b : a;
     };
 
-    BankFasta outToGlue (prefix + ".glue");
+    std::vector<BankFasta*> out_to_glue(nb_threads); // each thread will write to its own glue file, to avoid locks
+    std::ofstream list_of_glues(prefix + ".glue");
+    // another system could have been to send all sequences in a queue, and a thread responsible for writing to glue would dequeue (might be faster)
+    for (unsigned int i = 0; i < nb_threads; i++)
+    {
+        string glue_file = prefix + ".glue." + std::to_string(i);
+        out_to_glue[i] = new BankFasta(glue_file);
+        list_of_glues << glue_file << endl;
+    }
+    list_of_glues.close();
+    // TODO: delete previous glue files 
 
     double weighted_best_theoretical_speedup_cumul = 0;
     double weighted_best_theoretical_speedup_sum_times = 0;
@@ -404,7 +416,7 @@ void bcalm_1::execute (){
         for(auto actualMinimizer : active_minimizers[p])
         {
             auto lambdaCompact = [&bucket_queues, actualMinimizer, 
-                &maxBucket, &lambda_timings, &repart, &modelK1, &outToGlue]() {
+                &maxBucket, &lambda_timings, &repart, &modelK1, &out_to_glue](int thread_id) {
                 auto start_nodes_t=get_wtime();
 
                 // (make sure to change other places labelled "// graph3" and "// graph4" as well)
@@ -453,11 +465,8 @@ void bcalm_1::execute (){
 
                         Sequence s (Data::ASCII);
                         s.getData().setRef ((char*)seq.c_str(), seq.size());
-                        s._comment = string(lmark?"1":"0")+string(rmark?"1":"0"); /** We set the sequence comment. */
-                        write_to_glue_mutex.lock();
-                        outToGlue.insert(s);
-                        outToGlue.flush();
-                        write_to_glue_mutex.unlock();
+                        s._comment = string(lmark?"1":"0")+string(rmark?"1":"0"); //We set the sequence comment. 
+                        out_to_glue[thread_id]->insert(s);
                      }
                 }
                 auto end_cdistribution_t=get_wtime();
@@ -482,11 +491,15 @@ void bcalm_1::execute (){
             if (nb_threads > 1)
                 pool.enqueue(lambdaCompact);
             else
-                lambdaCompact();
+                lambdaCompact(0);
 
         } // end for each bucket
 
         pool.join();
+
+        // flush glues
+        for (unsigned int thread_id = 0; thread_id < nb_threads; thread_id++)
+            out_to_glue[thread_id]->flush ();
 
 
         if (partition[p].getNbItems() == 0)
