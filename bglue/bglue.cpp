@@ -83,7 +83,7 @@ struct markedSeq
     }
 };
 
-vector<vector<markedSeq> > determine_order_sequences(vector<markedSeq> sequences)
+vector<vector<markedSeq> > determine_order_sequences(vector<markedSeq> &sequences)
 {
     bool debug = false ;
     unordered_map<string, set<int> > kmerIndex;
@@ -178,7 +178,7 @@ vector<vector<markedSeq> > determine_order_sequences(vector<markedSeq> sequences
  * sequences should be ordered and in the right orientation
  * so, it' just a matter of chopping of the first kmer
  */
-string glue_sequences(vector<markedSeq> chain)
+string glue_sequences(vector<markedSeq> &chain)
 {
     string res;
     string previous_kmer = "";
@@ -227,6 +227,12 @@ class no_hash
 };
 
 
+template <typename T>
+void free_memory_vector(std::vector<T> &vec)
+{
+    vec.clear();
+    vector<T>().swap(vec); // it's a trick to properly free the memory, as clear() doesn't cut it (http://stackoverflow.com/questions/3477715/c-vectorclear)
+}
 
 /* main */
 void bglue::execute (){
@@ -325,7 +331,7 @@ void bglue::execute (){
     setDispatcher (  new Dispatcher (getInput()->getInt(STR_NB_CORES)) );
     it = in->iterator(); // yeah so.. I think the old iterator cannot be reused
     getDispatcher()->iterate (it, prepareUF);
-    
+
     memory_usage("getting vector of redundant UF elements");
     
     ThreadPool uf_merge_pool(nb_threads);
@@ -360,8 +366,7 @@ void bglue::execute (){
     for (int i = 0; i < nb_uf_hashes_vectors; i++)
     {
         uf_hashes.insert( uf_hashes.end(), uf_hashes_vectors[i].begin(), uf_hashes_vectors[i].end());
-        uf_hashes_vectors[i].clear();
-        vector<uint32_t>().swap(uf_hashes_vectors[i]); // it's a trick to properly free the memory, as clear() doesn't cut it (http://stackoverflow.com/questions/3477715/c-vectorclear)
+        free_memory_vector(uf_hashes_vectors[i]);
     }
 
     memory_usage("merged UF elements (" + std::to_string(uf_hashes.size()) + ") into a single vector");
@@ -373,8 +378,7 @@ void bglue::execute (){
 
     boomphf::mphf<uint32_t, hasher_t> uf_mphf(nb_uf_keys, data_iterator, nb_threads);
    
-    uf_hashes.clear();
-    vector<uint32_t>().swap(uf_hashes); // it's a trick to properly free the memory, as clear() doesn't cut it
+    free_memory_vector(uf_hashes);
 
     unsigned long uf_mphf_memory = uf_mphf.totalBitSize(); 
     memory_usage("UF MPHF constructed (" + std::to_string(uf_mphf_memory/8/1024/1024) + " MB)" );
@@ -640,8 +644,16 @@ void bglue::execute (){
                     outLock.lock();
                     output(seq, out); // maybe could optimize writing by using queues
                     outLock.unlock();
+
+                    free_memory_vector(*itO);
                 }
+
+                free_memory_vector(ordered_sequences);
+                free_memory_vector(msInPart[it->first]);
             }
+
+            msInPart.clear(); // same technique as free_memory_vector, to attempt to really free memory
+            unordered_map<int,vector<markedSeq>>().swap(msInPart);
 
             partitionBank.finalize();
 
