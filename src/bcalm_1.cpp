@@ -27,7 +27,7 @@
 #define diff_wtime(x,y) chrono::duration_cast<chrono::nanoseconds>(y - x).count()
 
 //#define BINSEQ // use binseq in buckets instead of string (slower but uses less memory)
-// FIXME: buggy
+// FIXME: it doesn't work for now
 #ifdef BINSEQ
 #define BUCKET_STR_TYPE binSeq
 #define TO_BUCKET_STR(x) binSeq(x)
@@ -220,6 +220,12 @@ void bcalm_1::execute (){
 
     std::vector<BankFasta*> out_to_glue(nb_threads); // each thread will write to its own glue file, to avoid locks
     std::ofstream list_of_glues(prefix + ".glue");
+    
+    // remove potential old glue files
+    for (unsigned int i = 0; i < 4096 /* there cannot be more than 4096 threads, right?*/; i++)
+        if (System::file().doesExist(prefix + ".glue." + std::to_string(i)))
+           System::file().remove (prefix + ".glue." + std::to_string(i));
+
     // another system could have been to send all sequences in a queue, and a thread responsible for writing to glue would dequeue (might be faster)
     for (unsigned int i = 0; i < nb_threads; i++)
     {
