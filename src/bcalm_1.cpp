@@ -51,7 +51,7 @@ typedef Kmer<SPAN>::ModelMinimizer <ModelCanon> Model;
 size_t kmerSize=31;
 size_t minSize=8;
 size_t nb_threads=1;
-size_t nb_threads_simulate=1;
+size_t nb_threads_simulate=1; // this is somewhat a legacy parameter, i should get rid of (and replace by nb_threads)
 
 
 // timing-related variables
@@ -99,9 +99,9 @@ bcalm_1::bcalm_1 ()  : Tool ("bcalm_1"){
 	getParser()->push_back (new OptionOneParam ("-k", "kmer size",  false,"31"));
 	getParser()->push_back (new OptionOneParam ("-m", "minimizer size",  false,"8"));
 	getParser()->push_back (new OptionOneParam ("-abundance", "abundance threeshold",  false,"3"));
-	getParser()->push_back (new OptionOneParam ("-threads-simulate", "(debug) number of threads to compute scheduling for",  false,"1"));
 	getParser()->push_back (new OptionOneParam ("-minimizer-type", "use lexicographical minimizers (0) or frequency based (1)",  false,"1"));
-	getParser()->push_back (new OptionOneParam ("-dsk-memory", "max memory for dsk (MB)", false, "1500"));
+	getParser()->push_back (new OptionOneParam ("-dsk-memory", "max memory for kmer counting (MB)", false, "1500"));
+	getParser()->push_back (new OptionOneParam ("-dsk-disk", "max disk space for kmer counting (MB)", false, "default"));
 }
 
 void bcalm_1::execute (){
@@ -113,7 +113,6 @@ void bcalm_1::execute (){
     size_t abundance=getInput()->getInt("-abundance");
     minSize=getInput()->getInt("-m");
     nb_threads = getInput()->getInt("-nb-cores");
-    nb_threads_simulate = getInput()->getInt("-threads-simulate");
     int minimizer_type = getInput()->getInt("-minimizer-type");
     int dsk_memory = getInput()->getInt("-dsk-memory");
 
@@ -147,7 +146,10 @@ void bcalm_1::execute (){
 
         if (!is_kmercounted)
         {
-            Graph graph = Graph::create ("-in %s -kmer-size %d -minimizer-size %d  -bloom none -out %s.h5  -abundance-min %d -verbose 1 -minimizer-type %d -repartition-type 1 -max-memory %d", inputFile.c_str(), kmerSize, minSize, prefix.c_str(), abundance, minimizer_type, dsk_memory);
+            string dsk_disk = getParser()->saw("-dsk-disk") ? ("-max-disk " + getInput()->getStr("-dsk-disk")) : "";
+
+            Graph graph = Graph::create ("-in %s -kmer-size %d -minimizer-size %d  -bloom none -out %s.h5  -abundance-min %d -verbose 1 -minimizer-type %d -repartition-type 1 -max-memory %d %s", inputFile.c_str(), kmerSize, minSize, prefix.c_str(), abundance, minimizer_type, dsk_memory, dsk_disk.c_str());
+
             did_kmercounting = true;
         }
     }
