@@ -16,8 +16,11 @@
 
 #include <thread>
 #include <atomic>
-#include "../thirdparty/concurrentqueue.h"
-#include "../thirdparty/lockbasedqueue.h" // for debugging only
+//#include "../thirdparty/concurrentqueue.h" // not using those
+//#include "../thirdparty/lockbasedqueue.h"  // see comments in code for explanations
+#include "../thirdparty/lockstdqueue.h" 
+//#include "../thirdparty/lockstdvector.h" 
+
 #include "../thirdparty/ThreadPool.h"
 
 #define get_wtime() chrono::system_clock::now()
@@ -169,8 +172,8 @@ void bcalm_1::execute (){
 
     typedef Kmer<SPAN>::Count Count;
     Partition<Count>& partition = dskGroup.getPartition<Count> ("solid");
-    size_t nbPartitions = partition.size();
-    cout << "DSK created " << nbPartitions << " partitions" << endl;
+    size_t nb_partitions = partition.size();
+    cout << "DSK created " << nb_partitions << " partitions" << endl;
 
     /** We retrieve the minimizers distribution from the solid kmers storage. */
     Repartitor repart;
@@ -227,24 +230,11 @@ void bcalm_1::execute (){
     auto start_buckets=chrono::system_clock::now();
 
     /** We create an iterator for progress information. */
-    Iterator<int>* itParts = this->createIterator (
-            new Range<int>::Iterator (0,nbPartitions-1), nbPartitions, "Iterating DSK partitions"
+    Iterator<int>* it_parts = this->createIterator (
+            new Range<int>::Iterator (0,nb_partitions-1), nb_partitions, "Iterating DSK partitions"
             );
-    LOCAL (itParts);
+    LOCAL (it_parts);
 
-    // create many queues in place of Buckets
-    
-    // this implementation is supposedly efficient, but:
-    // - as fast as the lockbasedqueue below
-    // - uses much more memory
-    //std::vector<moodycamel::ConcurrentQueue<std::tuple<string,size_t,size_t> >* > bucket_queues;
-    //for (unsigned int i = 0; i < rg; i++)
-    //    bucket_queues.push_back(new moodycamel::ConcurrentQueue<std::tuple<string,size_t,size_t> >);
-    
-    // another queue system, very simple, with locks
-    std::vector<LockBasedQueue<std::tuple<string,size_t,size_t> >* > bucket_queues;
-    for (unsigned int i = 0; i < rg; i++)
-        bucket_queues.push_back(new LockBasedQueue<std::tuple<string,size_t,size_t> >);
 
     /*
      *
@@ -253,31 +243,75 @@ void bcalm_1::execute (){
      */
 
     std::vector<std::set<size_t>> active_minimizers;
-    active_minimizers.resize(nbPartitions);
+    active_minimizers.resize(nb_partitions);
 
     /* now our vocabulary is: a "DSK partition" == a "partition" == a "super-bucket" */
     /* buckets remain what they are in bcalm-original */
     /* a travelling kmer is one that goes to two buckets from different superbuckets */
 
+    // I used to save traveller kmers into bucket_queues, but this would be a memory hog. Let's use files instead. Total volume will be small (a few gigs for human), but that's memory saved
+    std::vector<BankFasta*> traveller_kmers_files(nb_partitions);
+    std::string traveller_kmers_prefix = prefix + ".doubledKmers.";
+    std::mutex *traveller_kmers_save_mutex = new std::mutex[nb_partitions];
+    for (unsigned int i = 0; i < nb_partitions; i++)
+        traveller_kmers_files[i] = new BankFasta(traveller_kmers_prefix + std::to_string(i));
+
+    auto save_traveller_kmer = [&traveller_kmers_files, &traveller_kmers_save_mutex]
+        (size_t minimizer, string seq, size_t leftmin, size_t rightmin, int p) {
+            Sequence s (Data::ASCII);
+            s.getData().setRef ((char*)seq.c_str(), seq.size());
+            traveller_kmers_save_mutex[p].lock();
+            traveller_kmers_files[p]->insert(s);
+            traveller_kmers_files[p]->flush();
+            traveller_kmers_save_mutex[p].unlock();
+
+        };
+
     /* main thread is going to read kmers from partitions and insert them into queues  */
     /**FOREACH SUPERBUCKET (= partition) **/
-    for (itParts->first (); !itParts->isDone(); itParts->next())
+    for (it_parts->first (); !it_parts->isDone(); it_parts->next())
     {
-        size_t p = itParts->item(); /* partition index */
+        size_t p = it_parts->item(); /* partition index */
 
         /** We retrieve an iterator on the Count objects of the pth partition. */
-        Iterator<Count>* itKmers = partition[p].iterator();
-        LOCAL (itKmers);
+        Iterator<Count>* it_kmers = partition[p].iterator();
+        LOCAL (it_kmers);
 
         cout << "\nPartition " << p << " has " << partition[p].getNbItems() << " kmers" << endl;
 
         size_t k = kmerSize;
 
+        // create many queues in place of Buckets
+        // (this code used to be outside the partition loop, but I think it's a good idea to reinit the queues after each superbucket(=partition) to avoid queues leaking memory
+
+        // this implementation is supposedly efficient, but:
+        // - as fast as the lockbasedqueue below
+        // - uses much more memory
+        //std::vector<moodycamel::ConcurrentQueue<std::tuple<string,size_t,size_t> >* > bucket_queues;
+        //for (unsigned int i = 0; i < rg; i++)
+        //    bucket_queues.push_back(new moodycamel::ConcurrentQueue<std::tuple<string,size_t,size_t> >);
+
+        // another queue system, very simple, with locks
+        // it's fine but uses a linked list, so more memory than I'd like
+        //std::vector<LockBasedQueue<std::tuple<string,size_t,size_t> >* > bucket_queues;
+        //for (unsigned int i = 0; i < rg; i++)
+        //    bucket_queues.push_back(new LockBasedQueue<std::tuple<string,size_t,size_t> >);
+
+        // still uses more memory than i'd like
+        LockStdQueue<std::tuple<string,size_t,size_t> > bucket_queues[rg]; // TODO: replace string by some sort of binseq class
+        //for (unsigned int i = 0; i < rg; i++)
+        //    bucket_queues.push_back(new LockStdQueue<std::tuple<string,size_t,size_t> >);
+
+        //std::vector<LockStdVector<std::tuple<string,size_t,size_t> >* > bucket_queues;
+        //for (unsigned int i = 0; i < rg; i++)
+        //    bucket_queues.push_back(new LockStdVector<std::tuple<string,size_t,size_t> >);
+
+
         /* lambda function to add a kmer to a bucket */
         auto add_to_bucket_queue = [&active_minimizers, &bucket_queues](size_t minimizer, string seq, size_t leftmin, size_t rightmin, int p)
         {
             //std::cout << "adding elt to bucket: " << seq << " "<< minimizer<<std::endl;
-            bucket_queues[minimizer]->enqueue(std::make_tuple(seq,leftmin,rightmin));
+            bucket_queues[minimizer].enqueue(std::make_tuple(seq,leftmin,rightmin));
 
             if (active_minimizers[p].find(minimizer) == active_minimizers[p].end())
             {
@@ -293,7 +327,9 @@ void bcalm_1::execute (){
         kmerInGraph = 0;
 
         /* lambda function to process a kmer and decide which bucket(s) it should go to */
-        auto insertIntoQueues = [p, &minimizerMax, &minimizerMin, &add_to_bucket_queue, &bucket_queues, &modelK1, &k, &repart, &nb_left_min_diff_right_min,&kmerInGraph, &model](Count item) {
+        auto insertIntoQueues = [p, &minimizerMax, &minimizerMin, &add_to_bucket_queue, 
+                    &bucket_queues, &modelK1, &k, &repart, &nb_left_min_diff_right_min,
+                    &kmerInGraph, &model, &save_traveller_kmer](Count item) {
             Kmer<SPAN>::Type current = item.value;
             string seq = model.toString(current);
 
@@ -320,7 +356,8 @@ void bcalm_1::execute (){
                 if (repart(max_minimizer) != repart(min_minimizer))
                 {
                     /* I call that a "traveller kmer" */
-                    add_to_bucket_queue(max_minimizer, seq, leftMin, rightMin, repart(max_minimizer));
+                    save_traveller_kmer(max_minimizer, seq, leftMin, rightMin, repart(max_minimizer));
+                    //add_to_bucket_queue(max_minimizer, seq, leftMin, rightMin, repart(max_minimizer)); // no longer saved into the queue, but to a file instead
 
                     // sanity check
                     if (repart(max_minimizer) < repart(min_minimizer))
@@ -337,7 +374,33 @@ void bcalm_1::execute (){
         auto start_createbucket_t=get_wtime();
 
         /* MAIN FIRST LOOP: expand a superbucket by inserting kmers into queues. this creates buckets */
-        getDispatcher()->iterate (itKmers, insertIntoQueues);
+        getDispatcher()->iterate (it_kmers, insertIntoQueues);
+
+        // also add traveller kmers that were saved to a file
+        string traveller_kmers_file = traveller_kmers_prefix + std::to_string(p);
+        if (System::file().doesExist(traveller_kmers_file)) // for some partitions, there may be no traveller kmers
+        {
+            BankFasta traveller_kmers_bank (traveller_kmers_file);
+            BankFasta::Iterator it (traveller_kmers_bank);
+            int nb_traveller_kmers_loaded = 0;
+            for (it.first(); !it.isDone(); it.next()) 
+            {
+                string seq = it->toString();
+
+                // those could be saved in the BankFasta comment eventually
+                Model::Kmer kmmerBegin = modelK1.codeSeed(seq.substr(0, k - 1).c_str(), Data::ASCII);
+                size_t leftMin(modelK1.getMinimizerValue(kmmerBegin.value()));
+                Model::Kmer kmmerEnd = modelK1.codeSeed(seq.substr(seq.size() - k + 1, k - 1).c_str(), Data::ASCII);
+                size_t rightMin(modelK1.getMinimizerValue(kmmerEnd.value()));
+
+                size_t max_minimizer = minimizerMax(leftMin, rightMin);
+                add_to_bucket_queue(max_minimizer, seq, leftMin, rightMin, p); 
+                nb_traveller_kmers_loaded++;
+            }
+            std::cout << "Loaded " << nb_traveller_kmers_loaded << " doubled kmers for partition " << p << endl;
+            traveller_kmers_bank.finalize();
+            System::file().remove (traveller_kmers_file);
+        }
 
         auto end_createbucket_t=get_wtime();
         atomic_double_add(global_wtime_create_buckets, diff_wtime(start_createbucket_t, end_createbucket_t));
@@ -366,7 +429,7 @@ void bcalm_1::execute (){
 
                 /* add nodes to graph */
                 std::tuple<string,size_t,size_t> bucket_elt;
-                while (bucket_queues[actualMinimizer]->try_dequeue(bucket_elt))
+                while (bucket_queues[actualMinimizer].try_dequeue(bucket_elt))
                 {
                     g.addleftmin(std::get<1>(bucket_elt));
                     g.addrightmin(std::get<2>(bucket_elt));
@@ -469,11 +532,18 @@ void bcalm_1::execute (){
 
         memory_usage("Done with partition " + std::to_string(p));
     
-        // total number of elements in bucket queues
-        unsigned long nb_elts_in_queues = 0;
+        // check if buckets are indeed empty
         for (unsigned int minimizer = 0; minimizer < rg; minimizer++)
-           nb_elts_in_queues += bucket_queues[minimizer]->size_approx();
-        cout << "Number of elements in bucket queues: " << nb_elts_in_queues<<  "  memory: " << (nb_elts_in_queues* (k + 4 + 4))/1024/1024 << " MB" << endl; 
+        {
+            if  (bucket_queues[minimizer].size_approx() != 0)
+            {
+                printf("WARNING! bucket %d still has non-processed %d elements\n", minimizer, bucket_queues[minimizer].size_approx() );
+                std::tuple<string,size_t,size_t> bucket_elt;
+                while (bucket_queues[minimizer].try_dequeue(bucket_elt))
+                    printf("    %s leftmin %d rightmin %d repartleft %d repartright %d repartmin %d\n", std::get<0>(bucket_elt).c_str(), std::get<1>(bucket_elt), std::get<2>(bucket_elt), repart(std::get<1>(bucket_elt)), repart(std::get<2>(bucket_elt)), repart(minimizer));
+            }
+        }
+
 
         /* compute and print timings */
         {
@@ -537,21 +607,7 @@ void bcalm_1::execute (){
     time_glue_overhead_start();
     glue_commander.stop();
     time_glue_overhead_stop();
-#endif
 
-    // check if buckets are indeed empty
-    for (unsigned int minimizer = 0; minimizer < rg; minimizer++)
-    {
-        if  (bucket_queues[minimizer]->size_approx() != 0)
-        {
-            printf("WARNING! bucket %d still has non-processed %d elements\n", minimizer, bucket_queues[minimizer]->size_approx() );
-            std::tuple<string,size_t,size_t> bucket_elt;
-            while (bucket_queues[minimizer]->try_dequeue(bucket_elt))
-                printf("    %s leftmin %d rightmin %d repartleft %d repartright %d repartmin %d\n", std::get<0>(bucket_elt).c_str(), std::get<1>(bucket_elt), std::get<2>(bucket_elt), repart(std::get<1>(bucket_elt)), repart(std::get<2>(bucket_elt)), repart(minimizer));
-        }
-    }
-
-#ifdef OLD_GLUE
     cout << "Final glue:\n";
     time_glue_overhead_start_2();
     glue_commander.dump();

@@ -81,9 +81,14 @@ public:
 		}
 	}
 
-    inline int size_approx()
+    unsigned long size_approx()
     {
-        return nb_elements; // NOT IMPLEMENTED
+        return nb_elements; 
+    }
+	
+    unsigned long overhead_per_element()
+    {
+        return sizeof(Node) ; 
     }
 	
 	// Dummy token methods (not used)
