@@ -5,6 +5,7 @@
 #include "glue.hpp"
 #include <atomic>
 #include "../thirdparty/ThreadPool.h"
+#include "../gatb-core/gatb-core/thirdparty/BooPHF/BooPHF.h"
 
 class bglue : public Tool
 {
@@ -218,6 +219,13 @@ void output(string seq, BankFasta &out, string comment = "")
     out.flush(); // TODO: see if we can do without this flush; would require a dedicated thread for writing to file
 }
 
+class no_hash
+{
+    public: 
+        uint32_t operator() (uint32_t h, uint64_t seed=0) const { return h; };
+};
+
+
 
 /* main */
 void bglue::execute (){
@@ -272,7 +280,101 @@ void bglue::execute (){
     // create a hasher for UF
     ModelCanon modelCanon(kmerSize); // i'm a bit lost with those models.. I think GATB could be made more simple here.
     Hasher_T<ModelCanon> hasher(modelCanon);
+   
+    typedef uint32_t partition_t; 
 
+    Iterator<Sequence>* it = in->iterator();
+
+    int nb_uf_hashes_vectors = 1000;
+    std::vector<std::vector<partition_t >> uf_hashes_vectors(nb_uf_hashes_vectors);
+    std::mutex uf_hashes_vectorsMutex[nb_uf_hashes_vectors];
+   
+    // prepare UF: create the set of keys
+    auto prepareUF = [k, &modelCanon, \
+        &uf_hashes_vectorsMutex, &uf_hashes_vectors, &hasher, nb_uf_hashes_vectors](const Sequence& sequence)
+    {
+        string seq = sequence.toString();
+        string comment = sequence.getComment();
+
+        bool lmark = comment[0] == '1';
+        bool rmark = comment[1] == '1';
+
+        if ((!lmark) && (!rmark)) // if both marks are 0, nothing to glue here
+            return; // this need to be a continue if we're going for the for loop
+          //      continue;
+
+        string kmerBegin = seq.substr(0, k );
+        string kmerEnd = seq.substr(seq.size() - k , k );
+
+        // UF of canonical kmers in ModelCanon form, then hashed 
+        ModelCanon::Kmer kmmerBegin = modelCanon.codeSeed(kmerBegin.c_str(), Data::ASCII);
+        ModelCanon::Kmer kmmerEnd = modelCanon.codeSeed(kmerEnd.c_str(), Data::ASCII);
+
+        partition_t h1 = hasher(kmmerBegin);
+        partition_t h2 = hasher(kmmerEnd);
+        
+        uf_hashes_vectorsMutex[h1%nb_uf_hashes_vectors].lock();
+        uf_hashes_vectors[h1%nb_uf_hashes_vectors].push_back(h1);
+        uf_hashes_vectorsMutex[h1%nb_uf_hashes_vectors].unlock();
+        
+        uf_hashes_vectorsMutex[h2%nb_uf_hashes_vectors].lock();
+        uf_hashes_vectors[h2%nb_uf_hashes_vectors].push_back(h2);
+        uf_hashes_vectorsMutex[h2%nb_uf_hashes_vectors].unlock();
+    };
+
+    setDispatcher (  new Dispatcher (getInput()->getInt(STR_NB_CORES)) );
+    it = in->iterator(); // yeah so.. I think the old iterator cannot be reused
+    getDispatcher()->iterate (it, prepareUF);
+    
+    memory_usage("getting vector of redundant UF elements");
+    
+    ThreadPool uf_merge_pool(nb_threads);
+
+    // uniquify UF vectors
+    for (int i = 0; i < nb_uf_hashes_vectors; i++)
+    {
+
+        auto uniquify = [&uf_hashes_vectors, i] (int thread_id)
+        {
+            std::vector<partition_t> &vec = uf_hashes_vectors[i];
+            //http://stackoverflow.com/questions/1041620/whats-the-most-efficient-way-to-erase-duplicates-and-sort-a-vector
+            set<partition_t> s( vec.begin(), vec.end() );
+            vec.assign( s.begin(), s.end() );
+
+        };
+        uf_merge_pool.enqueue(uniquify);
+    }
+
+    uf_merge_pool.join();
+    
+    memory_usage("sorted and unique UF elements");
+  
+    // compute number of UF elements from intermediate vectors
+    unsigned long tmp_nb_uf_keys = 0;
+    for (int i = 0; i < nb_uf_hashes_vectors; i++)
+        tmp_nb_uf_keys += uf_hashes_vectors[i].size();
+
+    // merge intermediate vectors into a single vector, to prepare MPHF (this step could be skipped if created a special iterator for boophf)
+    std::vector<uint32_t> uf_hashes;
+    uf_hashes.reserve(tmp_nb_uf_keys);
+    for (int i = 0; i < nb_uf_hashes_vectors; i++)
+    {
+        uf_hashes.insert( uf_hashes.end(), uf_hashes_vectors[i].begin(), uf_hashes_vectors[i].end());
+        uf_hashes_vectors[i].clear();
+    }
+
+    memory_usage("merged UF elements (" + std::to_string(uf_hashes.size()) + ") into a single vector");
+
+    unsigned long nb_uf_keys = uf_hashes.size();
+    if (nb_uf_keys != tmp_nb_uf_keys) { std::cout << "Error during UF preparation, bad number of keys in merge: " << tmp_nb_uf_keys << " " << nb_uf_keys << std::endl; exit(1); }
+
+    boomphf::mphf<uint32_t, no_hash> uf_mphf(nb_uf_keys, uf_hashes, nb_threads);
+   
+    uf_hashes.clear();
+
+    memory_usage("UF MPHF constructed");
+   
+ 
     // create a UF data structure
 #if 0
     unionFind<unsigned int> ufmin;
@@ -281,21 +383,16 @@ void bglue::execute (){
     unionFind<std::string> ufkmerstr; 
 #endif
     // those were toy one, here is the real one:
-
-    typedef uint32_t partition_t; 
-    unionFind<partition_t> ufkmers(0); 
+    unionFind<partition_t> ufkmers(nb_uf_keys); 
     // instead of UF of kmers, we do a union find of hashes of kmers. less memory. will have collisions, but that's okay i think. let's see.
     // actually, in the current implementation, partition_t is not used, but values are indeed hardcoded in 32 bits (the UF implementation uses a 64 bits hash table for internal stuff)
-    
-    // We create an iterator over this bank.
-    Iterator<Sequence>* it = in->iterator();
-
+ 
     // We loop over sequences.
     /*for (it.first(); !it.isDone(); it.next())
     {
         string seq = it->toString();*/
-    auto createUF = [k, &modelCanon /* crashes if copied!*/, \
-        &ufkmers, &hasher](const Sequence& sequence)
+    auto createUF = [k, &modelCanon, \
+        &uf_mphf, &ufkmers, &hasher](const Sequence& sequence)
     {
         string seq = sequence.toString();
 
@@ -308,7 +405,7 @@ void bglue::execute (){
         bool lmark = comment[0] == '1';
         bool rmark = comment[1] == '1';
 
-        if (!(lmark & rmark)) // if either mark is 0, it's an unitig extremity, so nothing to glue here
+        if ((!lmark) && (!rmark)) // if both marks are 0, nothing to glue here
             return;
 
         string kmerBegin = seq.substr(0, k );
@@ -317,7 +414,8 @@ void bglue::execute (){
         // UF of canonical kmers in ModelCanon form, then hashed 
         ModelCanon::Kmer kmmerBegin = modelCanon.codeSeed(kmerBegin.c_str(), Data::ASCII);
         ModelCanon::Kmer kmmerEnd = modelCanon.codeSeed(kmerEnd.c_str(), Data::ASCII);
-        ufkmers.union_(hasher(kmmerBegin), hasher(kmmerEnd));
+        ufkmers.union_(uf_mphf.lookup(hasher(kmmerBegin)), uf_mphf.lookup(hasher(kmmerEnd)));
+        //ufkmers.union_((hasher(kmmerBegin)), (hasher(kmmerEnd)));
 
 #if 0 
 
@@ -345,6 +443,7 @@ void bglue::execute (){
 
     //setDispatcher (new SerialDispatcher()); // force single thread
     setDispatcher (  new Dispatcher (nb_threads) );
+    it = in->iterator(); // yeah so.. I think the old iterator cannot be reused
     getDispatcher()->iterate (it, createUF);
 
 #if 0
@@ -371,7 +470,7 @@ void bglue::execute (){
     string output_prefix = getInput()->getStr("-out");
     BankFasta out (output_prefix);
 
-    auto get_partition = [&modelCanon, &ufkmers, &hasher]
+    auto get_partition = [&modelCanon, &ufkmers, &hasher, &uf_mphf]
         (string &kmerBegin, string &kmerEnd, 
          bool lmark, bool rmark,
          ModelCanon::Kmer &kmmerBegin, ModelCanon::Kmer &kmmerEnd,  // those will be populated based on lmark and rmark
@@ -384,7 +483,7 @@ void bglue::execute (){
             {
                 kmmerBegin = modelCanon.codeSeed(kmerBegin.c_str(), Data::ASCII);
                 found_partition = true;
-                partition = ufkmers.find(hasher(kmmerBegin));
+                partition = ufkmers.find(uf_mphf.lookup(hasher(kmmerBegin)));
             }
 
             if (rmark)
@@ -392,12 +491,12 @@ void bglue::execute (){
                 kmmerEnd = modelCanon.codeSeed(kmerEnd.c_str(), Data::ASCII);
                 if (found_partition) // just do a small check
                 {   
-                    if (ufkmers.find(hasher(kmmerEnd)) != partition)
-                    { std::cout << "bad UF! left kmer has partition " << partition << " but right kmer has partition " << ufkmers.find(hasher(kmmerEnd)) << std::endl; exit(1); }
+                    if (ufkmers.find(uf_mphf.lookup(hasher(kmmerEnd))) != partition)
+                    { std::cout << "bad UF! left kmer has partition " << partition << " but right kmer has partition " << ufkmers.find(uf_mphf.lookup(hasher(kmmerEnd))) << std::endl; exit(1); }
                 }
                 else
                 {
-                    partition = ufkmers.find(hasher(kmmerEnd));
+                    partition = ufkmers.find(uf_mphf.lookup(hasher(kmmerEnd)));
                     found_partition = true;
                 }
             }
@@ -405,8 +504,8 @@ void bglue::execute (){
             return partition;
         };
 
-    int nbGluePartitions = 10;
-    std::mutex *gluePartitionsLock = new std::mutex[nbGluePartitions];
+    int nbGluePartitions = 200;
+    std::mutex gluePartitionsLock[nbGluePartitions];
     std::mutex outLock; // for the main output file
     std::vector<BankFasta*> gluePartitions(nbGluePartitions);
     std::string gluePartition_prefix = output_prefix + ".gluePartition.";
@@ -452,7 +551,7 @@ void bglue::execute (){
 
         int index = partition % nbGluePartitions;
         gluePartitionsLock[index].lock();
-        //stringstream ss1; // to save partition later
+        //stringstream ss1; // to save partition later in the comment
         //ss1 << blabla;
         output(seq, *gluePartitions[index], comment);
         gluePartitionsLock[index].unlock();
@@ -468,7 +567,6 @@ void bglue::execute (){
    
     // glue all partitions using a thread pool     
     ThreadPool pool(nb_threads);
-
     for (int partition = 0; partition < nbGluePartitions; partition++)
     {
         auto glue_partition = [&modelCanon, &ufkmers, &hasher, partition, &gluePartition_prefix,
@@ -480,7 +578,7 @@ void bglue::execute (){
             BankFasta partitionBank (partitionFile);
 
             outLock.lock(); // should use a printlock..
-            std::cout << "Loading partition " << partition << " (size: " << System::file().getSize(partitionFile)/1024/1024 << " MB)" << std::endl;
+            std::cout << "Gluing partition " << partition << " (size: " << System::file().getSize(partitionFile)/1024/1024 << " MB)" << std::endl;
             outLock.unlock();
 
             BankFasta::Iterator it (partitionBank);
