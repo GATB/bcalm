@@ -26,6 +26,19 @@
 #define get_wtime() chrono::system_clock::now()
 #define diff_wtime(x,y) chrono::duration_cast<chrono::nanoseconds>(y - x).count()
 
+
+
+#define BINSEQ // use binseq in buckets instead of string (slower but uses less memory)
+#ifdef BINSEQ
+#define BUCKET_STR_TYPE binSeq
+#define TO_BUCKET_STR(x) binSeq(x)
+#define FROM_BUCKET_STR(x) (x.str())
+#else
+#define BUCKET_STR_TYPE string
+#define TO_BUCKET_STR(x) x
+#define FROM_BUCKET_STR(x) x
+#endif
+
 using namespace std;
 
 const size_t SPAN = KMER_SPAN(1); // TODO: adapt span using Minia's technique
@@ -197,12 +210,12 @@ void bcalm_1::execute (){
     Model modelK2(kmerSize-2, minSize,  Kmer<SPAN>::ComparatorMinimizerFrequencyOrLex(), freq_order);
     Model modelM(minSize, minSize,  Kmer<SPAN>::ComparatorMinimizerFrequencyOrLex(), freq_order);
 
-    auto minimizerMin = [&repart, &model] (size_t a, size_t b)
+    auto minimizerMin = [&repart, &model] (uint32_t a, uint32_t b)
     {
         return (model.compareIntMinimizers(a,b)) ? a : b;
     };
 
-    auto minimizerMax = [&repart, &model] (size_t a, size_t b)
+    auto minimizerMax = [&repart, &model] (uint32_t a, uint32_t b)
     {
         return (model.compareIntMinimizers(a,b)) ? b : a;
     };
@@ -242,7 +255,7 @@ void bcalm_1::execute (){
      *
      */
 
-    std::vector<std::set<size_t>> active_minimizers;
+    std::vector<std::set<uint32_t>> active_minimizers;
     active_minimizers.resize(nb_partitions);
 
     /* now our vocabulary is: a "DSK partition" == a "partition" == a "super-bucket" */
@@ -257,7 +270,7 @@ void bcalm_1::execute (){
         traveller_kmers_files[i] = new BankFasta(traveller_kmers_prefix + std::to_string(i));
 
     auto save_traveller_kmer = [&traveller_kmers_files, &traveller_kmers_save_mutex]
-        (size_t minimizer, string seq, size_t leftmin, size_t rightmin, int p) {
+        (uint32_t minimizer, string seq, uint32_t leftmin, uint32_t rightmin, int p) {
             Sequence s (Data::ASCII);
             s.getData().setRef ((char*)seq.c_str(), seq.size());
             traveller_kmers_save_mutex[p].lock();
@@ -271,7 +284,7 @@ void bcalm_1::execute (){
     /**FOREACH SUPERBUCKET (= partition) **/
     for (it_parts->first (); !it_parts->isDone(); it_parts->next())
     {
-        size_t p = it_parts->item(); /* partition index */
+        uint32_t p = it_parts->item(); /* partition index */
 
         /** We retrieve an iterator on the Count objects of the pth partition. */
         Iterator<Count>* it_kmers = partition[p].iterator();
@@ -287,31 +300,31 @@ void bcalm_1::execute (){
         // this implementation is supposedly efficient, but:
         // - as fast as the lockbasedqueue below
         // - uses much more memory
-        //std::vector<moodycamel::ConcurrentQueue<std::tuple<string,size_t,size_t> >* > bucket_queues;
+        //std::vector<moodycamel::ConcurrentQueue<std::tuple<string,uint32_t,uint32_t> >* > bucket_queues;
         //for (unsigned int i = 0; i < rg; i++)
-        //    bucket_queues.push_back(new moodycamel::ConcurrentQueue<std::tuple<string,size_t,size_t> >);
+        //    bucket_queues.push_back(new moodycamel::ConcurrentQueue<std::tuple<string,uint32_t,uint32_t> >);
 
         // another queue system, very simple, with locks
         // it's fine but uses a linked list, so more memory than I'd like
-        //std::vector<LockBasedQueue<std::tuple<string,size_t,size_t> >* > bucket_queues;
+        //std::vector<LockBasedQueue<std::tuple<string,uint32_t,uint32_t> >* > bucket_queues;
         //for (unsigned int i = 0; i < rg; i++)
-        //    bucket_queues.push_back(new LockBasedQueue<std::tuple<string,size_t,size_t> >);
+        //    bucket_queues.push_back(new LockBasedQueue<std::tuple<string,uint32_t,uint32_t> >);
 
         // still uses more memory than i'd like
-        LockStdQueue<std::tuple<string,size_t,size_t> > bucket_queues[rg]; // TODO: replace string by some sort of binseq class
+        LockStdQueue<std::tuple<BUCKET_STR_TYPE,uint32_t,uint32_t> > bucket_queues[rg]; // TODO: replace string by some sort of binseq class
         //for (unsigned int i = 0; i < rg; i++)
-        //    bucket_queues.push_back(new LockStdQueue<std::tuple<string,size_t,size_t> >);
+        //    bucket_queues.push_back(new LockStdQueue<std::tuple<string,uint32_t,uint32_t> >);
 
-        //std::vector<LockStdVector<std::tuple<string,size_t,size_t> >* > bucket_queues;
+        //std::vector<LockStdVector<std::tuple<string,uint32_t,uint32_t> >* > bucket_queues;
         //for (unsigned int i = 0; i < rg; i++)
-        //    bucket_queues.push_back(new LockStdVector<std::tuple<string,size_t,size_t> >);
+        //    bucket_queues.push_back(new LockStdVector<std::tuple<string,uint32_t,uint32_t> >);
 
 
         /* lambda function to add a kmer to a bucket */
-        auto add_to_bucket_queue = [&active_minimizers, &bucket_queues](size_t minimizer, string seq, size_t leftmin, size_t rightmin, int p)
+        auto add_to_bucket_queue = [&active_minimizers, &bucket_queues](uint32_t minimizer, string seq, uint32_t leftmin, uint32_t rightmin, int p)
         {
             //std::cout << "adding elt to bucket: " << seq << " "<< minimizer<<std::endl;
-            bucket_queues[minimizer].enqueue(std::make_tuple(seq,leftmin,rightmin));
+            bucket_queues[minimizer].enqueue(std::make_tuple(TO_BUCKET_STR(seq),leftmin,rightmin));
 
             if (active_minimizers[p].find(minimizer) == active_minimizers[p].end())
             {
@@ -334,9 +347,9 @@ void bcalm_1::execute (){
             string seq = model.toString(current);
 
             Model::Kmer kmmerBegin = modelK1.codeSeed(seq.substr(0, k - 1).c_str(), Data::ASCII);
-            size_t leftMin(modelK1.getMinimizerValue(kmmerBegin.value()));
+            uint32_t leftMin(modelK1.getMinimizerValue(kmmerBegin.value()));
             Model::Kmer kmmerEnd = modelK1.codeSeed(seq.substr(seq.size() - k + 1, k - 1).c_str(), Data::ASCII);
-            size_t rightMin(modelK1.getMinimizerValue(kmmerEnd.value()));
+            uint32_t rightMin(modelK1.getMinimizerValue(kmmerEnd.value()));
 
             ++kmerInGraph;
 
@@ -351,8 +364,8 @@ void bcalm_1::execute (){
                     add_to_bucket_queue(rightMin, seq, leftMin, rightMin, p);
 
                 // handle traveller kmers
-                size_t max_minimizer = minimizerMax(leftMin, rightMin);
-                size_t min_minimizer = minimizerMin(leftMin, rightMin);
+                uint32_t max_minimizer = minimizerMax(leftMin, rightMin);
+                uint32_t min_minimizer = minimizerMin(leftMin, rightMin);
                 if (repart(max_minimizer) != repart(min_minimizer))
                 {
                     /* I call that a "traveller kmer" */
@@ -389,11 +402,11 @@ void bcalm_1::execute (){
 
                 // those could be saved in the BankFasta comment eventually
                 Model::Kmer kmmerBegin = modelK1.codeSeed(seq.substr(0, k - 1).c_str(), Data::ASCII);
-                size_t leftMin(modelK1.getMinimizerValue(kmmerBegin.value()));
+                uint32_t leftMin(modelK1.getMinimizerValue(kmmerBegin.value()));
                 Model::Kmer kmmerEnd = modelK1.codeSeed(seq.substr(seq.size() - k + 1, k - 1).c_str(), Data::ASCII);
-                size_t rightMin(modelK1.getMinimizerValue(kmmerEnd.value()));
+                uint32_t rightMin(modelK1.getMinimizerValue(kmmerEnd.value()));
 
-                size_t max_minimizer = minimizerMax(leftMin, rightMin);
+                uint32_t max_minimizer = minimizerMax(leftMin, rightMin);
                 add_to_bucket_queue(max_minimizer, seq, leftMin, rightMin, p); 
                 nb_traveller_kmers_loaded++;
             }
@@ -428,12 +441,12 @@ void bcalm_1::execute (){
                 //~ //graph1 g(kmerSize);
 
                 /* add nodes to graph */
-                std::tuple<string,size_t,size_t> bucket_elt;
+                std::tuple<BUCKET_STR_TYPE,uint32_t,uint32_t> bucket_elt;
                 while (bucket_queues[actualMinimizer].try_dequeue(bucket_elt))
                 {
                     g.addleftmin(std::get<1>(bucket_elt));
                     g.addrightmin(std::get<2>(bucket_elt));
-                    g.addvertex(std::get<0>(bucket_elt));
+                    g.addvertex(FROM_BUCKET_STR(std::get<0>(bucket_elt)));
                 }
                 auto end_nodes_t=get_wtime();
                 atomic_double_add(global_wtime_add_nodes, diff_wtime(start_nodes_t, end_nodes_t));
@@ -460,9 +473,9 @@ void bcalm_1::execute (){
 
                         int k = kmerSize;
                         Model::Kmer kmmerBegin = modelK1.codeSeed(seq.substr(0, k - 1).c_str(), Data::ASCII);
-                        size_t leftMin(modelK1.getMinimizerValue(kmmerBegin.value()));
+                        uint32_t leftMin(modelK1.getMinimizerValue(kmmerBegin.value()));
                         Model::Kmer kmmerEnd = modelK1.codeSeed(seq.substr(seq.size() - k + 1, k - 1).c_str(), Data::ASCII);
-                        size_t rightMin(modelK1.getMinimizerValue(kmmerEnd.value()));
+                        uint32_t rightMin(modelK1.getMinimizerValue(kmmerEnd.value()));
                         bool lmark = actualMinimizer != leftMin;
                         bool rmark = actualMinimizer != rightMin;
 
@@ -538,9 +551,9 @@ void bcalm_1::execute (){
             if  (bucket_queues[minimizer].size_approx() != 0)
             {
                 printf("WARNING! bucket %d still has non-processed %d elements\n", minimizer, bucket_queues[minimizer].size_approx() );
-                std::tuple<string,size_t,size_t> bucket_elt;
+                std::tuple<BUCKET_STR_TYPE,uint32_t,uint32_t> bucket_elt;
                 while (bucket_queues[minimizer].try_dequeue(bucket_elt))
-                    printf("    %s leftmin %d rightmin %d repartleft %d repartright %d repartmin %d\n", std::get<0>(bucket_elt).c_str(), std::get<1>(bucket_elt), std::get<2>(bucket_elt), repart(std::get<1>(bucket_elt)), repart(std::get<2>(bucket_elt)), repart(minimizer));
+                    printf("    %s leftmin %d rightmin %d repartleft %d repartright %d repartmin %d\n", FROM_BUCKET_STR(std::get<0>(bucket_elt)).c_str(), std::get<1>(bucket_elt), std::get<2>(bucket_elt), repart(std::get<1>(bucket_elt)), repart(std::get<2>(bucket_elt)), repart(minimizer));
             }
         }
 
@@ -653,8 +666,8 @@ void bcalm_1::execute (){
 // I'm keeping it here, because it was a really nasty bug, don't want to make it again. something wrong with getKmer() here?
 Data data (Data::BINARY);
 data.set ((char*) &current, kmerSize);
-size_t leftMin(modelK1.getMinimizerValue(modelK1.getKmer(data,0).value()));
-size_t rightMin(modelK1.getMinimizerValue(modelK1.getKmer(data,1).value()));
+uint32_t leftMin(modelK1.getMinimizerValue(modelK1.getKmer(data,0).value()));
+uint32_t rightMin(modelK1.getMinimizerValue(modelK1.getKmer(data,1).value()));
 printf("minimizers for kmer %s: %d %d, k-1-mers: %s %s\n",model.toString(current).c_str(), leftMin, rightMin, modelK1.toString(modelK1.getKmer(data,0).value()).c_str(), modelK1.toString(modelK1.getKmer(data,1).value()).c_str());
 */
 

@@ -290,6 +290,7 @@ binSeq::binSeq(const string& str){
 			vect.push_back(char2int2[functionwihtoutcoll(str[i-1],str[i])]);
 		}
 	}
+    //std::cout << "vect size " << vect.size() << " capacity " << vect.capacity() << std::endl; // turns out it's not exactly as efficient as it should (size != capacity)
 }
 
 
