@@ -369,13 +369,16 @@ void bglue::execute (){
     unsigned long nb_uf_keys = uf_hashes.size();
     if (nb_uf_keys != tmp_nb_uf_keys) { std::cout << "Error during UF preparation, bad number of keys in merge: " << tmp_nb_uf_keys << " " << nb_uf_keys << std::endl; exit(1); }
 
-    boomphf::mphf<uint32_t, hasher_t> uf_mphf(nb_uf_keys, uf_hashes, nb_threads);
+	auto data_iterator = boomphf::range(uf_hashes.begin(), uf_hashes.end());
+
+    boomphf::mphf<uint32_t, hasher_t> uf_mphf(nb_uf_keys, data_iterator, nb_threads);
    
     uf_hashes.clear();
     vector<uint32_t>().swap(uf_hashes); // it's a trick to properly free the memory, as clear() doesn't cut it
 
-    memory_usage("UF MPHF constructed");
-   
+    unsigned long uf_mphf_memory = uf_mphf.totalBitSize(); 
+    memory_usage("UF MPHF constructed (" + std::to_string(uf_mphf_memory/8/1024/1024) + " MB)" );
+  
  
     // create a UF data structure
 #if 0
