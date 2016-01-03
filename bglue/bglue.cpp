@@ -357,14 +357,14 @@ void bglue::execute (){
 
     unsigned long memUF = memory_usage("UF constructed");
 
-    if (getParser()->saw("--only-uf")) // for debugging
-        return;
-
     if (getParser()->saw("--uf-stats")) // for debugging
     {
         ufkmers.printStats("uf kmers");
         unsigned long memUFpostStats = memory_usage("after computing UF stats");
     }
+
+    if (getParser()->saw("--only-uf")) // for debugging
+        return;
 
     // setup output file
     string output_prefix = getInput()->getStr("-out");
@@ -404,7 +404,7 @@ void bglue::execute (){
             return partition;
         };
 
-    int nbGluePartitions=50;
+    int nbGluePartitions = 200;
     std::mutex *gluePartitionsLock = new std::mutex[nbGluePartitions];
     std::mutex outLock; // for the main output file
     std::vector<BankFasta*> gluePartitions(nbGluePartitions);
