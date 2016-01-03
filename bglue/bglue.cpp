@@ -219,6 +219,7 @@ void output(string seq, BankFasta &out, string comment = "")
     out.flush(); // TODO: see if we can do without this flush; would require a dedicated thread for writing to file
 }
 
+typedef boomphf::SingleHashFunctor<uint32_t>  hasher_t;
 class no_hash
 {
     public: 
@@ -300,8 +301,7 @@ void bglue::execute (){
         bool rmark = comment[1] == '1';
 
         if ((!lmark) && (!rmark)) // if both marks are 0, nothing to glue here
-            return; // this need to be a continue if we're going for the for loop
-          //      continue;
+            return;
 
         string kmerBegin = seq.substr(0, k );
         string kmerEnd = seq.substr(seq.size() - k , k );
@@ -368,7 +368,7 @@ void bglue::execute (){
     unsigned long nb_uf_keys = uf_hashes.size();
     if (nb_uf_keys != tmp_nb_uf_keys) { std::cout << "Error during UF preparation, bad number of keys in merge: " << tmp_nb_uf_keys << " " << nb_uf_keys << std::endl; exit(1); }
 
-    boomphf::mphf<uint32_t, no_hash> uf_mphf(nb_uf_keys, uf_hashes, nb_threads);
+    boomphf::mphf<uint32_t, hasher_t> uf_mphf(nb_uf_keys, uf_hashes, nb_threads);
    
     uf_hashes.clear();
 
