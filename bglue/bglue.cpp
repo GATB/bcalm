@@ -50,6 +50,14 @@ int nbGluePartitions = 200;
                 }
     };
 
+ template <typename T>
+void free_memory_vector(std::vector<T> &vec)
+{
+    vec.clear();
+    vector<T>().swap(vec); // it's a trick to properly free the memory, as clear() doesn't cut it (http://stackoverflow.com/questions/3477715/c-vectorclear)
+}
+
+
 unsigned long logging(string message="")
 {
     time_t t = time(0);   // get time now
@@ -57,7 +65,6 @@ unsigned long logging(string message="")
     cout << setiosflags(ios::right);
     cout << resetiosflags(ios::left);
     cout << setw(40) << left << message << "      ";
-
     char tmp[128];
     snprintf (tmp, sizeof(tmp), "  %02d:%02d:%02d  ",
             now->tm_hour, now->tm_min, now->tm_sec);
@@ -231,7 +238,8 @@ class BufferedFasta
         std::mutex mtx;
         BankFasta *bank;
         std::vector<pair<string,string> > buffer;
-        std::atomic<unsigned long> buffer_length;
+//        std::vector<string > buffer;
+        unsigned long buffer_length;
 
     public:
         
@@ -239,10 +247,9 @@ class BufferedFasta
 
         BufferedFasta(string filename, unsigned long given_max_buffer = 500000)
         {
-            max_buffer = max_buffer; // that much of buffering will be written to the file at once (in bytes) 
+            max_buffer = given_max_buffer; // that much of buffering will be written to the file at once (in bytes) 
             buffer_length = 0;
             bank = new BankFasta(filename);
-            buffer.clear();
         }
  
         ~BufferedFasta()
@@ -251,19 +258,20 @@ class BufferedFasta
             delete bank;
         }
     
-        void insert(pair<string,string> p)
+        void insert(string &seq, string &comment)
         {
             mtx.lock();
-            buffer.push_back(p);
-            buffer_length += get<0>(p).size() + get<1>(p).size();
-            if (buffer_length > max_buffer)
+            buffer_length += seq.size() + comment.size();
+            buffer.push_back(make_pair(seq,comment));
+//            buffer.push_back(seq);
+           if (buffer_length > max_buffer)
                 flush();
             mtx.unlock();
         }
          
         void flush()
         {   
-            for (auto p : buffer)
+            for (auto &p : buffer)
             {
                 string seq = get<0>(p);
                 string comment = get<1>(p);
@@ -274,13 +282,15 @@ class BufferedFasta
             }
             bank->flush();
             buffer_length = 0;
+ //          std::cout << "buffer capacity" << buffer.capacity() << endl;
             buffer.clear();
+            free_memory_vector(buffer);
         }
 };
  
-void output(string seq, BufferedFasta &out, string comment = "")
+void output(string &seq, BufferedFasta &out, string comment = "")
 {
-    out.insert(std::make_pair(seq,comment));
+    out.insert(seq, comment);
     // BufferedFasta takes care of the flush
 }
 
@@ -292,12 +302,6 @@ class no_hash
 };
 
 
-template <typename T>
-void free_memory_vector(std::vector<T> &vec)
-{
-    vec.clear();
-    vector<T>().swap(vec); // it's a trick to properly free the memory, as clear() doesn't cut it (http://stackoverflow.com/questions/3477715/c-vectorclear)
-}
 
 /* main */
 void bglue::execute (){
@@ -583,11 +587,11 @@ void bglue::execute (){
     std::mutex outLock; // for the main output file
     std::vector<BufferedFasta*> gluePartitions(nbGluePartitions);
     std::string gluePartition_prefix = output_prefix + ".gluePartition.";
-    int max_buffer = 500000;
+    unsigned int max_buffer = 5000;
     for (int i = 0; i < nbGluePartitions; i++)
         gluePartitions[i] = new BufferedFasta(gluePartition_prefix + std::to_string(i), max_buffer);
 
-    logging( "Reserved " + to_string((max_buffer * nbGluePartitions) /1024 /1024) + " MB memory for buffers");
+    logging( "Allowed " + to_string((max_buffer * nbGluePartitions) /1024 /1024) + " MB memory for buffers");
 
     // partition the glue into many files, à la dsk
     auto partitionGlue = [k, &modelCanon /* crashes if copied!*/, \
@@ -627,7 +631,9 @@ void bglue::execute (){
         int index = partition % nbGluePartitions;
         //stringstream ss1; // to save partition later in the comment
         //ss1 << blabla;
+            outLock.lock(); // should use a printlock..
         output(seq, *gluePartitions[index], comment);
+            outLock.unlock(); // should use a printlock..
     };
 
     logging("Disk partitioning of glue");
@@ -637,7 +643,11 @@ void bglue::execute (){
     getDispatcher()->iterate (it, partitionGlue);
 
     for (int i = 0; i < nbGluePartitions; i++)
+    {
         delete gluePartitions[i]; // takes care of the final flush
+    }
+
+    out.flush();
 
 
     logging("Glueing partitions");
@@ -712,6 +722,8 @@ void bglue::execute (){
 
                     output(seq, out);
                 }
+           
+                free_memory_vector(it->second);
             }
 
             partitionBank.finalize();
