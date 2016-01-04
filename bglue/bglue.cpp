@@ -210,13 +210,63 @@ string glue_sequences(vector<markedSeq> &chain)
     return res;
 }
 
-void output(string seq, BankFasta &out, string comment = "")
+// is also thread-safe thank to a lock
+class BufferedFasta 
 {
-    Sequence s (Data::ASCII);
-    s.getData().setRef ((char*)seq.c_str(), seq.size());
-    s._comment = comment;   
-    out.insert(s);
-    out.flush(); // TODO: see if we can do without this flush; would require a dedicated thread for writing to file
+        std::mutex mtx;
+        BankFasta *bank;
+        std::vector<pair<string,string> > buffer;
+        std::atomic<unsigned long> buffer_length;
+
+    public:
+        
+        unsigned long max_buffer; 
+
+        BufferedFasta(string filename, unsigned long given_max_buffer = 500000)
+        {
+            max_buffer = max_buffer; // that much of buffering will be written to the file at once (in bytes) 
+            buffer_length = 0;
+            bank = new BankFasta(filename);
+            buffer.clear();
+        }
+ 
+        ~BufferedFasta()
+        { 
+            flush(); // probably very useful
+            delete bank;
+        }
+    
+        void insert(pair<string,string> p)
+        {
+            mtx.lock();
+            buffer.push_back(p);
+            buffer_length += get<0>(p).size() + get<1>(p).size();
+            if (buffer_length > max_buffer)
+                flush();
+            mtx.unlock();
+        }
+         
+        void flush()
+        {   
+            for (auto p : buffer)
+            {
+                string seq = get<0>(p);
+                string comment = get<1>(p);
+                Sequence s (Data::ASCII);
+                s.getData().setRef ((char*)seq.c_str(), seq.size());
+                s._comment = comment;   
+                bank->insert(s);
+            }
+            bank->flush();
+            buffer_length = 0;
+            buffer.clear();
+        }
+};
+ 
+void output(string seq, BufferedFasta &out, string comment = "")
+{
+    out.insert(std::make_pair(seq,comment));
+    // BufferedFasta takes care of the flush
 }
 
 typedef boomphf::SingleHashFunctor<uint32_t>  hasher_t;
@@ -477,7 +527,7 @@ void bglue::execute (){
 
     // setup output file
     string output_prefix = getInput()->getStr("-out");
-    BankFasta out (output_prefix);
+    BufferedFasta out (output_prefix, 4000000 /* give it a large buffer*/);
 
     auto get_partition = [&modelCanon, &ufkmers, &hasher, &uf_mphf]
         (string &kmerBegin, string &kmerEnd, 
@@ -516,10 +566,13 @@ void bglue::execute (){
     int nbGluePartitions = 200;
     std::mutex gluePartitionsLock[nbGluePartitions];
     std::mutex outLock; // for the main output file
-    std::vector<BankFasta*> gluePartitions(nbGluePartitions);
+    std::vector<BufferedFasta*> gluePartitions(nbGluePartitions);
     std::string gluePartition_prefix = output_prefix + ".gluePartition.";
+    int max_buffer = 500000;
     for (int i = 0; i < nbGluePartitions; i++)
-        gluePartitions[i] = new BankFasta(gluePartition_prefix + std::to_string(i));
+        gluePartitions[i] = new BufferedFasta(gluePartition_prefix + std::to_string(i), max_buffer);
+
+    cout << "Reserved " << ((max_buffer * nbGluePartitions) /1024 /1024) << " MB memory for buffers" << endl;
 
     // partition the glue into many files, à la dsk
     auto partitionGlue = [k, &modelCanon /* crashes if copied!*/, \
@@ -552,18 +605,14 @@ void bglue::execute (){
 
         if (!found_partition) // this one doesn't need to be glued 
         {
-            outLock.lock();
             output(seq, out); // maybe could optimize writing by using queues
-            outLock.unlock();
             return;
         }
 
         int index = partition % nbGluePartitions;
-        gluePartitionsLock[index].lock();
         //stringstream ss1; // to save partition later in the comment
         //ss1 << blabla;
         output(seq, *gluePartitions[index], comment);
-        gluePartitionsLock[index].unlock();
     };
 
     cout << "Disk partitioning of glue " << endl;
@@ -571,6 +620,10 @@ void bglue::execute (){
     setDispatcher (  new Dispatcher (getInput()->getInt(STR_NB_CORES)) );
     it = in->iterator(); // yeah so.. I think the old iterator cannot be reused
     getDispatcher()->iterate (it, partitionGlue);
+
+    for (int i = 0; i < nbGluePartitions; i++)
+        delete gluePartitions[i]; // takes care of the final flush
+
 
     cout << "Glueing partitions" << endl;
    
@@ -641,9 +694,7 @@ void bglue::execute (){
                 {
                     string seq = glue_sequences(*itO);
 
-                    outLock.lock();
-                    output(seq, out); // maybe could optimize writing by using queues
-                    outLock.unlock();
+                    output(seq, out);
 
                     free_memory_vector(*itO);
                 }
