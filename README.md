@@ -12,13 +12,13 @@ Need to check correctness. Output might be missing a few unitigs due to edge cas
 
 Read the instructions below to compile, then:
 
-  ./bcalm -in [reads.fa] -k [kmer_size] -abundance [abundance_threshold]
-  ./bglue -in unitigs.h5 -k [kmer_size]
+    ./bcalm -in [reads.fa] -k [kmer_size] -abundance [abundance_threshold]
+    ./bglue -in unitigs.h5 -k [kmer_size]
   
 e.g.
 
-  ./bcalm -in reads.fa -k 21 -abundance 2
-  ./bglue -in unitigs.h5 -k 21
+    ./bcalm -in reads.fa -k 21 -abundance 2
+    ./bglue -in unitigs.h5 -k 21
  
 
 # Installation
