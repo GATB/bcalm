@@ -695,16 +695,8 @@ void bglue::execute (){
                     string seq = glue_sequences(*itO);
 
                     output(seq, out);
-
-                    free_memory_vector(*itO);
                 }
-
-                free_memory_vector(ordered_sequences);
-                free_memory_vector(msInPart[it->first]);
             }
-
-            msInPart.clear(); // same technique as free_memory_vector, to attempt to really free memory
-            unordered_map<int,vector<markedSeq>>().swap(msInPart);
 
             partitionBank.finalize();
 
