@@ -1,12 +1,25 @@
-# Under development
-
-Not functional yet!
-
 # Welcome
 
 BCALM is a bioinformatics software for constructing the de Bruijn graph of sequencing data.
 
 More precisely, this repository is the next version of the BCALM software (original code: https://github.com/Malfoy/bcalm) using the GATB library. 
+
+# Under development
+
+Need to check correctness. Output might be missing a few unitigs due to edge cases.
+
+# Usage
+
+Read the instructions below to compile, then:
+
+  ./bcalm -in [reads.fa] -k [kmer_size] -abundance [abundance_threshold]
+  ./bglue -in unitigs.h5 -k [kmer_size]
+  
+e.g.
+
+  ./bcalm -in reads.fa -k 21 -abundance 2
+  ./bglue -in unitigs.h5 -k 21
+ 
 
 # Installation
 
