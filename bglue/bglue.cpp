@@ -6,6 +6,8 @@
 #include <atomic>
 #include "../thirdparty/ThreadPool.h"
 #include "../gatb-core/gatb-core/thirdparty/BooPHF/BooPHF.h"
+#include <ctime> // for time
+#include <iostream> // for time (and maybe other things?)
 
 class bglue : public Tool
 {
@@ -16,6 +18,7 @@ public:
 	getParser()->push_back (new OptionOneParam ("-out", "output file",  false, "out.fa"));
 	getParser()->push_front (new OptionNoParam  ("--only-uf",   "(for debugging only) stop after UF construction", false));
 	getParser()->push_front (new OptionNoParam  ("--uf-stats",   "display UF statistics", false));
+	getParser()->push_back (new OptionOneParam ("--nb-glue-partitions", "number of glue files on disk",  false,"200"));
     };
 
     // Actual job done by the tool is here
@@ -31,6 +34,7 @@ typedef Kmer<SPAN>::ModelCanonical ModelCanon;
 typedef Kmer<SPAN>::ModelMinimizer <ModelCanon> Model;
 size_t kmerSize=31;
 size_t minSize=8;
+int nbGluePartitions = 200;
 
    // a hash wrapper for hashing kmers in Model form
     template <typename ModelType>
@@ -52,9 +56,16 @@ unsigned long memory_usage(string message="")
     u_int64_t mem = System::info().getMemorySelfUsed() / 1024;
     u_int64_t memMaxProcess = System::info().getMemorySelfMaxUsed() / 1024;
     char tmp[128];
-    snprintf (tmp, sizeof(tmp), "   memory [current, maximum (maxRSS)]: [%4lu, %4lu] MB ",
+    snprintf (tmp, sizeof(tmp), "   memory [current, maxRSS]: [%4lu, %4lu] MB ",
             mem, memMaxProcess);
-    std::cout << message << " " << tmp << std::endl;
+    time_t t = time(0);   // get time now
+    struct tm * now = localtime( & t );
+    cout << setiosflags(ios::right);
+    cout << resetiosflags(ios::left);
+    cout << setw(40) << left << message << "      " << now->tm_hour << ':' 
+        << now->tm_min  << ':'
+        << now->tm_sec
+        << " " <<  " " << tmp << std::endl;
     return mem;
 }
 
@@ -290,6 +301,7 @@ void bglue::execute (){
     int nb_threads = getInput()->getInt("-nb-cores");
     std::cout << "Nb threads: " << nb_threads <<endl;
     kmerSize=getInput()->getInt("-k");
+    nbGluePartitions=getInput()->getInt("--nb-glue-partitions");
     size_t k = kmerSize;
     string inputFile(getInput()->getStr("-in")); // necessary for repartitor
 
@@ -563,7 +575,6 @@ void bglue::execute (){
             return partition;
         };
 
-    int nbGluePartitions = 200;
     std::mutex gluePartitionsLock[nbGluePartitions];
     std::mutex outLock; // for the main output file
     std::vector<BufferedFasta*> gluePartitions(nbGluePartitions);
@@ -577,7 +588,7 @@ void bglue::execute (){
     // partition the glue into many files, à la dsk
     auto partitionGlue = [k, &modelCanon /* crashes if copied!*/, \
         &ufkmers, &hasher, &get_partition, &gluePartitions, &gluePartitionsLock,
-        nbGluePartitions, &out, &outLock]
+        &out, &outLock]
             (const Sequence& sequence)
     {
         string seq = sequence.toString();
@@ -640,7 +651,8 @@ void bglue::execute (){
             BankFasta partitionBank (partitionFile);
 
             outLock.lock(); // should use a printlock..
-            std::cout << "Gluing partition " << partition << " (size: " << System::file().getSize(partitionFile)/1024/1024 << " MB)" << std::endl;
+            string message = "Gluing partition " +to_string(partition) + " (size: " +to_string(System::file().getSize(partitionFile)/1024/1024) + " MB)";
+            memory_usage(message);
             outLock.unlock();
 
             BankFasta::Iterator it (partitionBank);
