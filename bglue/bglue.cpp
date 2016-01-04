@@ -50,22 +50,26 @@ int nbGluePartitions = 200;
                 }
     };
 
-unsigned long memory_usage(string message="")
+unsigned long logging(string message="")
 {
-    // using Progress.cpp of gatb-core
-    u_int64_t mem = System::info().getMemorySelfUsed() / 1024;
-    u_int64_t memMaxProcess = System::info().getMemorySelfMaxUsed() / 1024;
-    char tmp[128];
-    snprintf (tmp, sizeof(tmp), "   memory [current, maxRSS]: [%4lu, %4lu] MB ",
-            mem, memMaxProcess);
     time_t t = time(0);   // get time now
     struct tm * now = localtime( & t );
     cout << setiosflags(ios::right);
     cout << resetiosflags(ios::left);
-    cout << setw(40) << left << message << "      " << now->tm_hour << ':' 
-        << now->tm_min  << ':'
-        << now->tm_sec
-        << " " <<  " " << tmp << std::endl;
+    cout << setw(40) << left << message << "      ";
+
+    char tmp[128];
+    snprintf (tmp, sizeof(tmp), "  %02d:%02d:%02d  ",
+            now->tm_hour, now->tm_min, now->tm_sec);
+    cout << tmp ;
+
+    // using Progress.cpp of gatb-core
+    u_int64_t mem = System::info().getMemorySelfUsed() / 1024;
+    u_int64_t memMaxProcess = System::info().getMemorySelfMaxUsed() / 1024;
+    snprintf (tmp, sizeof(tmp), "   memory [current, maxRSS]: [%4lu, %4lu] MB ",
+            mem, memMaxProcess);
+
+    cout << tmp << std::endl;
     return mem;
 }
 
@@ -394,7 +398,7 @@ void bglue::execute (){
     it = in->iterator(); // yeah so.. I think the old iterator cannot be reused
     getDispatcher()->iterate (it, prepareUF);
 
-    memory_usage("getting vector of redundant UF elements");
+    logging("getting vector of redundant UF elements");
     
     ThreadPool uf_merge_pool(nb_threads);
 
@@ -415,7 +419,7 @@ void bglue::execute (){
 
     uf_merge_pool.join();
     
-    memory_usage("sorted and unique UF elements");
+    logging("sorted and unique UF elements");
   
     // compute number of UF elements from intermediate vectors
     unsigned long tmp_nb_uf_keys = 0;
@@ -431,7 +435,7 @@ void bglue::execute (){
         free_memory_vector(uf_hashes_vectors[i]);
     }
 
-    memory_usage("merged UF elements (" + std::to_string(uf_hashes.size()) + ") into a single vector");
+    logging("merged UF elements (" + std::to_string(uf_hashes.size()) + ") into a single vector");
 
     unsigned long nb_uf_keys = uf_hashes.size();
     if (nb_uf_keys != tmp_nb_uf_keys) { std::cout << "Error during UF preparation, bad number of keys in merge: " << tmp_nb_uf_keys << " " << nb_uf_keys << std::endl; exit(1); }
@@ -443,7 +447,7 @@ void bglue::execute (){
     free_memory_vector(uf_hashes);
 
     unsigned long uf_mphf_memory = uf_mphf.totalBitSize(); 
-    memory_usage("UF MPHF constructed (" + std::to_string(uf_mphf_memory/8/1024/1024) + " MB)" );
+    logging("UF MPHF constructed (" + std::to_string(uf_mphf_memory/8/1024/1024) + " MB)" );
   
  
     // create a UF data structure
@@ -526,12 +530,12 @@ void bglue::execute (){
 #endif
     
 
-    unsigned long memUF = memory_usage("UF constructed");
+    unsigned long memUF = logging("UF constructed");
 
     if (getParser()->saw("--uf-stats")) // for debugging
     {
         ufkmers.printStats("uf kmers");
-        unsigned long memUFpostStats = memory_usage("after computing UF stats");
+        unsigned long memUFpostStats = logging("after computing UF stats");
     }
 
     if (getParser()->saw("--only-uf")) // for debugging
@@ -583,7 +587,7 @@ void bglue::execute (){
     for (int i = 0; i < nbGluePartitions; i++)
         gluePartitions[i] = new BufferedFasta(gluePartition_prefix + std::to_string(i), max_buffer);
 
-    cout << "Reserved " << ((max_buffer * nbGluePartitions) /1024 /1024) << " MB memory for buffers" << endl;
+    logging( "Reserved " + to_string((max_buffer * nbGluePartitions) /1024 /1024) + " MB memory for buffers");
 
     // partition the glue into many files, à la dsk
     auto partitionGlue = [k, &modelCanon /* crashes if copied!*/, \
@@ -626,7 +630,7 @@ void bglue::execute (){
         output(seq, *gluePartitions[index], comment);
     };
 
-    cout << "Disk partitioning of glue " << endl;
+    logging("Disk partitioning of glue");
 
     setDispatcher (  new Dispatcher (getInput()->getInt(STR_NB_CORES)) );
     it = in->iterator(); // yeah so.. I think the old iterator cannot be reused
@@ -636,7 +640,7 @@ void bglue::execute (){
         delete gluePartitions[i]; // takes care of the final flush
 
 
-    cout << "Glueing partitions" << endl;
+    logging("Glueing partitions");
    
     // glue all partitions using a thread pool     
     ThreadPool pool(nb_threads);
@@ -652,7 +656,7 @@ void bglue::execute (){
 
             outLock.lock(); // should use a printlock..
             string message = "Gluing partition " +to_string(partition) + " (size: " +to_string(System::file().getSize(partitionFile)/1024/1024) + " MB)";
-            memory_usage(message);
+            logging(message);
             outLock.unlock();
 
             BankFasta::Iterator it (partitionBank);
@@ -721,7 +725,7 @@ void bglue::execute (){
 
     pool.join();
 
-    memory_usage("end");
+    logging("end");
 
    
 //#define ORIGINAL_GLUE
