@@ -8,15 +8,16 @@
 #include <iomanip>
 #include <algorithm>
 #include <chrono>
+#define OSX 1
 #ifndef OSX
 #include <sys/sysinfo.h> // to determine system memory
 #endif
 
-//#define SPARSEHASH 
+//#define SPARSEHASH
 #ifdef SPARSEHASH
 #include <sparsehash/sparse_hash_map>
 using google::sparse_hash_map;
-#endif 
+#endif
 
 string key_of_interest = "somestringthatwillneveroccur";
 //string key_of_interest = "GATGTGTTTGTCGTGTTCGCGATCGCCACGGCATCGGTTAGACTGCTAACC";
@@ -29,14 +30,14 @@ uint8_t byteLookupTable[256][7] = {{'A', 'A', 'A', 'A', '0', '0', '0'}, {'A', 'A
 uint8_t bits2byteTable[2][2][2][2][2][2][2][2] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80, 81, 82, 83, 84, 85, 86, 87, 88, 89, 90, 91, 92, 93, 94, 95, 96, 97, 98, 99, 100, 101, 102, 103, 104, 105, 106, 107, 108, 109, 110, 111, 112, 113, 114, 115, 116, 117, 118, 119, 120, 121, 122, 123, 124, 125, 126, 127, 128, 129, 130, 131, 132, 133, 134, 135, 136, 137, 138, 139, 140, 141, 142, 143, 144, 145, 146, 147, 148, 149, 150, 151, 152, 153, 154, 155, 156, 157, 158, 159, 160, 161, 162, 163, 164, 165, 166, 167, 168, 169, 170, 171, 172, 173, 174, 175, 176, 177, 178, 179, 180, 181, 182, 183, 184, 185, 186, 187, 188, 189, 190, 191, 192, 193, 194, 195, 196, 197, 198, 199, 200, 201, 202, 203, 204, 205, 206, 207, 208, 209, 210, 211, 212, 213, 214, 215, 216, 217, 218, 219, 220, 221, 222, 223, 224, 225, 226, 227, 228, 229, 230, 231, 232, 233, 234, 235, 236, 237, 238, 239, 240, 241, 242, 243, 244, 245, 246, 247, 248, 249, 250, 251, 252, 253, 254, 255};
 
 /*uint8_t bits2byte (RawEntry bits, int start) {
-	return  
-		1 * bits[start + 7] +  
-		2 * bits[start + 6] + 
-		4 * bits[start + 5] + 
-		8 * bits[start + 4] + 
-		16 * bits[start + 3] + 
-		32 * bits[start + 2] + 
-		64 * bits[start + 1] + 
+	return
+		1 * bits[start + 7] +
+		2 * bits[start + 6] +
+		4 * bits[start + 5] +
+		8 * bits[start + 4] +
+		16 * bits[start + 3] +
+		32 * bits[start + 2] +
+		64 * bits[start + 1] +
 		128 * bits[start];
 }*/
 
@@ -124,7 +125,7 @@ string debug_highlight(string s, string motif)
         return s;
     }
 
-    return s.substr(0,pos) + "\033[1;31m" + s.substr(pos, motif.size()) + "\033[0m" + s.substr(pos + motif.size(), s.size() - pos - motif.size()); 
+    return s.substr(0,pos) + "\033[1;31m" + s.substr(pos, motif.size()) + "\033[0m" + s.substr(pos + motif.size(), s.size() - pos - motif.size());
 }
 
 
@@ -142,7 +143,7 @@ GlueEntry::GlueEntry(RawEntry raw, size_t _kmerSize){
 
 	//cout << "GlueEntry constructor got raw = " << raw << ".\n";
 	uint8_t * vals = byteLookupTable[raw[0]];
-	//cout << vals[0] << vals[1] << vals[2] << vals[3] << vals[4] << vals[5] << vals[6] << "\t:" << seq << ":" << endl; 
+	//cout << vals[0] << vals[1] << vals[2] << vals[3] << vals[4] << vals[5] << vals[6] << "\t:" << seq << ":" << endl;
 	lmark = vals[4] - '0';
 	rmark = vals[5] - '0';
 	int leftoverbits = vals[6] - '0';
@@ -164,7 +165,7 @@ GlueEntry::GlueEntry(RawEntry raw, size_t _kmerSize){
 		} else if (leftoverbits == 6) {
 			seq[seqCounter++] = vals[2];
 			//seq.push_back(vals[2]);
-		} 
+		}
 	} else {
 		seq[seqCounter++] = vals[2];
 		seq[seqCounter++] = vals[3];
@@ -213,7 +214,7 @@ RawEntry GlueEntry::getRaw() {
 	rawLengthBits += 2; //to represent the left and right mark
 	rawLengthBits += 2; //to represent how many bits are to be read from the last byte: 00 = 0 bits, 01 = 2 bits, 10 = 4 bits, 11 = 6 bits
 	rawLengthBits += (seq.length() * 2); //to represent the sequence
-	int leftoverbits = rawLengthBits - ((rawLengthBits / 8) * 8); 
+	int leftoverbits = rawLengthBits - ((rawLengthBits / 8) * 8);
 	int rawLengthBytes = (rawLengthBits + 7.99) / 8;
 	vector<uint8_t> bits(rawLengthBytes * 8, 0);
 	bits[0] = lmark;
@@ -261,7 +262,7 @@ RawEntry GlueEntry::getRaw() {
 }
 
 
-string GlueStorage::dump() { 
+string GlueStorage::dump() {
 	ostringstream o;
 	for (auto it = glueMap.begin(); it != glueMap.end(); it++) {
 		GlueEntry e;
@@ -272,7 +273,7 @@ string GlueStorage::dump() {
 	return o.str();
 }
 
-string GlueStorage::dump(string key, bool dumpkey) { 
+string GlueStorage::dump(string key, bool dumpkey) {
 	ostringstream o;
 	GlueEntry e;
 	if(find(key, e)) {
@@ -285,7 +286,7 @@ string GlueStorage::dump(string key, bool dumpkey) {
 
 bool GlueStorage::derefIt (GlueMap::const_iterator it, GlueEntry & e) {
 	if (it == glueMap.end()) return false;
-	e = GlueEntry(it->second, kmerSize); 
+	e = GlueEntry(it->second, kmerSize);
 	return true;
 }
 
@@ -309,7 +310,7 @@ void GlueStorage::insertAtIt(GlueMap::iterator it, GlueEntry e) {
 //glueResult contains the result of the glue
 void Glue::glueSingleEntry(GlueEntry query, GlueEntry match, string key, GlueEntry & glueResult) {
 	glueResult = GlueEntry();
-	
+
 	if (weWantSpeed) { //this disables the error check, meaning that if there is some bug in the program that causes query and match to be non-gluable, the program will not terminate and will continue
 		if (match.getLmark()  && (query.getRkmer() == match.getLkmer()) && (query.getRkmer() == key)) {
 			string gluedStr = query.getSeq() + match.getSeq().substr(kmerSize, match.getSeq().size() - kmerSize);
@@ -332,14 +333,14 @@ void Glue::glueSingleEntry(GlueEntry query, GlueEntry match, string key, GlueEnt
 			exit(1);
 		}
 	}
-	
+
 }
 
 
 //returns true if inserted
-bool Glue::insert_aux(GlueEntry newEntry, string key, GlueEntry & glueResult, bool onlyInsertIfFull) { 
+bool Glue::insert_aux(GlueEntry newEntry, string key, GlueEntry & glueResult, bool onlyInsertIfFull) {
 
-    // maybe try to move that into Glue::insert_aux again but i'm not sure if it affects minimizer computation so i'm keeping it here to make sure 
+    // maybe try to move that into Glue::insert_aux again but i'm not sure if it affects minimizer computation so i'm keeping it here to make sure
 	string key_norm = rcnorm(key);
 	if (key != key_norm) {
 		newEntry.revComp();
@@ -375,9 +376,9 @@ bool Glue::insert_aux(GlueEntry newEntry, string key, GlueEntry & glueResult, bo
         cout << "periodic glue cleanup" << endl;
         glueStorage.updateMemStats();
         glue();
-    } 
+    }
 
-	return true; 
+	return true;
 
 	//if (key == key_of_interest) cout << "after\t" << glueStorage.dump(key,false ) << endl;
 
@@ -414,7 +415,7 @@ void GlueStorage::cleanup() {
 void Glue::glue()
 {
 	startTimer();
-	glueStorage.cleanup(); 
+	glueStorage.cleanup();
 	stopTimer();
 }
 
@@ -425,7 +426,7 @@ void GlueCommander::output(string seq)
 	out->insert(s);
 }
 
-void Glue::stopTimer() { 
+void Glue::stopTimer() {
 	if (--timerReferenceCount == 0) {
 		auto endTime = chrono::system_clock::now();
 		totalTime += chrono::duration_cast<chrono::microseconds>(endTime - startTime);
@@ -471,7 +472,7 @@ void GlueStorage::printMemStats() {
 	if (numDataPoints == 0) {
 		cout << "GlueStorage: no data points to output memory stats.\n";
 	} else {
-		cout << "GlueStorage memory stats: max entries: " << add_commas(maxEntries) << " avg entries: " << add_commas(totEntries/numDataPoints) << " max size: " << add_commas(maxSize) 
+		cout << "GlueStorage memory stats: max entries: " << add_commas(maxEntries) << " avg entries: " << add_commas(totEntries/numDataPoints) << " max size: " << add_commas(maxSize)
 			<< "b avg size: " << add_commas(totSize / numDataPoints) << "b\n";
 	}
 }
@@ -536,9 +537,9 @@ void GlueCommander::stop()
 
     for (int i = 0; i < nb_glues; i++)
         keep_glueing[i] = false;
-    
+
     for (int i = 0; i < nb_glues; i++)
-        glue_threads[i]->join(); 
+        glue_threads[i]->join();
 
     cleanup_force();
 }
@@ -592,7 +593,7 @@ void GlueCommander::spawn_threads()
 
 }
 
-GlueCommander::GlueCommander(size_t _kmerSize, BankFasta *out, int nb_glues, Model *model) : out(out), model(model), nb_glues(nb_glues) 
+GlueCommander::GlueCommander(size_t _kmerSize, BankFasta *out, int nb_glues, Model *model) : out(out), model(model), nb_glues(nb_glues)
 {
 
     for (int i = 0; i < nb_glues; i++)
@@ -626,7 +627,7 @@ unsigned long GlueCommander::queues_size(bool silent) // keep in mind this is ex
 
 
 void GlueCommander::insert(GlueEntry &e) {
-	
+
 	/* for testing:
 	string str;
 	while (cin >> str) {
@@ -634,14 +635,14 @@ void GlueCommander::insert(GlueEntry &e) {
 		RawEntry raw = en.getRaw();
 		cout << tostring(en, "Z") << endl << raw << endl << tostring(GlueEntry(raw,2), "Z") << endl;
 	}
-	return; 	
+	return;
 	*/
 
 	bool oldGlueDebug = glueDebug;
-	
-	//if ((e.getSeq().find(key_of_interest) != std::string::npos) || (e.getSeq().find(reversecomplement(key_of_interest)) != std::string::npos))  glueDebug = true; 
 
-	if (glueDebug) 
+	//if ((e.getSeq().find(key_of_interest) != std::string::npos) || (e.getSeq().find(reversecomplement(key_of_interest)) != std::string::npos))  glueDebug = true;
+
+	if (glueDebug)
 		cout << "insert\t" << tostring(e,"") << endl;
 
 	if (!e.getRmark() && !e.getLmark()) {
@@ -652,7 +653,7 @@ void GlueCommander::insert(GlueEntry &e) {
 		insert_aux(e, e.getLkmer());
 	} else if (!e.getLmark() && e.getRmark()) {
 		insert_aux(e, e.getRkmer());
-	} else { 
+	} else {
 		//pick one that is not empty
 		//this is not necessary for correctness, picking an arbitrary one will do
 		//but picking a non-empty one may force glues to happen sooner rather later, preventing build-ups of long sequential chains
@@ -664,13 +665,13 @@ void GlueCommander::insert(GlueEntry &e) {
 		insert_aux(e, e.getLkmer());
 	}
 
-	glueDebug = oldGlueDebug; 
+	glueDebug = oldGlueDebug;
 }
 
-void GlueCommander::insert_aux(GlueEntry newEntry, string key) { 
+void GlueCommander::insert_aux(GlueEntry newEntry, string key) {
 
     Model::Kmer kmer= model->codeSeed(key.c_str(), Data::ASCII);
     size_t minimizer(model->getMinimizerValue(kmer.value()));
-    int w = which_queue(minimizer); 
+    int w = which_queue(minimizer);
     insert_aux_queues[w].enqueue(make_pair(newEntry, key));
 }

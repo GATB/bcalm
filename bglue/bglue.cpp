@@ -1,4 +1,4 @@
-/* remaining issue: 
+/* remaining issue:
  * - inconsistency of results between machines (laptop lifl vs cyberstar231) */
 #include <gatb/gatb_core.hpp>
 #include "unionFind.hpp"
@@ -38,11 +38,11 @@ int nbGluePartitions = 200;
 
    // a hash wrapper for hashing kmers in Model form
     template <typename ModelType>
-    class Hasher_T 
+    class Hasher_T
     {
        public:
         ModelType model;
-        
+
         Hasher_T(ModelType &model) : model(model) {};
 
         uint64_t operator ()  (const typename ModelType::Kmer& key, uint64_t seed = 0) const  {
@@ -136,7 +136,7 @@ vector<vector<markedSeq> > determine_order_sequences(vector<markedSeq> &sequence
 
         vector<markedSeq> chain;
         chain.push_back(current);
-    
+
         bool rmark = current.rmark;
         int current_index = i;
         int start_index = i;
@@ -154,14 +154,14 @@ vector<vector<markedSeq> > determine_order_sequences(vector<markedSeq> &sequence
 
             int successor_index = *candidateSuccessors.begin(); // pop()
             assert(successor_index != current_index);
-            markedSeq successor = sequences[successor_index]; 
+            markedSeq successor = sequences[successor_index];
 
             if (successor.ks != current.ke || (!successor.lmark))
                 successor.revcomp();
-            
+
             if (debug)
                 std::cout << "successor " << successor_index << " successor ks ke "  << successor.ks << " "<< successor.ke << " markings: " << successor.lmark << successor.rmark << std::endl;
-            
+
             assert(successor.lmark);
             assert(successor.ks == current.ke);
 
@@ -171,15 +171,15 @@ vector<vector<markedSeq> > determine_order_sequences(vector<markedSeq> &sequence
                     std::cout << "successor seq loops: " << successor.seq << std::endl;
                 assert(successor.seq.size() == kmerSize);
                 if (successor.lmark == false)
-                    assert(successor.rmark == true); 
+                    assert(successor.rmark == true);
                 else
                     assert(successor.rmark == false);
                 // it's the only possible cases I can think of
-                
+
                 // there is actually nothing to be done now, it's an extremity, so it will end.
                 // on a side note, it's pointless to save this kmer in bcalm.
             }
-            
+
 
             current = successor;
             chain.push_back(current);
@@ -221,7 +221,7 @@ string glue_sequences(vector<markedSeq> &chain)
             assert(seq.substr(0, k).compare(previous_kmer) == 0);
             res += seq.substr(k);
         }
-        
+
         previous_kmer = seq.substr(seq.size() - k);
         assert(previous_kmer.size() == k);
         last_rmark = it->rmark;
@@ -233,7 +233,7 @@ string glue_sequences(vector<markedSeq> &chain)
 }
 
 // is also thread-safe thank to a lock
-class BufferedFasta 
+class BufferedFasta
 {
         std::mutex mtx;
         BankFasta *bank;
@@ -242,22 +242,22 @@ class BufferedFasta
         unsigned long buffer_length;
 
     public:
-        
-        unsigned long max_buffer; 
+
+        unsigned long max_buffer;
 
         BufferedFasta(string filename, unsigned long given_max_buffer = 500000)
         {
-            max_buffer = given_max_buffer; // that much of buffering will be written to the file at once (in bytes) 
+            max_buffer = given_max_buffer; // that much of buffering will be written to the file at once (in bytes)
             buffer_length = 0;
             bank = new BankFasta(filename);
         }
- 
+
         ~BufferedFasta()
-        { 
+        {
             flush(); // probably very useful
             delete bank;
         }
-    
+
         void insert(string &seq, string &comment)
         {
             mtx.lock();
@@ -268,16 +268,16 @@ class BufferedFasta
                 flush();
             mtx.unlock();
         }
-         
+
         void flush()
-        {   
+        {
             for (auto &p : buffer)
             {
                 string seq = get<0>(p);
                 string comment = get<1>(p);
                 Sequence s (Data::ASCII);
                 s.getData().setRef ((char*)seq.c_str(), seq.size());
-                s._comment = comment;   
+                s._comment = comment;
                 bank->insert(s);
             }
             bank->flush();
@@ -287,7 +287,7 @@ class BufferedFasta
             free_memory_vector(buffer);
         }
 };
- 
+
 void output(string &seq, BufferedFasta &out, string comment = "")
 {
     out.insert(seq, comment);
@@ -297,7 +297,7 @@ void output(string &seq, BufferedFasta &out, string comment = "")
 typedef boomphf::SingleHashFunctor<uint32_t>  hasher_t;
 class no_hash
 {
-    public: 
+    public:
         uint32_t operator() (uint32_t h, uint64_t seed=0) const { return h; };
 };
 
@@ -340,7 +340,7 @@ void bglue::execute (){
     uint32_t *freq_order = NULL;
 
     int minimizer_type = 1; // typical bcalm usage.
-    if (minimizer_type == 1) 
+    if (minimizer_type == 1)
     {
         freq_order = new uint32_t[rg];
         Storage::istream is (minimizersGroup, "minimFrequency");
@@ -357,15 +357,16 @@ void bglue::execute (){
     // create a hasher for UF
     ModelCanon modelCanon(kmerSize); // i'm a bit lost with those models.. I think GATB could be made more simple here.
     Hasher_T<ModelCanon> hasher(modelCanon);
-   
-    typedef uint32_t partition_t; 
+
+    typedef uint32_t partition_t;
 
     Iterator<Sequence>* it = in->iterator();
 
     int nb_uf_hashes_vectors = 1000;
     std::vector<std::vector<partition_t >> uf_hashes_vectors(nb_uf_hashes_vectors);
-    std::mutex uf_hashes_vectorsMutex[nb_uf_hashes_vectors];
-   
+    // std::mutex uf_hashes_vectorsMutex[nb_uf_hashes_vectors];
+    std::mutex *uf_hashes_vectorsMutex=new std::mutex  [nb_uf_hashes_vectors];
+
     // prepare UF: create the set of keys
     auto prepareUF = [k, &modelCanon, \
         &uf_hashes_vectorsMutex, &uf_hashes_vectors, &hasher, nb_uf_hashes_vectors](const Sequence& sequence)
@@ -382,17 +383,17 @@ void bglue::execute (){
         string kmerBegin = seq.substr(0, k );
         string kmerEnd = seq.substr(seq.size() - k , k );
 
-        // UF of canonical kmers in ModelCanon form, then hashed 
+        // UF of canonical kmers in ModelCanon form, then hashed
         ModelCanon::Kmer kmmerBegin = modelCanon.codeSeed(kmerBegin.c_str(), Data::ASCII);
         ModelCanon::Kmer kmmerEnd = modelCanon.codeSeed(kmerEnd.c_str(), Data::ASCII);
 
         partition_t h1 = hasher(kmmerBegin);
         partition_t h2 = hasher(kmmerEnd);
-        
+
         uf_hashes_vectorsMutex[h1%nb_uf_hashes_vectors].lock();
         uf_hashes_vectors[h1%nb_uf_hashes_vectors].push_back(h1);
         uf_hashes_vectorsMutex[h1%nb_uf_hashes_vectors].unlock();
-        
+
         uf_hashes_vectorsMutex[h2%nb_uf_hashes_vectors].lock();
         uf_hashes_vectors[h2%nb_uf_hashes_vectors].push_back(h2);
         uf_hashes_vectorsMutex[h2%nb_uf_hashes_vectors].unlock();
@@ -403,7 +404,7 @@ void bglue::execute (){
     getDispatcher()->iterate (it, prepareUF);
 
     logging("getting vector of redundant UF elements");
-    
+
     ThreadPool uf_merge_pool(nb_threads);
 
     // uniquify UF vectors
@@ -422,9 +423,9 @@ void bglue::execute (){
     }
 
     uf_merge_pool.join();
-    
+
     logging("sorted and unique UF elements");
-  
+
     // compute number of UF elements from intermediate vectors
     unsigned long tmp_nb_uf_keys = 0;
     for (int i = 0; i < nb_uf_hashes_vectors; i++)
@@ -447,25 +448,25 @@ void bglue::execute (){
 	auto data_iterator = boomphf::range(uf_hashes.begin(), uf_hashes.end());
 
     boomphf::mphf<uint32_t, hasher_t> uf_mphf(nb_uf_keys, data_iterator, nb_threads);
-   
+
     free_memory_vector(uf_hashes);
 
-    unsigned long uf_mphf_memory = uf_mphf.totalBitSize(); 
+    unsigned long uf_mphf_memory = uf_mphf.totalBitSize();
     logging("UF MPHF constructed (" + std::to_string(uf_mphf_memory/8/1024/1024) + " MB)" );
-  
- 
+
+
     // create a UF data structure
 #if 0
     unionFind<unsigned int> ufmin;
-    unionFind<std::string> ufprefixes; 
+    unionFind<std::string> ufprefixes;
     unsigned int prefix_length = 10;
-    unionFind<std::string> ufkmerstr; 
+    unionFind<std::string> ufkmerstr;
 #endif
     // those were toy one, here is the real one:
-    unionFind<partition_t> ufkmers(nb_uf_keys); 
+    unionFind<partition_t> ufkmers(nb_uf_keys);
     // instead of UF of kmers, we do a union find of hashes of kmers. less memory. will have collisions, but that's okay i think. let's see.
     // actually, in the current implementation, partition_t is not used, but values are indeed hardcoded in 32 bits (the UF implementation uses a 64 bits hash table for internal stuff)
- 
+
     // We loop over sequences.
     /*for (it.first(); !it.isDone(); it.next())
     {
@@ -475,7 +476,7 @@ void bglue::execute (){
     {
         string seq = sequence.toString();
 
-        if (seq.size() < k) 
+        if (seq.size() < k)
         {
             std::cout << "unexpectedly small sequence found ("<<seq.size()<<"). did you set k correctly?" <<std::endl; exit(1);
         }
@@ -490,17 +491,17 @@ void bglue::execute (){
         string kmerBegin = seq.substr(0, k );
         string kmerEnd = seq.substr(seq.size() - k , k );
 
-        // UF of canonical kmers in ModelCanon form, then hashed 
+        // UF of canonical kmers in ModelCanon form, then hashed
         ModelCanon::Kmer kmmerBegin = modelCanon.codeSeed(kmerBegin.c_str(), Data::ASCII);
         ModelCanon::Kmer kmmerEnd = modelCanon.codeSeed(kmerEnd.c_str(), Data::ASCII);
         ufkmers.union_(uf_mphf.lookup(hasher(kmmerBegin)), uf_mphf.lookup(hasher(kmmerEnd)));
         //ufkmers.union_((hasher(kmmerBegin)), (hasher(kmmerEnd)));
 
-#if 0 
+#if 0
 
         Model::Kmer kmmerBegin = model.codeSeed(kmerBegin.c_str(), Data::ASCII);
         Model::Kmer kmmerEnd = model.codeSeed(kmerEnd.c_str(), Data::ASCII);
- 
+
         // UF of canonical kmers in string form, not hashed
         string canonicalKmerBegin = modelK1.toString(kmmerBegin.value());
         string canonicalKmerEnd = modelK1.toString(kmmerEnd.value());
@@ -515,8 +516,8 @@ void bglue::execute (){
         string prefixCanonicalKmerBegin = canonicalKmerBegin.substr(0, prefix_length);
         string prefixCanonicalKmerEnd = canonicalKmerEnd.substr(0, prefix_length);
         ufprefixes.union_(prefixCanonicalKmerBegin, prefixCanonicalKmerEnd);
-#endif    
-        
+#endif
+
 
     };
 
@@ -529,10 +530,10 @@ void bglue::execute (){
     ufmin.printStats("uf minimizers");
 
     ufprefixes.printStats("uf " + to_string(prefix_length) + "-prefixes of kmers");
-    
+
     ufkmerstr.printStats("uf kmers, std::string");
 #endif
-    
+
 
     unsigned long memUF = logging("UF constructed");
 
@@ -550,7 +551,7 @@ void bglue::execute (){
     BufferedFasta out (output_prefix, 4000000 /* give it a large buffer*/);
 
     auto get_partition = [&modelCanon, &ufkmers, &hasher, &uf_mphf]
-        (string &kmerBegin, string &kmerEnd, 
+        (string &kmerBegin, string &kmerEnd,
          bool lmark, bool rmark,
          ModelCanon::Kmer &kmmerBegin, ModelCanon::Kmer &kmmerEnd,  // those will be populated based on lmark and rmark
          bool &found_partition)
@@ -569,7 +570,7 @@ void bglue::execute (){
             {
                 kmmerEnd = modelCanon.codeSeed(kmerEnd.c_str(), Data::ASCII);
                 if (found_partition) // just do a small check
-                {   
+                {
                     if (ufkmers.find(uf_mphf.lookup(hasher(kmmerEnd))) != partition)
                     { std::cout << "bad UF! left kmer has partition " << partition << " but right kmer has partition " << ufkmers.find(uf_mphf.lookup(hasher(kmmerEnd))) << std::endl; exit(1); }
                 }
@@ -583,7 +584,8 @@ void bglue::execute (){
             return partition;
         };
 
-    std::mutex gluePartitionsLock[nbGluePartitions];
+    // std::mutex gluePartitionsLock[nbGluePartitions];
+    std::mutex *gluePartitionsLock=new     std::mutex [nbGluePartitions];
     std::mutex outLock; // for the main output file
     std::vector<BufferedFasta*> gluePartitions(nbGluePartitions);
     std::string gluePartition_prefix = output_prefix + ".gluePartition.";
@@ -622,7 +624,7 @@ void bglue::execute (){
         if (!rmark)
             kmmerEnd = modelCanon.codeSeed(kmerEnd.c_str(), Data::ASCII);
 
-        if (!found_partition) // this one doesn't need to be glued 
+        if (!found_partition) // this one doesn't need to be glued
         {
             output(seq, out); // maybe could optimize writing by using queues
             return;
@@ -651,8 +653,8 @@ void bglue::execute (){
 
 
     logging("Glueing partitions");
-   
-    // glue all partitions using a thread pool     
+
+    // glue all partitions using a thread pool
     ThreadPool pool(nb_threads);
     for (int partition = 0; partition < nbGluePartitions; partition++)
     {
@@ -673,7 +675,7 @@ void bglue::execute (){
 
             unordered_map<int,vector<markedSeq>> msInPart;
 
-            for (it.first(); !it.isDone(); it.next()) 
+            for (it.first(); !it.isDone(); it.next())
             {
                 string seq = it->toString();
 
@@ -722,7 +724,7 @@ void bglue::execute (){
 
                     output(seq, out);
                 }
-           
+
                 free_memory_vector(it->second);
             }
 
@@ -731,7 +733,7 @@ void bglue::execute (){
             System::file().remove (partitionFile);
 
         };
-    
+
         pool.enqueue(glue_partition);
     }
 
@@ -739,7 +741,7 @@ void bglue::execute (){
 
     logging("end");
 
-   
+
 //#define ORIGINAL_GLUE
 #ifdef ORIGINAL_GLUE
     // We loop again over sequences
@@ -780,4 +782,3 @@ int main (int argc, char* argv[])
 
     return EXIT_SUCCESS;
 }
-

@@ -174,28 +174,39 @@ class graph3
 {
 	public:
 		uint32_t k;
+        uint indiceAdd,indiceLeft,indiceRight,indiceUnitigs;
 		uint32_t minimizer;
 		uint32_t minsize;
-		vector<string> unitigs;
+        uint32_t nbElement;
+		string* unitigs;
 		vector<bool> leftmins;
 		vector<bool> rightmins;
 		vector<kmerIndice> left;
 		vector<kmerIndice> right;
 		vector<kmer2Indice> compactions;
 
-		void addvertex(const string& str);
+		void addvertex(string& str);
 		void addleftmin(unsigned int mini);
 		void addrightmin(unsigned int mini);
 		void debruijn();
+        void debruijn2();
 		void compress();
 		void compaction(uint32_t iR, uint32_t iL);
 		uint32_t size();
+        bool output(uint i);
 
-		graph3(uint32_t ka, uint32_t min,uint32_t size)
-		{
+		graph3(uint32_t ka, uint32_t min,uint32_t size, uint nb){
+            indiceUnitigs=indiceRight=indiceLeft=indiceAdd=0;
 			minsize=size;
 			k=ka;
 			minimizer=min;
+            nbElement=nb;
+            unitigs =new string [nbElement];
+            leftmins.resize(nbElement,false);
+            rightmins.resize(nbElement,false);
+            left.reserve(nbElement);
+    	    right.reserve(nbElement);
+            compactions.reserve(nbElement);
 		}
 };
 
@@ -220,6 +231,7 @@ class graph4
 		void addleftmin(unsigned int mini);
 		void addrightmin(unsigned int mini);
 		void debruijn();
+
 		void compress();
 		void compaction(uint32_t iR, uint32_t iL);
 		uint32_t size();

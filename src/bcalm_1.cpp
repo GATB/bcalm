@@ -10,6 +10,7 @@
 #include <chrono>
 #include <tuple>
 #include "binSeq.h"
+#define OSX 1
 #ifndef OSX
 #include <sys/sysinfo.h> // to determine system memory
 #endif
@@ -18,8 +19,8 @@
 #include <atomic>
 //#include "../thirdparty/concurrentqueue.h" // not using those
 //#include "../thirdparty/lockbasedqueue.h"  // see comments in code for explanations
-#include "../thirdparty/lockstdqueue.h" 
-//#include "../thirdparty/lockstdvector.h" 
+#include "../thirdparty/lockstdqueue.h"
+//#include "../thirdparty/lockstdvector.h"
 
 #include "../thirdparty/ThreadPool.h"
 
@@ -130,7 +131,7 @@ void bcalm_1::execute (){
 
     string input_prefix = inputFile.substr(0,inputFile.size()-3);
     bool is_kmercounted = inputFile.substr(inputFile.size()-2,2) == "h5";
-    string prefix = getInput()->getStr("-out"); 
+    string prefix = getInput()->getStr("-out");
     if ((input_prefix.compare("unitigs") != 0) && prefix.compare("unitigs") == 0 && is_kmercounted)
     {
         prefix = input_prefix;
@@ -220,7 +221,7 @@ void bcalm_1::execute (){
 
     std::vector<BankFasta*> out_to_glue(nb_threads); // each thread will write to its own glue file, to avoid locks
     std::ofstream list_of_glues(prefix + ".glue");
-    
+
     // remove potential old glue files
     for (unsigned int i = 0; i < 4096 /* there cannot be more than 4096 threads, right?*/; i++)
         if (System::file().doesExist(prefix + ".glue." + std::to_string(i)))
@@ -234,7 +235,7 @@ void bcalm_1::execute (){
         list_of_glues << glue_file << endl;
     }
     list_of_glues.close();
-    // TODO: delete previous glue files 
+    // TODO: delete previous glue files
 
     double weighted_best_theoretical_speedup_cumul = 0;
     double weighted_best_theoretical_speedup_sum_times = 0;
@@ -280,7 +281,7 @@ void bcalm_1::execute (){
      *
      * Iteration of partitions
      *
-     *  main thread is going to read kmers from partitions and insert them into queues 
+     *  main thread is going to read kmers from partitions and insert them into queues
      *
     */
     for (it_parts->first (); !it_parts->isDone(); it_parts->next()) /**FOREACH SUPERBUCKET (= partition) **/
@@ -301,14 +302,15 @@ void bcalm_1::execute (){
         // this implementation is supposedly efficient, but:
         // - as fast as the lockbasedqueue below
         // - uses much more memory
-        //moodycamel::ConcurrentQueue<std::tuple<BUCKET_STR_TYPE,uint32_t,uint32_t> > bucket_queues[rg]; 
+        //moodycamel::ConcurrentQueue<std::tuple<BUCKET_STR_TYPE,uint32_t,uint32_t> > bucket_queues[rg];
 
         // another queue system, very simple, with locks
         // it's fine but uses a linked list, so more memory than I'd like
-        //LockBasedQueue<std::tuple<BUCKET_STR_TYPE,uint32_t,uint32_t> > bucket_queues[rg]; 
+        //LockBasedQueue<std::tuple<BUCKET_STR_TYPE,uint32_t,uint32_t> > bucket_queues[rg];
 
         // still uses more memory than i'd like
-        LockStdQueue<std::tuple<BUCKET_STR_TYPE,uint32_t,uint32_t> > bucket_queues[rg]; 
+        // LockStdQueue<std::tuple<BUCKET_STR_TYPE,uint32_t,uint32_t> > bucket_queues[rg];
+        LockStdQueue<std::tuple<BUCKET_STR_TYPE,uint32_t,uint32_t> > *bucket_queues=new LockStdQueue<std::tuple<BUCKET_STR_TYPE,uint32_t,uint32_t> > [rg];
 
         //LockStdVector<std::tuple<BUCKET_STR_TYPE,uint32_t,uint32_t> > bucket_queues[rg]; // very inefficient
 
@@ -333,7 +335,7 @@ void bcalm_1::execute (){
         kmerInGraph = 0;
 
         /* lambda function to process a kmer and decide which bucket(s) it should go to */
-        auto insertIntoQueues = [p, &minimizerMax, &minimizerMin, &add_to_bucket_queue, 
+        auto insertIntoQueues = [p, &minimizerMax, &minimizerMin, &add_to_bucket_queue,
                     &bucket_queues, &modelK1, &k, &repart, &nb_left_min_diff_right_min,
                     &kmerInGraph, &model, &save_traveller_kmer](Count item) {
             Kmer<SPAN>::Type current = item.value;
@@ -389,7 +391,7 @@ void bcalm_1::execute (){
             BankFasta traveller_kmers_bank (traveller_kmers_file);
             BankFasta::Iterator it (traveller_kmers_bank);
             int nb_traveller_kmers_loaded = 0;
-            for (it.first(); !it.isDone(); it.next()) 
+            for (it.first(); !it.isDone(); it.next())
             {
                 string seq = it->toString();
 
@@ -400,7 +402,7 @@ void bcalm_1::execute (){
                 uint32_t rightMin(modelK1.getMinimizerValue(kmmerEnd.value()));
 
                 uint32_t max_minimizer = minimizerMax(leftMin, rightMin);
-                add_to_bucket_queue(max_minimizer, seq, leftMin, rightMin, p); 
+                add_to_bucket_queue(max_minimizer, seq, leftMin, rightMin, p);
                 nb_traveller_kmers_loaded++;
             }
             std::cout << "Loaded " << nb_traveller_kmers_loaded << " doubled kmers for partition " << p << endl;
@@ -413,7 +415,7 @@ void bcalm_1::execute (){
 
         cout << "Iterated " << partition[p].getNbItems() << " kmers, among them " << nb_left_min_diff_right_min << " has leftmin!=rightmin" << endl;
 
-        ThreadPool pool(nb_threads); 
+        ThreadPool pool(nb_threads);
 
         std::vector<double> lambda_timings;
         auto start_foreach_bucket_t=get_wtime();
@@ -421,13 +423,14 @@ void bcalm_1::execute (){
         /**FOREACH BUCKET **/
         for(auto actualMinimizer : active_minimizers[p])
         {
-            auto lambdaCompact = [&bucket_queues, actualMinimizer, 
+            auto lambdaCompact = [&bucket_queues, actualMinimizer,
                 &maxBucket, &lambda_timings, &repart, &modelK1, &out_to_glue](int thread_id) {
                 auto start_nodes_t=get_wtime();
 
                 // (make sure to change other places labelled "// graph3" and "// graph4" as well)
                 //graph4 g(kmerSize-1,actualMinimizer,minSize); // graph4
-                graph3 g(kmerSize-1,actualMinimizer,minSize); // graph3
+                uint number_elements(bucket_queues[actualMinimizer].size_approx());
+                graph3 g(kmerSize-1,actualMinimizer,minSize,number_elements); // graph3
                 //~ //graph1 g(kmerSize);
 
                 /* add nodes to graph */
@@ -453,10 +456,10 @@ void bcalm_1::execute (){
 
                 /* distribute nodes (to other buckets, or output, or glue) */
                 auto start_cdistribution_t=get_wtime();
-                 string seq;
-                for(uint32_t i(0);i<g.unitigs.size();++i){
-                     if(!g.unitigs[i].empty()){ // graph3
-    					 seq= g.unitigs[i]; // graph3
+                string seq;
+                for(uint32_t i(0);i<number_elements;++i){
+                    if(g.output(i)){ // graph3
+    					seq=g.unitigs[i]; // graph3
 					//if(!g.isNumber[i]){ // graph4
 						//seq=g.unitigs[i].str(); // graph4
 
@@ -471,7 +474,7 @@ void bcalm_1::execute (){
 
                         Sequence s (Data::ASCII);
                         s.getData().setRef ((char*)seq.c_str(), seq.size());
-                        s._comment = string(lmark?"1":"0")+string(rmark?"1":"0"); //We set the sequence comment. 
+                        s._comment = string(lmark?"1":"0")+string(rmark?"1":"0"); //We set the sequence comment.
                         out_to_glue[thread_id]->insert(s);
                      }
                 }
@@ -512,7 +515,7 @@ void bcalm_1::execute (){
             continue; // no stats to print here
 
         memory_usage("Done with partition " + std::to_string(p));
-    
+
         // check if buckets are indeed empty
         for (unsigned int minimizer = 0; minimizer < rg; minimizer++)
         {
@@ -557,7 +560,7 @@ void bcalm_1::execute (){
                 cout <<"                       best theoretical speedup: "<<  best_theoretical_speedup << "x" <<endl;
                 if (nb_threads_simulate > 1)
                     cout <<"     best theoretical speedup with "<< nb_threads_simulate << " thread(s): "<<  actual_theoretical_speedup << "x" <<endl;
-                
+
                 weighted_best_theoretical_speedup_cumul += best_theoretical_speedup * wallclock_sb;
                 weighted_best_theoretical_speedup_sum_times                        += wallclock_sb;
                 weighted_best_theoretical_speedup = weighted_best_theoretical_speedup_cumul / weighted_best_theoretical_speedup_sum_times ;
@@ -570,7 +573,7 @@ void bcalm_1::execute (){
                 global_wtime_lambda = 0;
             }
         }
-
+        delete [] bucket_queues;
     } // end iteration superbuckets
 
     /*
@@ -616,4 +619,3 @@ uint32_t leftMin(modelK1.getMinimizerValue(modelK1.getKmer(data,0).value()));
 uint32_t rightMin(modelK1.getMinimizerValue(modelK1.getKmer(data,1).value()));
 printf("minimizers for kmer %s: %d %d, k-1-mers: %s %s\n",model.toString(current).c_str(), leftMin, rightMin, modelK1.toString(modelK1.getKmer(data,0).value()).c_str(), modelK1.toString(modelK1.getKmer(data,1).value()).c_str());
 */
-

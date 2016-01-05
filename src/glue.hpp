@@ -7,6 +7,7 @@
 #include <iomanip>
 #include <algorithm>
 #include <chrono>
+#define OSX 1
 #ifndef OSX
 #include <sys/sysinfo.h> // to determine system memory
 #endif
@@ -17,12 +18,12 @@
 #include <mutex>
 #include <../../../thirdparty/concurrentqueue.h>
 
-#define TWOBITGLUEHASH 
-//#define SPARSEHASH 
+#define TWOBITGLUEHASH
+//#define SPARSEHASH
 #ifdef SPARSEHASH
 #include <sparsehash/sparse_hash_map>
 using google::sparse_hash_map;
-#endif 
+#endif
 
 using namespace std;
 
@@ -45,7 +46,7 @@ class GlueEntry {
 		GlueEntry(RawEntry raw, size_t _kmerSize);
 
 		string getSeq()   { return seq;   };
-		bool getLmark()   { return lmark; }; 
+		bool getLmark()   { return lmark; };
 		bool getRmark()   { return rmark; };
 		string getLkmer() { return seq.substr(0, kmerSize);  };
 		string getRkmer() { return seq.substr(seq.length() - kmerSize, kmerSize);  };
@@ -86,17 +87,17 @@ class GlueStorage {
 	public:
 		int kmerSize;
 
-		GlueStorage(int _kmerSize) : kmerSize(_kmerSize) { 
+		GlueStorage(int _kmerSize) : kmerSize(_kmerSize) {
 #ifdef SPARSEHASH
 			glueMap.set_deleted_key("");
 #endif
 		}
 		bool find (string key, GlueEntry & e);
 		//bool getFirst(GlueEntry & e1, GlueEntry & e2);
-		//bool getNext(GlueEntry & e1, GlueEntry & e2); 
+		//bool getNext(GlueEntry & e1, GlueEntry & e2);
 		//void insertAtCurIt(GlueEntry e1, GlueEntry e2) { insertAtIt(curIt, e1, e2); }
 		void insertAtKey(string key, GlueEntry e);
-		void insertAfterFind(GlueEntry e) { insertAtIt(findIt, e); } 
+		void insertAfterFind(GlueEntry e) { insertAtIt(findIt, e); }
 		void cleanup();
 		void updateMemStats();
 		void printMemStats();
@@ -105,12 +106,12 @@ class GlueStorage {
 
 		string dump();
 		string dump(string key, bool dumpkey = true);
-        
+
         unsigned long nbNonEmpty;
 
 	private:
 #ifdef SPARSEHASH
-		typedef  sparse_hash_map<string, RawEntry> GlueMap; 
+		typedef  sparse_hash_map<string, RawEntry> GlueMap;
 #else
 		typedef unordered_map<string, RawEntry> GlueMap;
 #endif
@@ -167,8 +168,8 @@ class GlueCommander
         int nb_glues;
         std::vector<Glue*> glues;
         std::vector<moodycamel::ConcurrentQueue<pair<GlueEntry, string> >>  insert_aux_queues;
-        std::vector<bool> keep_glueing; 
-        std::vector<std::thread*> glue_threads; 
+        std::vector<bool> keep_glueing;
+        std::vector<std::thread*> glue_threads;
 };
 
 class Glue
@@ -177,7 +178,7 @@ class Glue
 		GlueStorage glueStorage; //this should really be treated as private. It is only public to allow calling updateMemStats and such
 
 		Glue(size_t _kmerSize, GlueCommander *commander) : glueStorage(_kmerSize), needs_cleanup(false), kmerSize(_kmerSize), commander(commander), nbGlueInserts(0) {
-#ifdef TWOBITGLUEHASH 
+#ifdef TWOBITGLUEHASH
 			cout << "Glue: using TWOBITBLUEHASH.\n";
 #else
 			cout << "Glue: using a string hash.\n";
@@ -190,8 +191,8 @@ class Glue
 		}
 		void insert(GlueEntry newEntry, bool process = false);
 		void glue();
-		
-		unsigned long getTime() { 
+
+		unsigned long getTime() {
 			if (timerReferenceCount != 0) {
 				cout << "error in Glue::getTime(): timerReference count is " << timerReferenceCount << endl;
 				exit(1);
@@ -200,7 +201,7 @@ class Glue
 		};
 
 		bool insert_aux(GlueEntry newEntry, string key, GlueEntry & glueResult, bool onlyCheckIfEmpty = false);
-        
+
         std::atomic<bool> needs_cleanup;
 
 	private:
@@ -214,11 +215,10 @@ class Glue
 		std::chrono::system_clock::time_point startTime;
 		std::chrono::microseconds totalTime;
 		int timerReferenceCount = 0;
-		void startTimer() { 
-			if (timerReferenceCount++ == 0) startTime =  chrono::system_clock::now(); 
+		void startTimer() {
+			if (timerReferenceCount++ == 0) startTime =  chrono::system_clock::now();
 		};
 		void stopTimer();
 
         unsigned long nbGlueInserts;
 };
-

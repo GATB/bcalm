@@ -374,11 +374,49 @@
 		return res;
 	}
 
+	__uint128_t beg2int128(const string& str,uint k){
+		__uint128_t res(0);
+		for(uint32_t i(0);i<k;i++){
+			res<<=2;
+			res+=chartoint(str[i]);
+		}
+		return res;
+	}
+
+	__uint128_t end2int128(const string& str,uint k){
+		__uint128_t res(0);
+		for(uint32_t i(0);i<k;i++){
+			res<<=2;
+			res+=chartoint(str[str.size()-k+i]);
+		}
+		return res;
+	}
+
 	__uint128_t stringtointc128(const string& str){
 		__uint128_t res(0);
 		for(int32_t i(str.size()-1);i>=0;i--){
 			res<<=2;
 			res+=3-chartoint(str[i]);
+		}
+		return res;
+	}
+
+
+	__uint128_t beg2int128rc(const string& str,uint k){
+		__uint128_t res(0);
+		for(int32_t i(k-1);i>=0;i--){
+			res<<=2;
+			res+=3-chartoint(str[i]);
+		}
+		return res;
+	}
+
+
+	__uint128_t end2int128rc(const string& str,uint k){
+		__uint128_t res(0);
+		for(int32_t i(k-1);i>=0;i--){
+			res<<=2;
+			res+=3-chartoint(str[str.size()-k+i]);
 		}
 		return res;
 	}
@@ -1005,26 +1043,8 @@
 
 
 
-	bool isNumber(const string& str){
-		switch (str[0]){
-		case 'a': return false;
-			break;
-		case 'c': return false;
-			break;
-		case 'g': return false;
-			break;
-		case 't': return false;
-			break;
-		case 'A': return false;
-			break;
-		case 'C': return false;
-			break;
-		case 'G': return false;
-			break;
-		case 'T': return false;
-			break;
-		default: return true;
-	}
+	bool isNumber(char c){
+		return (c<64);
 	}
 
 
@@ -1033,7 +1053,7 @@
 		string seq1(unitigs[iL]),seq2(unitigs[iR]);
 		size_t s1(seq1.size()),s2(seq2.size());
 
-		bool b1(isNumber(seq1)),b2(isNumber(seq2));
+		bool b1(isNumber(seq1[0])),b2(isNumber(seq2[0]));
 		if(b1 && b2){
 			compaction(stoi(seq1),stoi(seq2));
 			return;
@@ -1105,6 +1125,104 @@
 
 
 void graph3::debruijn(){
+	sort(left.begin(),left.end(),comparator());
+	sort(right.begin(),right.end(),comparator());
+	uint iL(0),iR(0),sL(left.size()),sR(right.size());
+	kmerIndice kL,kR;
+	while(sL!=iL and sR!=iR){
+		kL=left[iL];
+		kR=right[iR];
+		if(kL.kmmer==kR.kmmer){
+			bool go(true);
+			++iL;++iR;
+			if(sL!=iL){
+				if(left[iL].kmmer==kL.kmmer){
+					++iL;
+					go=false;
+					bool again;
+					if(sL!=iL){
+						again=left[iL].kmmer==kL.kmmer;
+					}else{
+						again=false;
+					}
+					while(again){
+						++iL;
+						if(sL!=iL){
+							again=left[iL].kmmer==kL.kmmer;
+						}else{
+							again=false;
+						}
+					}
+				}
+			}
+			if(iR!=sR){
+				if(right[iR].kmmer==kL.kmmer){
+					++iR;
+					go=false;
+					bool again;
+					if(iR!=sR){
+						again=right[iR].kmmer==kL.kmmer;
+					}else{
+						again=false;
+					}
+					while(again){
+						++iR;
+						if(iR!=sR){
+							again=right[iR].kmmer==kR.kmmer;
+						}else{
+							again=false;
+						}
+					}
+				}
+			}
+			if(go){
+				kmer2Indice k2i;
+				k2i.indiceL=kL.indice;
+				k2i.indiceR=kR.indice;
+				compactions.push_back(k2i);
+			}
+		}else{
+			if(kL.kmmer>kR.kmmer){
+				++iL;
+				bool again;
+				if(sL!=iL){
+					again=left[iL].kmmer==kL.kmmer;
+				}else{
+					again=false;
+				}
+				while(again){
+					++iL;
+					if(sL!=iL){
+						again=left[iL].kmmer==kL.kmmer;
+					}else{
+						again=false;
+					}
+				}
+			}else{
+				++iR;
+				bool again;
+				if(iR!=sR){
+					again=right[iR].kmmer==kL.kmmer;
+				}else{
+					again=false;
+				}
+				while(again){
+					++iR;
+					if(iR!=sR){
+						again=right[iR].kmmer==kL.kmmer;
+					}else{
+						again=false;
+					}
+				}
+			}
+		}
+	}
+	left={};
+	right={};
+}
+
+
+void graph3::debruijn2(){
 	sort(left.begin(),left.end(),comparator());
 	sort(right.begin(),right.end(),comparator());
 
@@ -1204,29 +1322,26 @@ void graph3::debruijn(){
 
 
 void graph3::compress(){
-	for(size_t i(0);i<compactions.size();++i){
+	for(uint i(0);i<compactions.size();++i){
 		kmer2Indice k2i(compactions[i]);
-		uint32_t iL(k2i.indiceL);
-		uint32_t iR(k2i.indiceR);
-		compaction(iL,iR);
-	}
-	for(size_t i(0);i<unitigs.size();++i){
-		if(isNumber(unitigs[i])){
-			unitigs[i]="";
-		}
+		compaction(k2i.indiceL,k2i.indiceR);
 	}
 }
 
+bool graph3::output(uint i){
+	return isNumber(unitigs[i][0]);
+}
 
-void graph3::addvertex(const string& unitig){
-	unitigs.push_back(unitig);
-	size_t i=unitigs.size()-1;
-	if(leftmins[i]){
-		string beg(unitigs[i].substr(0,k));
-		__uint128_t leftKmer1(stringtoint128(beg));
-		__uint128_t leftKmer2(stringtointc128(beg));
+
+void graph3::addvertex(string& unitig){
+	if(leftmins[indiceUnitigs]){
+		// string beg(unitigs[indiceUnitigs].substr(0,k));
+		// __uint128_t leftKmer1(stringtoint128(beg));
+		// __uint128_t leftKmer2(stringtointc128(beg));
+		__uint128_t leftKmer1(beg2int128(unitig,k));
+		__uint128_t leftKmer2(beg2int128rc(unitig,k));
 		kmerIndice ki;
-		ki.indice=i;
+		ki.indice=indiceUnitigs;
 		if(leftKmer1<leftKmer2){
 			ki.kmmer=leftKmer1;
 			left.push_back(ki);
@@ -1235,13 +1350,14 @@ void graph3::addvertex(const string& unitig){
 			right.push_back(ki);
 		}
 	}
-
-	if(rightmins[i]){
-		string end(unitigs[i].substr(unitigs[i].size()-k,k));
-		__uint128_t rightKmer1(stringtoint128(end));
-		__uint128_t rightKmer2(stringtointc128(end));
+	if(rightmins[indiceUnitigs]){
+		// string end(unitigs[indiceUnitigs].substr(unitigs[indiceUnitigs].size()-k,k));
+		// __uint128_t rightKmer1(stringtoint128(end));
+		// __uint128_t rightKmer2(stringtointc128(end));
+		__uint128_t rightKmer1(end2int128(unitig,k));
+		__uint128_t rightKmer2(end2int128rc(unitig,k));
 		kmerIndice ki;
-		ki.indice=i;
+		ki.indice=indiceUnitigs;
 		if(rightKmer1<rightKmer2){
 			ki.kmmer=rightKmer1;
 			right.push_back(ki);
@@ -1250,21 +1366,23 @@ void graph3::addvertex(const string& unitig){
 			left.push_back(ki);
 		}
 	}
+	unitigs[indiceUnitigs]=move(unitig);
+	++indiceUnitigs;
+}
+
+void graph3::addtuple(tuple<string,uint32_t,uint32_t> tuple){
+
 }
 
 void graph3::addleftmin(unsigned int min){
 	if(min==minimizer){
-		leftmins.push_back(true);
-	}else{
-		leftmins.push_back(false);
+		leftmins[indiceAdd]=true;
 	}
 }
 
 void graph3::addrightmin(unsigned int min){
 	if(min==minimizer){
-		rightmins.push_back(true);
-	}else{
-		rightmins.push_back(false);
+		rightmins[indiceAdd++]=true;
 	}
 }
 
@@ -1363,7 +1481,7 @@ uint32_t graph2::size(){
 }
 
 uint32_t graph3::size(){
-	return unitigs.size();
+	return nbElement;
 }
 
 uint32_t graph4::size(){
@@ -1726,4 +1844,3 @@ void graph4::compaction(uint32_t iL, uint32_t iR){
 	//~ cout<<(uint64_t)rbs2.getEndInt(k);cout<<" ";cout<<str2.substr(str2.size()-k,k)<<endl;
 	//~ cin.get();
 }
-
