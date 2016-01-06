@@ -111,6 +111,7 @@ void bcalm_1::execute (){
     size_t abundance=getInput()->getInt("-abundance");
     minSize=getInput()->getInt("-m");
     nb_threads = getInput()->getInt("-nb-cores");
+    // nb_threads = 1;
     int minimizer_type = getInput()->getInt("-minimizer-type");
     int dsk_memory = getInput()->getInt("-dsk-memory");
 
@@ -437,9 +438,10 @@ void bcalm_1::execute (){
                 std::tuple<BUCKET_STR_TYPE,uint32_t,uint32_t> bucket_elt;
                 while (bucket_queues[actualMinimizer].try_dequeue(bucket_elt))
                 {
-                    g.addleftmin(std::get<1>(bucket_elt));
-                    g.addrightmin(std::get<2>(bucket_elt));
-                    g.addvertex(FROM_BUCKET_STR(std::get<0>(bucket_elt)));
+                    // g.addleftmin(std::get<1>(bucket_elt));
+                    // g.addrightmin(std::get<2>(bucket_elt));
+                    // g.addvertex(FROM_BUCKET_STR(std::get<0>(bucket_elt)));
+                    g.addtuple(bucket_elt);
                 }
                 auto end_nodes_t=get_wtime();
                 atomic_double_add(global_wtime_add_nodes, diff_wtime(start_nodes_t, end_nodes_t));
