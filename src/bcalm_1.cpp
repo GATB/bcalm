@@ -450,8 +450,9 @@ void bcalm_1::execute (){
                 auto start_dbg=get_wtime();
 
                 g.debruijn();
+                // auto start_dbg=get_wtime();
+                // auto end_dbg=get_wtime();
                 g.compress();
-                //~ g.compressh(actualMinimizer);
 
                 auto end_dbg=get_wtime();
                 atomic_double_add(global_wtime_compactions, diff_wtime(start_dbg, end_dbg));
@@ -478,8 +479,9 @@ void bcalm_1::execute (){
                         s.getData().setRef ((char*)seq.c_str(), seq.size());
                         s._comment = string(lmark?"1":"0")+string(rmark?"1":"0"); //We set the sequence comment.
                         out_to_glue[thread_id]->insert(s);
-                     }
+                    }
                 }
+                g.clear();
                 auto end_cdistribution_t=get_wtime();
                 atomic_double_add(global_wtime_cdistribution, diff_wtime(start_cdistribution_t, end_cdistribution_t));
 

@@ -198,6 +198,7 @@ class graph3
 		void compaction(uint32_t iR, uint32_t iL);
 		uint32_t size();
         bool output(uint i);
+        bool clear();
 
 		graph3(uint32_t ka, uint32_t min,uint32_t size, uint nb){
             indiceUnitigs=indiceRight=indiceLeft=indiceAdd=0;

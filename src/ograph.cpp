@@ -27,9 +27,10 @@
 
 	};
 
+
 	struct comparator2{
 
-	bool operator()(const kmer2Indice& a , const kmer2Indice& b) { return a.indiceL < b.indiceL; }
+	bool operator()(const kmer2Indice& a , const kmer2Indice& b) { return min(a.indiceL,a.indiceR) < min(b.indiceL,b.indiceR); }
 
 	};
 
@@ -1164,19 +1165,25 @@ void graph3::compaction2(uint32_t iL, uint32_t iR){
 // 	return "";
 // }
 
+
 void graph3::compaction(uint32_t iL, uint32_t iR){
-	string seq1(unitigs[iL]),seq2(unitigs[iR]);
+	// if(iL<iR){swap(iR,iL);}
+	// cout<<iR<<" "<<iL<<endl;
+	// if(iL<iR){cout<<"end"<<endl;exit(0);}
+	const string& seq1(unitigs[iL]),seq2(unitigs[iR]);
+	// cout<<seq2<<" "<<seq1<<endl;
 	size_t s1(seq1.size()),s2(seq2.size());
 
 	bool b1(isNumber(seq1[0])),b2(isNumber(seq2[0]));
-	if(b1 and b2){compaction(stoi(seq1),stoi(seq2));return;}
-	if(b1){compaction(stoi(seq1),iR);return;}
-	if(b2){compaction(iL,stoi(seq2));return;}
+	if(b1 and b2){return compaction(stoi(seq1),stoi(seq2));}
+	if(b1){return compaction(stoi(seq1),iR);}
+	if(b2){return compaction(iL,stoi(seq2));}
 
 	__uint128_t beg2(beg2int128(seq2)),end1(end2int128(seq1));
 	// string end1(seq1.substr(s1-k,k));
 	// string beg2(seq2.substr(0,k));
 	if(end1==beg2){
+	// if(true){
 		unitigs[iL]=seq1+(seq2.substr(k));
 		unitigs[iR]=to_string(iL);
 		return;
@@ -1245,6 +1252,7 @@ void graph3::debruijn(){
 				k2i.indiceL=kL.indice;
 				k2i.indiceR=kR.indice;
 				compactions.push_back(k2i);
+				// compaction(iL,iR);
 			}
 		}else{
 			if(kL.kmmer<kR.kmmer){
@@ -1265,153 +1273,22 @@ void graph3::debruijn(){
 }
 
 
-void graph3::debruijn2(){
-	sort(left.begin(),left.end(),comparator());
-	sort(right.begin(),right.end(),comparator());
-
-	kmerIndice kL,kR;
-	while(left.size()!=0 and right.size()!=0){
-		kL=left.back();
-		kR=right.back();
-		if(kL.kmmer==kR.kmmer){
-			bool go(true);
-			left.pop_back();
-			right.pop_back();
-			if(left.size()!=0){
-				if(left.back().kmmer==kL.kmmer){
-					left.pop_back();
-					go=false;
-					bool again;
-					if(left.size()!=0){
-						again=left.back().kmmer==kL.kmmer;
-					}else{
-						again=false;
-					}
-					while(again){
-						left.pop_back();
-						if(left.size()!=0){
-							again=left.back().kmmer==kL.kmmer;
-						}else{
-							again=false;
-						}
-					}
-				}
-			}
-			if(right.size()!=0){
-				if(right.back().kmmer==kL.kmmer){
-					right.pop_back();
-					go=false;
-					bool again;
-					if(right.size()!=0){
-						again=right.back().kmmer==kL.kmmer;
-					}else{
-						again=false;
-					}
-					while(again){
-						right.pop_back();
-						if(right.size()!=0){
-							again=right.back().kmmer==kR.kmmer;
-						}else{
-							again=false;
-						}
-					}
-				}
-			}
-			if(go){
-				kmer2Indice k2i;
-				k2i.indiceL=kL.indice;
-				k2i.indiceR=kR.indice;
-				compactions.push_back(k2i);
-			}
-		}else{
-			if(kL.kmmer>kR.kmmer){
-				left.pop_back();
-				bool again;
-				if(left.size()!=0){
-					again=left.back().kmmer==kL.kmmer;
-				}else{
-					again=false;
-				}
-				while(again){
-					left.pop_back();
-					if(left.size()!=0){
-						again=left.back().kmmer==kL.kmmer;
-					}else{
-						again=false;
-					}
-				}
-			}else{
-				right.pop_back();
-				bool again;
-				if(right.size()!=0){
-					again=right.back().kmmer==kL.kmmer;
-				}else{
-					again=false;
-				}
-				while(again){
-					right.pop_back();
-					if(right.size()!=0){
-						again=right.back().kmmer==kR.kmmer;
-					}else{
-						again=false;
-					}
-				}
-			}
-		}
-	}
-	left.clear();
-	right.clear();
-}
-
-
 void graph3::compress(){
+	// sort(compactions.begin(),compactions.end(),comparator2());
 	for(uint i(0);i<compactions.size();++i){
-		kmer2Indice k2i(compactions[i]);
-		compaction(k2i.indiceL,k2i.indiceR);
+		compaction(compactions[i].indiceL,compactions[i].indiceR);
 	}
 }
+
 
 bool graph3::output(uint i){
 	return !isNumber(unitigs[i][0]);
 }
 
+bool graph3::clear(){
+	delete [] unitigs;
+}
 
-// void graph3::addvertex(string& unitig){
-// 	if(leftmins[indiceUnitigs]){
-// 		// string beg(unitigs[indiceUnitigs].substr(0,k));
-// 		// __uint128_t leftKmer1(stringtoint128(beg));
-// 		// __uint128_t leftKmer2(stringtointc128(beg));
-// 		__uint128_t leftKmer1(beg2int128(unitig,k));
-// 		__uint128_t leftKmer2(beg2int128rc(unitig,k));
-// 		kmerIndice ki;
-// 		ki.indice=indiceUnitigs;
-// 		if(leftKmer1<leftKmer2){
-// 			ki.kmmer=leftKmer1;
-// 			left.push_back(ki);
-// 		}else{
-// 			ki.kmmer=leftKmer2;
-// 			right.push_back(ki);
-// 		}
-// 	}
-// 	if(rightmins[indiceUnitigs]){
-// 		// string end(unitigs[indiceUnitigs].substr(unitigs[indiceUnitigs].size()-k,k));
-// 		// __uint128_t rightKmer1(stringtoint128(end));
-// 		// __uint128_t rightKmer2(stringtointc128(end));
-// 		__uint128_t rightKmer1(end2int128(unitig,k));
-// 		__uint128_t rightKmer2(end2int128rc(unitig,k));
-// 		kmerIndice ki;
-// 		ki.indice=indiceUnitigs;
-// 		if(rightKmer1<rightKmer2){
-// 			ki.kmmer=rightKmer1;
-// 			right.push_back(ki);
-// 		}else{
-// 			ki.kmmer=rightKmer2;
-// 			left.push_back(ki);
-// 		}
-// 	}
-// 	unitigs[indiceUnitigs]=move(unitig);
-// 	++indiceUnitigs;
-// }
 
 void graph3::addtuple(tuple<string,uint32_t,uint32_t>& tuple){
 	unitigs[indiceUnitigs]=move(get<0>(tuple));
