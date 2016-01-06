@@ -1165,55 +1165,70 @@ void graph3::compaction2(uint32_t iL, uint32_t iR){
 // 	return "";
 // }
 
+__uint128_t graph3::rcb(__uint128_t min){
+	__uint128_t res(0);
+	__uint128_t offset(1);
+	offset<<=(2*k-2);
+	for(uint i(0); i<k;++i){
+		res+=(3-(min%4))*offset;
+		min>>=2;
+		offset>>=2;
+	}
+	return res;
+}
 
-void graph3::compaction(uint32_t iL, uint32_t iR){
+void graph3::compaction(const uint32_t iL, const uint32_t iR){
 	// if(iL<iR){swap(iR,iL);}
 	// cout<<iR<<" "<<iL<<endl;
 	// if(iL<iR){cout<<"end"<<endl;exit(0);}
-	const string& seq1(unitigs[iL]),seq2(unitigs[iR]);
+	// const string& seq1(unitigs[iL]),seq2(unitigs[iR]);
 	// cout<<seq2<<" "<<seq1<<endl;
-	size_t s1(seq1.size()),s2(seq2.size());
+	uint s1(unitigs[iL].size()),s2(unitigs[iR].size());
 
-	bool b1(isNumber(seq1[0])),b2(isNumber(seq2[0]));
-	if(b1 and b2){return compaction(stoi(seq1),stoi(seq2));}
-	if(b1){return compaction(stoi(seq1),iR);}
-	if(b2){return compaction(iL,stoi(seq2));}
+	bool b1(isNumber(unitigs[iL][0])),b2(isNumber(unitigs[iR][0]));
+	if(b1 and b2){return compaction(stoi(unitigs[iL]),stoi(unitigs[iR]));}
+	if(b1){return compaction(stoi(unitigs[iL]),iR);}
+	if(b2){return compaction(iL,stoi(unitigs[iR]));}
 
-	__uint128_t beg2(beg2int128(seq2)),end1(end2int128(seq1));
+	beg2=(beg2int128(unitigs[iR]));
+	end1=(end2int128(unitigs[iL]));
 	// string end1(seq1.substr(s1-k,k));
 	// string beg2(seq2.substr(0,k));
 	if(end1==beg2){
 	// if(true){
-		unitigs[iL]=seq1+(seq2.substr(k));
+		unitigs[iL]+=(unitigs[iR].substr(k));
 		unitigs[iR]=to_string(iL);
 		return;
 	}
 
-	__uint128_t begrc2(end2int128rc(seq2));
+	begrc2=(end2int128rc(unitigs[iR]));
 	// string rc2(reversecompletment(seq2));
 	// string begrc2(rc2.substr(0,k));
 	if(end1==begrc2){
-		unitigs[iL]=seq1+(reversecompletment(seq2).substr(k));
+		unitigs[iL]+=(reversecompletment(unitigs[iR]).substr(k));
 		unitigs[iR]=to_string(iL);
 		return;
 	}
 
-	__uint128_t beg1(beg2int128(seq1)),end2(end2int128(seq2));
+	beg1=(beg2int128(unitigs[iL]));
+	end2=(rcb(begrc2));
 	// string beg1(seq1.substr(0,k));
 	// string end2(seq2.substr(s2-k,k));
 	if(beg1==end2){
-		unitigs[iL]=seq2+(seq1.substr(k));
-		unitigs[iR]=to_string(iL);
+		unitigs[iR]+=(unitigs[iL].substr(k));
+		unitigs[iL]=to_string(iR);
 		return;
 	}
 
-	__uint128_t endrc2(beg2int128rc(seq2));
+	// endrc2=(beg2int128rc(seq2));
+	endrc2=(rcb(beg2));
 	// string endrc2(rc2.substr(s2-k,k));
 	if(beg1==endrc2){
-		unitigs[iL]=reversecompletment(seq2)+(seq1.substr(k));
+		unitigs[iL]=reversecompletment(unitigs[iR])+(unitigs[iL].substr(k));
 		unitigs[iR]=to_string(iL);
 		return;
 	}
+	cout<<"wut"<<endl;
 }
 
 

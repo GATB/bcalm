@@ -178,7 +178,7 @@ class graph3
 		uint32_t minimizer;
 		uint32_t minsize;
         uint32_t nbElement;
-        __uint128_t kmer1,kmer2;
+        __uint128_t kmer1,kmer2,beg2,beg1,begrc2,end1,end2,endrc2;
 		string* unitigs;
 		vector<kmerIndice> left;
 		vector<kmerIndice> right;
@@ -195,6 +195,7 @@ class graph3
         __uint128_t end2int128(const string& str);
         __uint128_t beg2int128rc(const string& str);
         __uint128_t beg2int128(const string& str);
+        __uint128_t rcb(__uint128_t min);
 		void compaction(uint32_t iR, uint32_t iL);
 		uint32_t size();
         bool output(uint i);
