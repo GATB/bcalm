@@ -431,17 +431,20 @@ void bcalm_1::execute (){
                 // (make sure to change other places labelled "// graph3" and "// graph4" as well)
                 //graph4 g(kmerSize-1,actualMinimizer,minSize); // graph4
                 uint number_elements(bucket_queues[actualMinimizer].size_approx());
-                graph3 g(kmerSize-1,actualMinimizer,minSize,number_elements); // graph3
+                graph3 graphCompactor(kmerSize-1,actualMinimizer,minSize,number_elements); // graph3
                 //~ //graph1 g(kmerSize);
 
                 /* add nodes to graph */
                 std::tuple<BUCKET_STR_TYPE,uint32_t,uint32_t> bucket_elt;
                 while (bucket_queues[actualMinimizer].try_dequeue(bucket_elt))
                 {
+                // for(uint i(0);i<number_elements;++i)
+                // {
+                //     bucket_queues[actualMinimizer].try_dequeue(bucket_elt);
                     // g.addleftmin(std::get<1>(bucket_elt));
                     // g.addrightmin(std::get<2>(bucket_elt));
                     // g.addvertex(FROM_BUCKET_STR(std::get<0>(bucket_elt)));
-                    g.addtuple(bucket_elt);
+                    graphCompactor.addtuple(bucket_elt);
                 }
                 auto end_nodes_t=get_wtime();
                 atomic_double_add(global_wtime_add_nodes, diff_wtime(start_nodes_t, end_nodes_t));
@@ -449,10 +452,10 @@ void bcalm_1::execute (){
                 /* compact graph*/
                 auto start_dbg=get_wtime();
 
-                g.debruijn();
+                graphCompactor.debruijn();
                 // auto start_dbg=get_wtime();
                 // auto end_dbg=get_wtime();
-                g.compress();
+                // g.compress();
 
                 auto end_dbg=get_wtime();
                 atomic_double_add(global_wtime_compactions, diff_wtime(start_dbg, end_dbg));
@@ -461,8 +464,8 @@ void bcalm_1::execute (){
                 auto start_cdistribution_t=get_wtime();
                 string seq;
                 for(uint32_t i(0);i<number_elements;++i){
-                    if(g.output(i)){ // graph3
-    					seq=g.unitigs[i]; // graph3
+                    if(graphCompactor.output(i)){ // graph3
+    					seq=graphCompactor.unitigs[i]; // graph3
 					//if(!g.isNumber[i]){ // graph4
 						//seq=g.unitigs[i].str(); // graph4
 
@@ -481,14 +484,11 @@ void bcalm_1::execute (){
                         out_to_glue[thread_id]->insert(s);
                     }
                 }
-                g.clear();
+                graphCompactor.clear();
                 auto end_cdistribution_t=get_wtime();
                 atomic_double_add(global_wtime_cdistribution, diff_wtime(start_cdistribution_t, end_cdistribution_t));
 
-                size_t size(g.size());
-                if(size>maxBucket){
-                    maxBucket=size;
-                }
+                if(number_elements>maxBucket){maxBucket=number_elements;}
 
                 if (time_lambdas)
                 {

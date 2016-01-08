@@ -71,46 +71,6 @@ class neighbour
 
 };
 
-class graph1
-{
-	public:
-		uint32_t n;
-		int k;
-		vector<string> unitigs;
-		vector<int> leftmins;
-		vector<int> rightmins;
-		unordered_multimap<uint64_t,uint32_t> map;
-		unordered_multimap<uint64_t,uint32_t> maprev;
-		vector<neighbour> neighbor;
-
-		graph1(const int ni)
-		{
-			k=ni;
-			n=1;
-			unitigs.push_back("");
-			leftmins.push_back(-1);
-			rightmins.push_back(-1);
-		}
-
-		uint64_t getkey(const string& str);
-		uint64_t getkeyrevc(const string& str);
-		uint64_t becompacted(uint64_t nodeindice, int min, unsigned char *);
-		int weight();
-		void addvertex(const string& str);
-        void addleftmin(int mini);
-        void addrightmin(int mini);
-		void debruijn();
-		void compressh(int min=-1);
-		void compress();
-		void importg(const char *name);
-		void print(const char *name);
-		void printedges(const char *name);
-		void compact(uint64_t nodeindice,uint64_t with, unsigned char type);
-		void reverse(int64_t with);
-		void look(const uint64_t nodeindice, const string& min);
-		uint32_t size();
-};
-
 
 class graph2
 {
@@ -173,16 +133,18 @@ struct kmer2Indice{
 class graph3
 {
 	public:
-		uint32_t k;
+		uint k;
         uint indiceAdd,indiceLeft,indiceRight,indiceUnitigs;
 		uint32_t minimizer;
 		uint32_t minsize;
         uint32_t nbElement;
-        __uint128_t kmer1,kmer2,beg2,beg1,begrc2,end1,end2,endrc2;
+        kmerIndice ki;
+        // __uint128_t kmer1,kmer2;
+        // ,beg2,beg1,begrc2,end1,end2,endrc2, resrcb,offsetrcb, resBeg,resEnd;
 		string* unitigs;
 		vector<kmerIndice> left;
 		vector<kmerIndice> right;
-		vector<kmer2Indice> compactions;
+		// vector<kmer2Indice> compactions;
 		void addvertex(string& str);
         void addtuple(tuple<string,uint32_t,uint32_t>& tuple);
 		void addleftmin(unsigned int mini);
@@ -190,6 +152,7 @@ class graph3
 		void debruijn();
         void debruijn2();
         void compaction2(uint32_t iL, uint32_t iR);
+        // void compaction(const uint32_t& iL, const uint32_t& iR);
 		void compress();
         __uint128_t end2int128rc(const string& str);
         __uint128_t end2int128(const string& str);
@@ -210,7 +173,7 @@ class graph3
             unitigs =new string [nbElement];
             left.reserve(nbElement);
     	    right.reserve(nbElement);
-            compactions.reserve(nbElement);
+            // compactions.reserve(nbElement);
 		}
 };
 
