@@ -24,7 +24,7 @@ template<class T> // but actually we don't care about this type
 class unionFind { 
 public:
     unionFind(uint32_t size) : mData(size) {
-        max_rank = 0;
+        //max_rank = 0;
         for (uint32_t i=0; i<size; ++i)
             mData[i] = (uint32_t) i;
     }
@@ -89,15 +89,14 @@ public:
 
     uint32_t size() const { return (uint32_t) mData.size(); }
 
-    uint32_t max_rank;
+    //uint32_t max_rank;
     uint32_t rank(uint32_t id) {
         uint32_t r = ((uint32_t) (mData[id] >> 32)) & 0x7FFFFFFFu;
-        if (max_rank < r)
+        /*if (max_rank < r)
         {
-            max_rank = r;
+            //max_rank = r; // not thread safe but that's okay, just for debugging // looks like it maxs at 6 for human too.
             std::cout << "new max UF rank: " << to_string(r)<<endl; 
-
-        }
+        }*/
         return r;
     }
 

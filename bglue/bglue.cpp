@@ -45,10 +45,12 @@ int nbGluePartitions = 200;
 
         Hasher_T(ModelType &model) : model(model) {};
 
-        uint64_t operator ()  (const typename ModelType::Kmer& key, uint64_t seed = 0) const  {
-                return model.getHash(key.value());
+        // fun fact: I tried with mask = (1<<25)-1, and with chr14, it produced one big partition. So i guess that hash image needs to be large
+        uint64_t operator ()  (const typename ModelType::Kmer& key, uint64_t seed = 0, uint64_t mask = ~0LL) const  {
+                return model.getHash(key.value()) & mask;
                 }
     };
+
 
  template <typename T>
 void free_memory_vector(std::vector<T> &vec)
@@ -302,7 +304,6 @@ class no_hash
 };
 
 
-
 /* main */
 void bglue::execute (){
 
@@ -546,11 +547,25 @@ void bglue::execute (){
     if (getParser()->saw("--only-uf")) // for debugging
         return;
 
+    /* now we're mirroring the UF to a vector of uint32_t's, it will take less space, and strictly same information
+     * this is to get rid of the rank (one uint32) per element in the current UF implementation */
+
+    std::vector<uint32_t> ufkmers_vector(nb_uf_keys);
+    for (int i = 0; i < nb_uf_keys; i++)
+        ufkmers_vector[i] = ufkmers.find(i);
+
+    logging("UF to vector done");
+    
+    free_memory_vector(ufkmers.mData);
+
+    logging("freed original UF");
+
+
     // setup output file
     string output_prefix = getInput()->getStr("-out");
     BufferedFasta out (output_prefix, 4000000 /* give it a large buffer*/);
 
-    auto get_partition = [&modelCanon, &ufkmers, &hasher, &uf_mphf]
+    auto get_partition = [&modelCanon, &ufkmers_vector, &hasher, &uf_mphf]
         (string &kmerBegin, string &kmerEnd,
          bool lmark, bool rmark,
          ModelCanon::Kmer &kmmerBegin, ModelCanon::Kmer &kmmerEnd,  // those will be populated based on lmark and rmark
@@ -563,7 +578,7 @@ void bglue::execute (){
             {
                 kmmerBegin = modelCanon.codeSeed(kmerBegin.c_str(), Data::ASCII);
                 found_partition = true;
-                partition = ufkmers.find(uf_mphf.lookup(hasher(kmmerBegin)));
+                partition = ufkmers_vector[uf_mphf.lookup(hasher(kmmerBegin))];
             }
 
             if (rmark)
@@ -571,12 +586,12 @@ void bglue::execute (){
                 kmmerEnd = modelCanon.codeSeed(kmerEnd.c_str(), Data::ASCII);
                 if (found_partition) // just do a small check
                 {
-                    if (ufkmers.find(uf_mphf.lookup(hasher(kmmerEnd))) != partition)
-                    { std::cout << "bad UF! left kmer has partition " << partition << " but right kmer has partition " << ufkmers.find(uf_mphf.lookup(hasher(kmmerEnd))) << std::endl; exit(1); }
+                    if (ufkmers_vector[uf_mphf.lookup(hasher(kmmerEnd))] != partition)
+                    { std::cout << "bad UF! left kmer has partition " << partition << " but right kmer has partition " << ufkmers_vector[uf_mphf.lookup(hasher(kmmerEnd))] << std::endl; exit(1); }
                 }
                 else
                 {
-                    partition = ufkmers.find(uf_mphf.lookup(hasher(kmmerEnd)));
+                    partition = ufkmers_vector[uf_mphf.lookup(hasher(kmmerEnd))];
                     found_partition = true;
                 }
             }
@@ -597,7 +612,7 @@ void bglue::execute (){
 
     // partition the glue into many files, à la dsk
     auto partitionGlue = [k, &modelCanon /* crashes if copied!*/, \
-        &ufkmers, &hasher, &get_partition, &gluePartitions, &gluePartitionsLock,
+        &get_partition, &gluePartitions, &gluePartitionsLock,
         &out, &outLock]
             (const Sequence& sequence)
     {
