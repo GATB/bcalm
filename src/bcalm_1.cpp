@@ -111,7 +111,7 @@ void bcalm_1::execute (){
     size_t abundance=getInput()->getInt("-abundance");
     minSize=getInput()->getInt("-m");
     nb_threads = getInput()->getInt("-nb-cores");
-    // nb_threads = 1;
+    // nb_threads=1;
     int minimizer_type = getInput()->getInt("-minimizer-type");
     int dsk_memory = getInput()->getInt("-dsk-memory");
 

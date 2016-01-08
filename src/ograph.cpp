@@ -95,7 +95,7 @@ char num2nt(int num){
 }
 
 
- uint nt2num(char c, int pos){
+uint nt2num(char c, int pos){
 	int offset = pos % 4;
 	return (nt2num(c) + offset ) % 4;
 }
@@ -127,16 +127,72 @@ int minbutbiggerthan(int m1, int m2, const string &namebucket){
 
 string reversecompletment(const string& str){
 	string res(str);
-	int n = str.size();
-	for(int i(n-1), j(0); i > -1; i--, j++){
+	for(int i(str.size()-1), j(0); i > -1; --i, ++j){
 		unsigned char c = str[i];
-		unsigned char d = (c >> 4)&7;
 		c ^= 4;
-		if ((c&3) != 3)
-			c ^= 17;
+		if ((c&3) != 3){c ^= 17;}
 		res[j] = c;
-		}
+		// res[i]=3-nt2num(str[j]);
+	}
 	return res;
+}
+
+
+string reverseinplace(string& str){
+	// cout<<str<<endl;
+	// cout<<reversecompletment(str)<<endl;
+	uint i(str.size()-1),j(0);
+	for(; j<str.size()/2; --i, ++j){
+		// unsigned char c = str[i];
+		// unsigned char d = str[j];
+		// c ^= 4;
+		// d ^= 4;
+		// if ((c&3) != 3){c ^= 17;}
+		// if ((d&3) != 3){d ^= 17;}
+		// str[j]=c;
+		// str[i]=d;
+
+		str[i] ^= 4;
+		str[j] ^= 4;
+		if ((str[i]&3) != 3){str[i]^= 17;}
+		if ((str[j]&3) != 3){str[j]^= 17;}
+		swap(str[i],str[j]);
+	}
+	if(str.size()%2==1){
+		str[j] ^= 4;
+		if ((str[j]&3) != 3){str[j]^= 17;}
+	}
+	// cout<<str<<endl;
+
+	// cin.get();
+	return str;
+}
+
+
+void reverseinplace2(string& str){
+	// cout<<str<<endl;
+	// cout<<reversecompletment(str)<<endl;
+	uint i(str.size()-1),j(0);
+	for(; j<str.size()/2; --i, ++j){
+		// unsigned char c = str[i];
+		// unsigned char d = str[j];
+		// c ^= 4;
+		// d ^= 4;
+		// if ((c&3) != 3){c ^= 17;}
+		// if ((d&3) != 3){d ^= 17;}
+		// str[j]=c;
+		// str[i]=d;
+
+		str[i] ^= 4;
+		str[j] ^= 4;
+		if ((str[i]&3) != 3){str[i]^= 17;}
+		if ((str[j]&3) != 3){str[j]^= 17;}
+		swap(str[i],str[j]);
+	}
+	if(str.size()%2==1){
+		str[j] ^= 4;
+		if ((str[j]&3) != 3){str[j]^= 17;}
+	}
 }
 
 
@@ -212,8 +268,8 @@ __uint128_t stringtoint128(const string& str){
 
 
 __uint128_t graph3::beg2int128(const string& str){
-	__uint128_t resBeg=(0);
-	for(uint i(0);i<k;i++){
+	__uint128_t resBeg(0);
+	for(uint i(0);i<k;++i){
 		resBeg<<=2;
 		resBeg+=chartoint(str[i]);
 	}
@@ -242,8 +298,8 @@ __uint128_t graph3::end2int128rc(const string& str){
 
 
 __uint128_t graph3::end2int128(const string& str){
-	__uint128_t resEnd=(0);
-	for(uint i(0);i<k;i++){
+	__uint128_t resEnd(0);
+	for(uint i(0);i<k;++i){
 		resEnd<<=2;
 		resEnd+=chartoint(str[str.size()-k+i]);
 	}
@@ -386,7 +442,6 @@ string compactionBeg(const string& seq1,const string& seq2, int k){
 string compactionEnd(const string& seq1,const string& seq2, int k){
 	int s1(seq1.size()),s2(seq2.size());
 	string rc2(reversecompletment(seq2));
-	//~ string rc1(reversecompletment(seq1));
 	string end(seq1.substr(s1-k,k));
 	string endRc(reversecompletment(end));
 
@@ -413,100 +468,73 @@ string compactionEnd(const string& seq1,const string& seq2, int k){
 }
 
 
-bool isNumber(char c){
-	return (c<64);
-}
+bool isNumber(char c){return (c<64);}
 
 
-void graph3::compaction2(uint32_t iL, uint32_t iR){
-	string seq1(unitigs[iL]),seq2(unitigs[iR]);
-	size_t s1(seq1.size()),s2(seq2.size());
-
-	bool b1(isNumber(seq1[0])),b2(isNumber(seq2[0]));
-	if(b1 && b2){
-		compaction(stoi(seq1),stoi(seq2));
-		return;
-	}
-	if(b1){
-		compaction(stoi(seq1),iR);
-		return;
-	}
-	if(b2){
-		compaction(iL,stoi(seq2));
-		return;
-	}
-
-	string rc2(reversecompletment(seq2));
-	string rc1(reversecompletment(seq1));
-
-	if(seq1.substr(0,k)==seq2.substr(s2-k,k)){
-		// cout<<1<<endl;
-		unitigs[iL]=seq2+seq1.substr(k);
-		unitigs[iR]=to_string(iL);
-		return;
-	}else{
-		if(rc2.substr(s2-k,k)==seq1.substr(0,k)){
-				// cout<<2<<endl;
-		unitigs[iL]=rc2+seq1.substr(k);
-		unitigs[iR]=to_string(iL);
-		return;
-		}
-	}
-	if(seq2.substr(0,k)==seq1.substr(s1-k,k)){
-			// cout<<3<<endl;
-		unitigs[iL]=seq1+seq2.substr(k);
-		unitigs[iR]=to_string(iL);
-		return;
-	}else{
-		if(rc1.substr(s1-k,k)==seq2.substr(0,k)){
-				// cout<<4<<endl;
-			unitigs[iL]=rc1+seq2.substr(k);
-			unitigs[iR]=to_string(iL);
-			return;
-		}
-	}
-	if(rc1.substr(0,k)==seq2.substr(s2-k,k)){
-			// cout<<5<<endl;
-			unitigs[iL]=seq2+rc1.substr(k);
-			unitigs[iR]=to_string(iL);
-			return;
-	}else{
-		if(rc2.substr(s2-k,k)==rc1.substr(0,k)){
-				// cout<<6<<endl;
-			unitigs[iL]=rc2+rc1.substr(k);
-			unitigs[iR]=to_string(iL);
-			return;
-		}
-	}
-	if(rc2.substr(0,k)==seq1.substr(s1-k,k)){
-			// cout<<7<<endl;
-		unitigs[iL]=seq1+rc2.substr(k);
-		unitigs[iR]=to_string(iL);
-		return;
-	}else{
-		if(rc1.substr(s1-k,k)==rc2.substr(0,k)){
-				// cout<<8<<endl;
-			unitigs[iL]=rc1+rc2.substr(k);
-			unitigs[iR]=to_string(iL);
-			return;
-		}
-	}
-	cout<<"WUT"<<endl;
-	cout<<"+"<<seq1<<"+ +"<<seq2<<"+"<<endl;
-	cin.get();
-}
+// __uint128_t graph3::rcb(__uint128_t min){
+// 	__uint128_t resrcb(0);
+// 	__uint128_t offsetrcb(1);
+// 	offsetrcb<<=(2*k-2);
+// 	for(uint i(0); i<k;++i){
+// 		resrcb+=(3-(min%4))*offsetrcb;
+// 		min>>=2;
+// 		offsetrcb>>=2;
+// 	}
+// 	return resrcb;
+// }
 
 
 __uint128_t graph3::rcb(__uint128_t min){
 	__uint128_t resrcb(0);
 	__uint128_t offsetrcb(1);
-	offsetrcb<<=(2*k-2);
+	// offsetrcb<<=(2*k-2);
 	for(uint i(0); i<k;++i){
-		resrcb+=(3-(min%4))*offsetrcb;
+		resrcb+=(3-(min%4))<<(2*(k-1-i));
 		min>>=2;
-		offsetrcb>>=2;
+		// offsetrcb>>=2;
 	}
 	return resrcb;
+}
+
+
+void graph3::compaction2( uint32_t iL,  uint32_t iR){
+	uint s1(unitigs[iL].size()),s2(unitigs[iR].size());
+	bool b1(isNumber(unitigs[iL][0])),b2(isNumber(unitigs[iR][0]));
+	if(b1 and b2){return compaction(stoi(unitigs[iL]),stoi(unitigs[iR]));}
+	if(b1){return compaction(stoi(unitigs[iL]),iR);}
+	if(b2){return compaction(iL,stoi(unitigs[iR]));}
+	__uint128_t beg2(beg2int128(unitigs[iR]));
+	__uint128_t end1(end2int128(unitigs[iL]));
+	if(end1==beg2){
+		++u1;
+		unitigs[iL]+=(unitigs[iR].substr(k));
+		unitigs[iR]=to_string(iL);
+		return;
+	}
+	__uint128_t begrc2(end2int128rc(unitigs[iR]));
+	if(end1==begrc2){
+		++u2;
+		unitigs[iL]+=(reverseinplace(unitigs[iR]).substr(k));
+		unitigs[iR]=to_string(iL);
+		return;
+	}
+	__uint128_t beg1(beg2int128(unitigs[iL]));
+	__uint128_t end2(rcb(begrc2));
+	if(beg1==end2){
+		++u3;
+		unitigs[iR]+=(unitigs[iL].substr(k));
+		unitigs[iL]=to_string(iR);
+		return;
+	}
+	__uint128_t endrc2(rcb(beg2));
+	if(beg1==endrc2){
+		++u4;
+		reverseinplace2(unitigs[iR]);
+		unitigs[iR]+=(unitigs[iL].substr(k));
+		unitigs[iL]=to_string(iR);
+		return;
+	}
+	cout<<"wut"<<endl;
 }
 
 
@@ -516,42 +544,84 @@ void graph3::compaction( uint32_t iL,  uint32_t iR){
 	if(b1 and b2){return compaction(stoi(unitigs[iL]),stoi(unitigs[iR]));}
 	if(b1){return compaction(stoi(unitigs[iL]),iR);}
 	if(b2){return compaction(iL,stoi(unitigs[iR]));}
-	__uint128_t beg2(beg2int128(unitigs[iR]));
-	__uint128_t end1(end2int128(unitigs[iL]));
-	// string end1(seq1.substr(s1-k,k));
-	// string beg2(seq2.substr(0,k));
-	if(end1==beg2){
-	// if(true){
-		unitigs[iL]+=(unitigs[iR].substr(k));
-		unitigs[iR]=to_string(iL);
-		return;
-	}
-	__uint128_t begrc2(end2int128rc(unitigs[iR]));
-	// string rc2(reversecompletment(seq2));
-	// string begrc2(rc2.substr(0,k));
-	if(end1==begrc2){
-		unitigs[iL]+=(reversecompletment(unitigs[iR]).substr(k));
-		unitigs[iR]=to_string(iL);
-		return;
-	}
+
 	__uint128_t beg1(beg2int128(unitigs[iL]));
-	__uint128_t end2(rcb(begrc2));
-	// string beg1(seq1.substr(0,k));
-	// string end2(seq2.substr(s2-k,k));
+	__uint128_t end2(end2int128(unitigs[iR]));
 	if(beg1==end2){
 		unitigs[iR]+=(unitigs[iL].substr(k));
 		unitigs[iL]=to_string(iR);
 		return;
 	}
-	// endrc2=(beg2int128rc(seq2));
-	__uint128_t endrc2(rcb(beg2));
-	// string endrc2(rc2.substr(s2-k,k));
+
+	__uint128_t endrc2(beg2int128rc(unitigs[iR]));
 	if(beg1==endrc2){
-		unitigs[iL]=reversecompletment(unitigs[iR])+(unitigs[iL].substr(k));
+		reverseinplace2(unitigs[iR]);
+		unitigs[iR]+=(unitigs[iL].substr(k));
+		unitigs[iL]=to_string(iR);
+		return;
+	}
+
+	__uint128_t beg2(rcb(endrc2));
+	__uint128_t end1(end2int128(unitigs[iL]));
+	if(end1==beg2){
+		unitigs[iL]+=(unitigs[iR].substr(k));
 		unitigs[iR]=to_string(iL);
 		return;
 	}
-	cout<<"wut"<<endl;
+
+	__uint128_t begrc2(rcb(end2));
+	if(end1==begrc2){
+		unitigs[iL]+=(reverseinplace(unitigs[iR]).substr(k));
+		unitigs[iR]=to_string(iL);
+		return;
+	}
+}
+
+
+void makeUnique(vector<kmerIndice>& V){
+	uint j(0);
+	bool take(true);
+	kmerIndice previous(V[0]);
+	for(uint i(1);i<V.size();++i){
+		// cout<<(uint)V[i].kmmer<<endl;
+		if(previous.kmmer==V[i].kmmer){
+			take=false;
+		}else{
+			if(take){
+				V[j++]=previous;
+			}else{
+				take=true;
+			}
+			previous=V[i];
+		}
+	}
+	V.resize(j);
+	// cout<<"STOP"<<endl<<endl;;
+	// for(uint i(1);i<V.size();++i){
+	// 	cout<<(uint)V[i].kmmer<<endl;
+	// }
+	// cin.get();
+}
+
+
+void graph3::debruijn2(){
+	sort(left.begin(),left.end(),comparator());
+	sort(right.begin(),right.end(),comparator());
+	makeUnique(left);
+	makeUnique(right);
+	uint iL(0),iR(0),sL(left.size()),sR(right.size());
+	while(sL!=iL and sR!=iR){
+		if(left[iL].kmmer==right[iR].kmmer){
+			++iL;++iR;
+			compaction(left[iL].indice,right[iR].indice);
+		}else{
+			if(left[iL].kmmer<right[iR].kmmer){
+				++iL;
+			}else{
+				++iR;
+			}
+		}
+	}
 }
 
 
@@ -585,10 +655,6 @@ void graph3::debruijn(){
 				}
 			}else{break;}
 			if(go){
-				// kmer2Indice k2i;
-				// k2i.indiceL=kL.indice;
-				// k2i.indiceR=kR.indice;
-				// compactions.push_back(k2i);
 				compaction(kL.indice,kR.indice);
 			}
 		}else{
@@ -600,7 +666,7 @@ void graph3::debruijn(){
 			}else{
 				++iR;
 				while(sR!=iR){
-					if(right[iR++].kmmer!=kR.kmmer){break;}else{++iR;}
+					if(right[iR].kmmer!=kR.kmmer){break;}else{++iR;}
 				}
 			}
 		}

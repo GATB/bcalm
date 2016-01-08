@@ -138,7 +138,8 @@ class graph3
 		uint32_t minimizer;
 		uint32_t minsize;
         uint32_t nbElement;
-        kmerIndice ki;
+        uint u1,u2,u3,u4;
+        // kmerIndice ki;
         // __uint128_t kmer1,kmer2;
         // ,beg2,beg1,begrc2,end1,end2,endrc2, resrcb,offsetrcb, resBeg,resEnd;
 		string* unitigs;
@@ -165,7 +166,7 @@ class graph3
         bool clear();
 
 		graph3(uint32_t ka, uint32_t min,uint32_t size, uint nb){
-            indiceUnitigs=indiceRight=indiceLeft=indiceAdd=0;
+            u1=u2=u3=u4=indiceUnitigs=indiceRight=indiceLeft=indiceAdd=0;
 			minsize=size;
 			k=ka;
 			minimizer=min;
