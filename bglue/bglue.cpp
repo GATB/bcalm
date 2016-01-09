@@ -107,16 +107,39 @@ struct markedSeq
     }
 };
 
-vector<vector<markedSeq> > determine_order_sequences(vector<markedSeq> &sequences)
+
+// hack to refer to a sequences in msInPart as reverse complemented
+
+uint32_t is_rev_index(uint32_t index)
+{
+    return ((index >> 31 & 1) == 1);
+}
+
+
+uint32_t rev_index(uint32_t index)
+{
+    if (is_rev_index(index))
+    { std::cout << "Error: glue sequence index too large " << index << std::endl; exit(1);}
+    return index | (1<<31);
+}
+
+uint32_t no_rev_index(uint32_t index)
+{
+    return index & ((1LL<<31) - 1LL);
+}
+
+
+
+vector<vector<uint32_t> > determine_order_sequences(vector<markedSeq> &sequences)
 {
     bool debug = false ;
-    unordered_map<string, set<int> > kmerIndex;
-    set<int> usedSeq;
-    vector<vector<markedSeq>> res;
+    unordered_map<string, set<uint32_t> > kmerIndex;
+    set<uint32_t> usedSeq;
+    vector<vector<uint32_t>> res;
     unsigned int nb_chained = 0;
 
     // index kmers to their seq
-    for (unsigned int i = 0; i < sequences.size(); i++)
+    for (uint32_t i = 0; i < sequences.size(); i++)
     {
         kmerIndex[sequences[i].ks].insert(i);
         kmerIndex[sequences[i].ke].insert(i);
@@ -131,13 +154,17 @@ vector<vector<markedSeq> > determine_order_sequences(vector<markedSeq> &sequence
         if (current.lmark & current.rmark)
             continue; // not the extremity of a chain
 
+        uint32_t chain_index = i;
         if (current.lmark)
+        {
             current.revcomp(); // reverse so that lmark is false
+            chain_index = rev_index(i);
+        }
 
         assert(current.lmark == false);
 
-        vector<markedSeq> chain;
-        chain.push_back(current);
+        vector<uint32_t> chain;
+        chain.push_back(chain_index);
 
         bool rmark = current.rmark;
         int current_index = i;
@@ -149,17 +176,25 @@ vector<vector<markedSeq> > determine_order_sequences(vector<markedSeq> &sequence
             if (debug)
                 std::cout << "current ke " << current.ke << " index " << current_index << " markings: " << current.lmark << current.rmark <<std::endl;
 
-            set<int> candidateSuccessors = kmerIndex[current.ke];
-            assert(candidateSuccessors.find(current_index) != candidateSuccessors.end());
+            // this sequence has a rmark, so necessarily there is another sequence to glue it with. find it here.
+            set<uint32_t> candidateSuccessors = kmerIndex[current.ke];
+           
+            assert(candidateSuccessors.find(current_index) != candidateSuccessors.end()); // remove the current seq from our indexing data structure 
             candidateSuccessors.erase(current_index);
+
             assert(candidateSuccessors.size() == 1); // normally there is exactly one sequence to glue with
 
             int successor_index = *candidateSuccessors.begin(); // pop()
             assert(successor_index != current_index);
             markedSeq successor = sequences[successor_index];
 
+            uint32_t chain_index = successor_index;
+
             if (successor.ks != current.ke || (!successor.lmark))
+            {
                 successor.revcomp();
+                chain_index = rev_index(successor_index);
+            }
 
             if (debug)
                 std::cout << "successor " << successor_index << " successor ks ke "  << successor.ks << " "<< successor.ke << " markings: " << successor.lmark << successor.rmark << std::endl;
@@ -167,6 +202,8 @@ vector<vector<markedSeq> > determine_order_sequences(vector<markedSeq> &sequence
             assert(successor.lmark);
             assert(successor.ks == current.ke);
 
+            // edge case where the seq to be glued starts and ends with itself. 
+            // it should be a kmer (is tested below with an assert())
             if (successor.ks == successor.ke)
             {
                 if (debug)
@@ -184,7 +221,7 @@ vector<vector<markedSeq> > determine_order_sequences(vector<markedSeq> &sequence
 
 
             current = successor;
-            chain.push_back(current);
+            chain.push_back(chain_index);
             current_index = successor_index;
             rmark = current.rmark;
             assert((usedSeq.find(current_index) == usedSeq.end()));
@@ -202,7 +239,7 @@ vector<vector<markedSeq> > determine_order_sequences(vector<markedSeq> &sequence
  * sequences should be ordered and in the right orientation
  * so, it' just a matter of chopping of the first kmer
  */
-string glue_sequences(vector<markedSeq> &chain)
+string glue_sequences(vector<uint32_t> &chain, vector<markedSeq> &sequences)
 {
     string res;
     string previous_kmer = "";
@@ -211,11 +248,22 @@ string glue_sequences(vector<markedSeq> &chain)
 
     for (auto it = chain.begin(); it != chain.end(); it++)
     {
-        string seq = it->seq;
+
+        uint32_t idx = *it;
+       
+
+        markedSeq ms = sequences[no_rev_index(idx)];
+
+        if (is_rev_index(idx))
+        {
+            ms.revcomp();
+        }
+        
+        string seq = ms.seq;
 
         if (previous_kmer.size() == 0) // it's the first element in a chain
         {
-            assert(it->lmark == false);
+            assert(ms.lmark == false);
             res += seq;
         }
         else
@@ -226,7 +274,7 @@ string glue_sequences(vector<markedSeq> &chain)
 
         previous_kmer = seq.substr(seq.size() - k);
         assert(previous_kmer.size() == k);
-        last_rmark = it->rmark;
+        last_rmark = ms.rmark;
     }
     assert(last_rmark == false);
     if (last_rmark) { cout<<"bad gluing, missed an element" << endl; exit(1); } // in case assert()'s are disabled
@@ -551,7 +599,7 @@ void bglue::execute (){
      * this is to get rid of the rank (one uint32) per element in the current UF implementation */
 
     std::vector<uint32_t> ufkmers_vector(nb_uf_keys);
-    for (int i = 0; i < nb_uf_keys; i++)
+    for (unsigned long i = 0; i < nb_uf_keys; i++)
         ufkmers_vector[i] = ufkmers.find(i);
 
     logging("UF to vector done");
@@ -730,12 +778,12 @@ void bglue::execute (){
             for (auto it = msInPart.begin(); it != msInPart.end(); it++)
             {
                 //std::cout << "1.processing partition " << it->first << std::endl;
-                vector<vector<markedSeq>> ordered_sequences = determine_order_sequences(it->second);
+                vector<vector<uint32_t>> ordered_sequences_idxs = determine_order_sequences(it->second); // return indices of markedSeq's inside it->second
                 //std::cout << "2.processing partition " << it->first << " nb ordered sequences: " << ordered_sequences.size() << std::endl;
 
-                for (auto itO = ordered_sequences.begin(); itO != ordered_sequences.end(); itO++)
+                for (auto itO = ordered_sequences_idxs.begin(); itO != ordered_sequences_idxs.end(); itO++)
                 {
-                    string seq = glue_sequences(*itO);
+                    string seq = glue_sequences(*itO, it->second); // takes as input the indices of ordered sequences, and the markedSeq's themselves
 
                     output(seq, out);
                 }
