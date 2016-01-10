@@ -220,22 +220,21 @@ void bcalm_1::execute (){
     };
 
     std::vector<BankFasta*> out_to_glue(nb_threads); // each thread will write to its own glue file, to avoid locks
-    std::ofstream list_of_glues(prefix + ".glue");
 
     // remove potential old glue files
     for (unsigned int i = 0; i < 4096 /* there cannot be more than 4096 threads, right?*/; i++)
         if (System::file().doesExist(prefix + ".glue." + std::to_string(i)))
            System::file().remove (prefix + ".glue." + std::to_string(i));
 
+    unsigned long *nb_seqs_in_glue = new unsigned long[nb_threads];
+
     // another system could have been to send all sequences in a queue, and a thread responsible for writing to glue would dequeue (might be faster)
     for (unsigned int i = 0; i < nb_threads; i++)
     {
         string glue_file = prefix + ".glue." + std::to_string(i);
         out_to_glue[i] = new BankFasta(glue_file);
-        list_of_glues << glue_file << endl;
+        nb_seqs_in_glue[i] = 0;
     }
-    list_of_glues.close();
-    // TODO: delete previous glue files
 
     double weighted_best_theoretical_speedup_cumul = 0;
     double weighted_best_theoretical_speedup_sum_times = 0;
@@ -424,7 +423,7 @@ void bcalm_1::execute (){
         for(auto actualMinimizer : active_minimizers[p])
         {
             auto lambdaCompact = [&bucket_queues, actualMinimizer,
-                &maxBucket, &lambda_timings, &repart, &modelK1, &out_to_glue](int thread_id) {
+                &maxBucket, &lambda_timings, &repart, &modelK1, &out_to_glue, &nb_seqs_in_glue](int thread_id) {
                 auto start_nodes_t=get_wtime();
 
                 // (make sure to change other places labelled "// graph3" and "// graph4" as well)
@@ -481,6 +480,7 @@ void bcalm_1::execute (){
                         s.getData().setRef ((char*)seq.c_str(), seq.size());
                         s._comment = string(lmark?"1":"0")+string(rmark?"1":"0"); //We set the sequence comment.
                         out_to_glue[thread_id]->insert(s);
+                        nb_seqs_in_glue[thread_id]++;
                     }
                 }
                 graphCompactor.clear();
@@ -584,6 +584,16 @@ void bcalm_1::execute (){
      * Finishing up
      *
      */
+
+    // create list of non empty glues
+    std::ofstream list_of_glues(prefix + ".glue");
+    for (unsigned int i = 0; i < nb_threads; i++)
+    {
+        string glue_file = prefix + ".glue." + std::to_string(i);
+        if (nb_seqs_in_glue[i])
+            list_of_glues << glue_file << endl;
+    }
+    list_of_glues.close();
 
     /* printing some timing stats */
     auto end_t=chrono::system_clock::now();
