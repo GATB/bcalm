@@ -286,12 +286,12 @@ string glue_sequences(vector<uint32_t> &chain, vector<markedSeq> &sequences)
 class BufferedFasta
 {
         std::mutex mtx;
-        BankFasta *bank;
         std::vector<pair<string,string> > buffer;
 //        std::vector<string > buffer;
         unsigned long buffer_length;
 
     public:
+        BankFasta *bank;
 
         unsigned long max_buffer;
 
@@ -349,6 +349,14 @@ class no_hash
 {
     public:
         uint32_t operator() (uint32_t h, uint64_t seed=0) const { return h; };
+};
+
+ // used to get top N elements of a vector
+template <typename T>
+struct Comp{
+    Comp( const vector<T>& v ) : _v(v) {}
+    bool operator ()(T a, T b) { return _v[a] > _v[b]; }
+    const vector<T>& _v;
 };
 
 
@@ -452,7 +460,7 @@ void bglue::execute (){
     it = in->iterator(); // yeah so.. I think the old iterator cannot be reused
     getDispatcher()->iterate (it, prepareUF);
 
-    logging("getting vector of redundant UF elements");
+    logging("created vector of redundant UF elements");
 
     ThreadPool uf_merge_pool(nb_threads);
 
@@ -612,6 +620,7 @@ void bglue::execute (){
     // setup output file
     string output_prefix = getInput()->getStr("-out");
     BufferedFasta out (output_prefix, 4000000 /* give it a large buffer*/);
+    out.bank->setDataLineSize(0); // antoine wants one seq per line in output
 
     auto get_partition = [&modelCanon, &ufkmers_vector, &hasher, &uf_mphf]
         (string &kmerBegin, string &kmerEnd,
@@ -652,16 +661,22 @@ void bglue::execute (){
     std::mutex outLock; // for the main output file
     std::vector<BufferedFasta*> gluePartitions(nbGluePartitions);
     std::string gluePartition_prefix = output_prefix + ".gluePartition.";
-    unsigned int max_buffer = 5000;
+    unsigned int max_buffer = 50000;
+    std::vector<std::atomic<unsigned long>> nb_seqs_in_partition(nbGluePartitions);
+
+
     for (int i = 0; i < nbGluePartitions; i++)
+    {
         gluePartitions[i] = new BufferedFasta(gluePartition_prefix + std::to_string(i), max_buffer);
+        nb_seqs_in_partition[i] = 0;
+    }
 
     logging( "Allowed " + to_string((max_buffer * nbGluePartitions) /1024 /1024) + " MB memory for buffers");
 
     // partition the glue into many files, à la dsk
     auto partitionGlue = [k, &modelCanon /* crashes if copied!*/, \
         &get_partition, &gluePartitions, &gluePartitionsLock,
-        &out, &outLock]
+        &out, &outLock, &nb_seqs_in_partition]
             (const Sequence& sequence)
     {
         string seq = sequence.toString();
@@ -696,9 +711,9 @@ void bglue::execute (){
         int index = partition % nbGluePartitions;
         //stringstream ss1; // to save partition later in the comment
         //ss1 << blabla;
-            outLock.lock(); // should use a printlock..
+
         output(seq, *gluePartitions[index], comment);
-            outLock.unlock(); // should use a printlock..
+        nb_seqs_in_partition[index]++;
     };
 
     logging("Disk partitioning of glue");
@@ -707,9 +722,25 @@ void bglue::execute (){
     it = in->iterator(); // yeah so.. I think the old iterator cannot be reused
     getDispatcher()->iterate (it, partitionGlue);
 
+    // get top10 largest glue partitions
+    int top_n_glue_partition = 10;
+    vector<unsigned long> vx, copy_nb_seqs_in_partition;
+    vx.resize(nb_seqs_in_partition.size());
+    copy_nb_seqs_in_partition.resize(nb_seqs_in_partition.size());
+    for(unsigned int i= 0; i<nb_seqs_in_partition.size(); ++i ) 
+    {
+        vx[i]= i;
+        copy_nb_seqs_in_partition[i] = nb_seqs_in_partition[i]; // to get rid of atomic type
+    }
+    partial_sort( vx.begin(), vx.begin()+top_n_glue_partition, vx.end(), Comp<unsigned long>(copy_nb_seqs_in_partition) );
+
+    std::cout << "Top 10 glue partitions by size:" << std::endl;
+    for (int i = 0; i < top_n_glue_partition; i++)
+        std::cout << "Glue partition " << vx[i] << " has " << copy_nb_seqs_in_partition[vx[i]] << " sequences " << endl;
+
     for (int i = 0; i < nbGluePartitions; i++)
     {
-        delete gluePartitions[i]; // takes care of the final flush
+        delete gluePartitions[i]; // takes care of the final flush (this doesn't delete the file, just closes it)
     }
 
     out.flush();
@@ -752,7 +783,7 @@ void bglue::execute (){
                 bool lmark = comment[0] == '1';
                 bool rmark = comment[1] == '1';
 
-                // TODO get partition id from sequence header (save it previously)
+                // todo speed improvement: get partition id from sequence header (so, save it previously)
 
                 // make canonical kmer
                 ModelCanon::Kmer kmmerBegin;
