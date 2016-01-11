@@ -345,12 +345,8 @@ void output(string &seq, BufferedFasta &out, string comment = "")
     // BufferedFasta takes care of the flush
 }
 
-typedef boomphf::SingleHashFunctor<uint32_t>  hasher_t;
-class no_hash
-{
-    public:
-        uint32_t operator() (uint32_t h, uint64_t seed=0) const { return h; };
-};
+typedef uint64_t partition_t;
+
 
  // used to get top N elements of a vector
 template <typename T>
@@ -358,6 +354,33 @@ struct Comp{
     Comp( const vector<T>& v ) : _v(v) {}
     bool operator ()(T a, T b) { return _v[a] > _v[b]; }
     const vector<T>& _v;
+};
+
+
+//typedef boomphf::SingleHashFunctor<partition_t >  hasher_t;
+
+// taken from GATB's MPHF.hpp and BooPHF.hpp (except that we don't need the iteration stuff from that file)
+template<typename Key>
+class hasher_t
+{   
+    typedef emphf::jenkins64_hasher BaseHasher;
+    BaseHasher emphf_hasher;
+    AdaptatorDefault<Key> adaptor;
+
+    public:
+    hasher_t(){
+        std::mt19937_64 rng(37); // deterministic seed
+        emphf_hasher = BaseHasher::generate(rng);
+    }
+
+    uint64_t operator ()  (const Key& key, uint64_t seed = 0) const  {
+        if (seed != 0x33333333CCCCCCCCULL)
+            return std::get<0>(emphf_hasher(adaptor(key)));
+        return std::get<2>(emphf_hasher(adaptor(key)));
+        // this is a big hack, because I'm lazy. 
+        // I wanted to return two different hashes depending on how boophf calls it
+        // since I contrl BooPHF code's, I know it calls this function with 0x33333333CCCCCCCCULL as the second seed.
+    }
 };
 
 
@@ -416,7 +439,6 @@ void bglue::execute (){
     ModelCanon modelCanon(kmerSize); // i'm a bit lost with those models.. I think GATB could be made more simple here.
     Hasher_T<ModelCanon> hasher(modelCanon);
 
-    typedef uint32_t partition_t;
 
     Iterator<Sequence>* it = in->iterator();
 
@@ -490,7 +512,7 @@ void bglue::execute (){
         tmp_nb_uf_keys += uf_hashes_vectors[i].size();
 
     // merge intermediate vectors into a single vector, to prepare MPHF (this step could be skipped if created a special iterator for boophf)
-    std::vector<uint32_t> uf_hashes;
+    std::vector<partition_t > uf_hashes;
     uf_hashes.reserve(tmp_nb_uf_keys);
     for (int i = 0; i < nb_uf_hashes_vectors; i++)
     {
@@ -505,7 +527,7 @@ void bglue::execute (){
 
 	auto data_iterator = boomphf::range(uf_hashes.begin(), uf_hashes.end());
 
-    boomphf::mphf<uint32_t, hasher_t> uf_mphf(nb_uf_keys, data_iterator, nb_threads);
+    boomphf::mphf<partition_t , hasher_t< uint64_t/*ModelCanon::Kmer*/> > uf_mphf(nb_uf_keys, data_iterator, nb_threads);
 
     free_memory_vector(uf_hashes);
 
@@ -607,7 +629,7 @@ void bglue::execute (){
     /* now we're mirroring the UF to a vector of uint32_t's, it will take less space, and strictly same information
      * this is to get rid of the rank (one uint32) per element in the current UF implementation */
 
-    std::vector<uint32_t> ufkmers_vector(nb_uf_keys);
+    std::vector<partition_t > ufkmers_vector(nb_uf_keys);
     for (unsigned long i = 0; i < nb_uf_keys; i++)
         ufkmers_vector[i] = ufkmers.find(i);
 
