@@ -45,9 +45,10 @@ int nbGluePartitions = 200;
 
         Hasher_T(ModelType &model) : model(model) {};
 
-        // fun fact: I tried with mask = (1<<25)-1, and with chr14, it produced one big partition. So i guess that hash image needs to be large
-        uint64_t operator ()  (const typename ModelType::Kmer& key, uint64_t seed = 0, uint64_t mask = ~0LL) const  {
-                return model.getHash(key.value()) & mask;
+        // fun fact: I tried with a mask = (1<<25)-1, 
+        // and with chr14, it produced one big partition. So i guess that hash image needs to be large
+        uint64_t operator ()  (const typename ModelType::Kmer& key, uint64_t seed = 0) const  {
+                return model.getHash(key.value()) ;
                 }
     };
 
