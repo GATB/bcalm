@@ -98,7 +98,7 @@ bcalm_1::bcalm_1 ()  : Tool ("bcalm_1"){
 	getParser()->push_back (new OptionOneParam ("-out", "output prefix",  false, "unitigs"));
 	getParser()->push_back (new OptionOneParam ("-k", "kmer size",  false,"31"));
 	getParser()->push_back (new OptionOneParam ("-m", "minimizer size",  false,"8"));
-	getParser()->push_back (new OptionOneParam ("-abundance", "abundance threeshold",  false,"3"));
+	getParser()->push_back (new OptionOneParam ("-abundance", "abundance threshold",  false,"1"));
 	getParser()->push_back (new OptionOneParam ("-minimizer-type", "use lexicographical minimizers (0) or frequency based (1)",  false,"1"));
 	getParser()->push_back (new OptionOneParam ("-dsk-memory", "max memory for kmer counting (MB)", false, "1500"));
 	getParser()->push_back (new OptionOneParam ("-dsk-disk", "max disk space for kmer counting (MB)", false, "default"));
@@ -338,8 +338,16 @@ void bcalm_1::execute (){
         /* lambda function to process a kmer and decide which bucket(s) it should go to */
         auto insertIntoQueues = [p, &minimizerMax, &minimizerMin, &add_to_bucket_queue,
                     &bucket_queues, &modelK1, &k, &repart, &nb_left_min_diff_right_min,
-                    &kmerInGraph, &model, &save_traveller_kmer](Count item) {
+                    &kmerInGraph, &model, &save_traveller_kmer, &abundance]
+                (Count item) {
+
+            // if the abundance threshold is higher than the h5 abundance,
+            // filter out this kmer (useful for my spruce runs)
+            if ((size_t)item.abundance < abundance)
+                return;
+
             Kmer<SPAN>::Type current = item.value;
+            
             string seq = model.toString(current);
 
             Model::Kmer kmmerBegin = modelK1.codeSeed(seq.substr(0, k - 1).c_str(), Data::ASCII);
@@ -545,7 +553,7 @@ void bcalm_1::execute (){
             atomic_double_add(global_wtime_foreach_bucket, wallclock_sb);
             atomic_double_add(global_wtime_parallel, wallclock_sb);
 
-            if (time_lambdas)
+            if (time_lambdas && lambda_timings.size() > 0)
             {
                 std::sort(lambda_timings.begin(), lambda_timings.end());
                 std::reverse(lambda_timings.begin(), lambda_timings.end());
