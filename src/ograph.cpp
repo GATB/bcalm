@@ -6,11 +6,14 @@
 #include <thread>
 #include <list> /* list */
 
+
 #define BASE 256 // # of buckets to use
+
 
 /*
  * constructs the compressed dBG from a list of arbitrary sequences
  */
+
 
 using namespace std;
 
@@ -25,9 +28,7 @@ struct comparator{bool operator()(const kmerIndice& a , const kmerIndice& b) { r
 struct comparator2{bool operator()(const kmer2Indice& a , const kmer2Indice& b) { return min(a.indiceL,a.indiceR) < min(b.indiceL,b.indiceR); }};
 
 
-struct equalo{
-	bool operator()(const kmerIndice& a , const kmerIndice& b) { return a.kmmer == b.kmmer; }
-};
+struct equalo{bool operator()(const kmerIndice& a , const kmerIndice& b) { return a.kmmer == b.kmmer; }};
 
 
 bool compare (kmerIndice i,kmerIndice j) { return (i.kmmer<j.kmmer); }
@@ -36,14 +37,12 @@ bool compare (kmerIndice i,kmerIndice j) { return (i.kmmer<j.kmmer); }
 void radix(vector<kmerIndice>& nums, uint64_t max) {
 	vector<kmerIndice> bucket[BASE];
 	uint64_t i;
-
 	// iterate through each radix until n>max
-	for (__uint128_t n=1; max >= n; n *= BASE) {
+	for (kmer n=1; max >= n; n *= BASE) {
 		// sort list of numbers into buckets
 		for (i=0; i<nums.size(); i++){
 			bucket[(nums[i].kmmer/n)%BASE].push_back(nums[i]);
 		}
-
 		// merge buckets back to list
 		for (uint64_t k=i=0; i<BASE; bucket[i++].clear()){
 			for (vector<kmerIndice>::iterator j = bucket[i].begin(); j != bucket[i].end(); nums[k++] = *(j++));
@@ -57,7 +56,7 @@ void radixkmer2indice(vector<kmer2Indice>& nums, uint64_t max) {
 	uint64_t i;
 
 	// iterate through each radix until n>max
-	for (__uint128_t n=1; max >= n; n *= BASE) {
+	for (kmer n=1; max >= n; n *= BASE) {
 		// sort list of numbers into buckets
 		for (i=0; i<nums.size(); i++){
 			bucket[(nums[i].indiceL/n)%BASE].push_back(nums[i]);
@@ -81,29 +80,9 @@ uint nt2num(char c){
 }
 
 
-char num2nt(int num){
-	if (num == 0)
-		return 'a';
-	else if (num == 1)
-		return 'c';
-	else if (num == 2)
-		return 'g';
-	else if (num == 3)
-		return 't';
-	assert(0);
-	return '*';
-}
-
-
 uint nt2num(char c, int pos){
 	int offset = pos % 4;
 	return (nt2num(c) + offset ) % 4;
-}
-
-
-char num2nt(int num, int pos){
-	int offset = pos % 4;
-	return num2nt((num - offset + 4) % 4);
 }
 
 
@@ -141,15 +120,6 @@ string reversecompletment(const string& str){
 string reverseinplace(string& str){
 	uint i(str.size()-1),j(0);
 	for(; j<str.size()/2; --i, ++j){
-		// unsigned char c = str[i];
-		// unsigned char d = str[j];
-		// c ^= 4;
-		// d ^= 4;
-		// if ((c&3) != 3){c ^= 17;}
-		// if ((d&3) != 3){d ^= 17;}
-		// str[j]=c;
-		// str[i]=d;
-
 		str[i] ^= 4;
 		str[j] ^= 4;
 		if ((str[i]&3) != 3){str[i]^= 17;}
@@ -167,15 +137,6 @@ string reverseinplace(string& str){
 void reverseinplace2(string& str){
 	uint i(str.size()-1),j(0);
 	for(; j<str.size()/2; --i, ++j){
-		// unsigned char c = str[i];
-		// unsigned char d = str[j];
-		// c ^= 4;
-		// d ^= 4;
-		// if ((c&3) != 3){c ^= 17;}
-		// if ((d&3) != 3){d ^= 17;}
-		// str[j]=c;
-		// str[i]=d;
-
 		str[i] ^= 4;
 		str[j] ^= 4;
 		if ((str[i]&3) != 3){str[i]^= 17;}
@@ -214,25 +175,9 @@ uint chartoint(char c){
 }
 
 
-char complement(char c){
-	switch(c){
-		case 'a':
-		return 't';
-		case 'c':
-		return 'g';
-		case 'g':
-		return 'c';
-		case 't':
-		return 'a';
-		default:
-		return 0;
-	}
-}
-
-
 uint64_t stringtoint(const string& str){
 	uint64_t res(0);
-	for(uint32_t i(0);i<str.size();i++){
+	for(uint i(0);i<str.size();i++){
 		res<<=2;
 		res+=chartoint(str[i]);
 	}
@@ -250,9 +195,9 @@ uint64_t stringtointc(const string& str){
 }
 
 
-__uint128_t stringtoint128(const string& str){
-	__uint128_t res(0);
-	for(uint32_t i(0);i<str.size();i++){
+kmer stringtoint128(const string& str){
+	kmer res(0);
+	for(uint i(0);i<str.size();i++){
 		res<<=2;
 		res+=chartoint(str[i]);
 	}
@@ -260,48 +205,8 @@ __uint128_t stringtoint128(const string& str){
 }
 
 
-__uint128_t graph3::beg2int128(const string& str){
-	__uint128_t resBeg(0);
-	for(uint i(0);i<k;++i){
-		resBeg<<=2;
-		resBeg+=chartoint(str[i]);
-	}
-	return resBeg;
-}
-
-
-__uint128_t graph3::beg2int128rc(const string& str){
-	__uint128_t res(0);
-	for(int32_t i(k-1);i>=0;i--){
-		res<<=2;
-		res+=3-chartoint(str[i]);
-	}
-	return res;
-}
-
-
-__uint128_t graph3::end2int128rc(const string& str){
-	__uint128_t res(0);
-	for(int32_t i(k-1);i>=0;i--){
-		res<<=2;
-		res+=3-chartoint(str[str.size()-k+i]);
-	}
-	return res;
-}
-
-
-__uint128_t graph3::end2int128(const string& str){
-	__uint128_t resEnd(0);
-	for(uint i(0);i<k;++i){
-		resEnd<<=2;
-		resEnd+=chartoint(str[str.size()-k+i]);
-	}
-	return resEnd;
-}
-
-
-__uint128_t stringtointc128(const string& str){
-	__uint128_t res(0);
+kmer stringtointc128(const string& str){
+	kmer res(0);
 	for(int32_t i(str.size()-1);i>=0;i--){
 		res<<=2;
 		res+=3-chartoint(str[i]);
@@ -335,7 +240,6 @@ string compaction2(const string& seq1,const string& seq2, int k){
 
 	string rc2(reversecompletment(seq2));
 	string rc1(reversecompletment(seq1));
-
 
 	if(seq1.substr(0,k)==seq2.substr(s2-k,k)){
 		return seq2+seq1.substr(k);
@@ -395,7 +299,6 @@ string compaction(const string& seq1,const string& seq2, int k){
 	if(rc2.substr(0,k)==end1){
 		return seq1+rc2.substr(k);
 	}
-
 	return seq1;
 }
 
@@ -406,7 +309,6 @@ string compactionBeg(const string& seq1,const string& seq2, int k){
 	//~ string rc1(reversecompletment(seq1));
 	string beg(seq1.substr(0,k));
 	string begRc(reversecompletment(beg));
-
 
 	if(beg==seq2.substr(s2-k,k)){
 		return seq2+seq1.substr(k);
@@ -433,7 +335,6 @@ string compactionEnd(const string& seq1,const string& seq2, int k){
 	string end(seq1.substr(s1-k,k));
 	string endRc(reversecompletment(end));
 
-
 	if(end==seq2.substr(0,k)){
 		return seq1+seq2.substr(k);
 	}else{
@@ -456,96 +357,117 @@ string compactionEnd(const string& seq1,const string& seq2, int k){
 bool isNumber(char c){return (c<64);}
 
 
-__uint128_t graph3::rcb(__uint128_t min){
-	__uint128_t resrcb(0);
-	__uint128_t offsetrcb(1);
-	// offsetrcb<<=(2*k-2);
+kmer graph3::beg2int128(const string& str){
+	kmer resBeg(0);
+	for(uint i(0);i<k;++i){
+		resBeg<<=2;
+		resBeg+=chartoint(str[i]);
+	}
+	return resBeg;
+}
+
+
+kmer graph3::beg2int128rc(const string& str){
+	kmer res(0);
+	for(int i(k-1);i>=0;i--){
+		res<<=2;
+		res+=3-chartoint(str[i]);
+	}
+	return res;
+}
+
+
+kmer graph3::end2int128rc(const string& str){
+	kmer res(0);
+	for(int i(k-1);i>=0;i--){
+		res<<=2;
+		res+=3-chartoint(str[str.size()-k+i]);
+	}
+	return res;
+}
+
+
+kmer graph3::end2int128(const string& str){
+	kmer resEnd(0);
+	for(uint i(0);i<k;++i){
+		resEnd<<=2;
+		resEnd+=chartoint(str[str.size()-k+i]);
+	}
+	return resEnd;
+}
+
+
+kmer graph3::rcb(kmer min){
+	kmer resrcb(0);
+	kmer offsetrcb(1);
 	for(uint i(0); i<k;++i){
 		resrcb+=(3-(min%4))<<(2*(k-1-i));
 		min>>=2;
-		// offsetrcb>>=2;
 	}
 	return resrcb;
 }
 
 
-void graph3::compaction2( uint32_t iL,  uint32_t iR){
-	uint s1(unitigs[iL].size()),s2(unitigs[iR].size());
-	bool b1(isNumber(unitigs[iL][0])),b2(isNumber(unitigs[iR][0]));
-	if(b1 and b2){return compaction(stoi(unitigs[iL]),stoi(unitigs[iR]));}
-	if(b1){return compaction(stoi(unitigs[iL]),iR);}
-	if(b2){return compaction(iL,stoi(unitigs[iR]));}
-	__uint128_t beg2(beg2int128(unitigs[iR]));
-	__uint128_t end1(end2int128(unitigs[iL]));
-	if(end1==beg2){
-		++u1;
-		unitigs[iL]+=(unitigs[iR].substr(k));
-		unitigs[iR]=to_string(iL);
-		return;
-	}
-	__uint128_t begrc2(end2int128rc(unitigs[iR]));
-	if(end1==begrc2){
-		++u2;
-		unitigs[iL]+=(reverseinplace(unitigs[iR]).substr(k));
-		unitigs[iR]=to_string(iL);
-		return;
-	}
-	__uint128_t beg1(beg2int128(unitigs[iL]));
-	__uint128_t end2(rcb(begrc2));
-	if(beg1==end2){
-		++u3;
-		unitigs[iR]+=(unitigs[iL].substr(k));
-		unitigs[iL]=to_string(iR);
-		return;
-	}
-	__uint128_t endrc2(rcb(beg2));
-	if(beg1==endrc2){
-		++u4;
-		reverseinplace2(unitigs[iR]);
-		unitigs[iR]+=(unitigs[iL].substr(k));
-		unitigs[iL]=to_string(iR);
-		return;
-	}
-}
-
-
-void graph3::compaction( uint32_t iL,  uint32_t iR){
+void graph3::compaction( uint iL,  uint iR){
+	// if(iL==lol and found ){
+	// 	cout<<"compactionL !"<<endl;
+	// }
+	// if(iR==lol  and found){
+	// 	cout<<"compactionR !"<<endl;
+	// }
 	uint s1(unitigs[iL].size()),s2(unitigs[iR].size());
 	bool b1(isNumber(unitigs[iL][0])),b2(isNumber(unitigs[iR][0]));
 	if(b1 and b2){return compaction(stoi(unitigs[iL]),stoi(unitigs[iR]));}
 	if(b1){return compaction(stoi(unitigs[iL]),iR);}
 	if(b2){return compaction(iL,stoi(unitigs[iR]));}
 
-	__uint128_t beg1(beg2int128(unitigs[iL]));
-	__uint128_t end2(end2int128(unitigs[iR]));
+	kmer beg1(beg2int128(unitigs[iL]));
+	kmer end2(end2int128(unitigs[iR]));
 	if(beg1==end2){
 		unitigs[iR]+=(unitigs[iL].substr(k));
+		// if((iL==lol or iR==lol) and found){
+		// 	cout<<unitigs[iR]<<endl;
+		// 	lol=iR;
+		// }
 		unitigs[iL]=to_string(iR);
 		return;
 	}
 
-	__uint128_t endrc2(beg2int128rc(unitigs[iR]));
+	kmer endrc2(beg2int128rc(unitigs[iR]));
 	if(beg1==endrc2){
 		reverseinplace2(unitigs[iR]);
 		unitigs[iR]+=(unitigs[iL].substr(k));
+		// 	if((iL==lol or iR==lol) and found){
+		// 	cout<<unitigs[iR]<<endl;
+		// 	lol=iR;
+		// }
 		unitigs[iL]=to_string(iR);
 		return;
 	}
 
-	__uint128_t beg2(rcb(endrc2));
-	__uint128_t end1(end2int128(unitigs[iL]));
+	kmer beg2(rcb(endrc2));
+	kmer end1(end2int128(unitigs[iL]));
 	if(end1==beg2){
 		unitigs[iL]+=(unitigs[iR].substr(k));
+		// 	if((iL==lol or iR==lol) and found){
+		// 	cout<<unitigs[iL]<<endl;
+		// 	lol=iL;
+		// }
 		unitigs[iR]=to_string(iL);
 		return;
 	}
 
-	__uint128_t begrc2(rcb(end2));
+	kmer begrc2(rcb(end2));
 	if(end1==begrc2){
 		unitigs[iL]+=(reverseinplace(unitigs[iR]).substr(k));
+		// if((iL==lol or iR==lol) and found){
+		// 	cout<<unitigs[iL]<<endl;
+		// 	lol=iL;
+		// }
 		unitigs[iR]=to_string(iL);
 		return;
 	}
+	// cout<<"wut"<<endl;
 }
 
 
@@ -594,70 +516,55 @@ void graph3::debruijn2(){
 void graph3::debruijn(){
 	sort(left.begin(),left.end(),comparator());
 	sort(right.begin(),right.end(),comparator());
-	uint iL(0),iR(0),sL(left.size()),sR(right.size());
+	uint iL(0),iR(0);
 	kmerIndice kL,kR;
-	while(sL!=iL and sR!=iR){
+	while(iL!=left.size() and iR!=right.size()){
 		kL=left[iL];
 		kR=right[iR];
 		if(kL.kmmer==kR.kmmer){
 			bool go(true);
 			++iL;++iR;
-			if(sL!=iL){
 				if(left[iL].kmmer==kL.kmmer){
-					++iL;
 					go=false;
-					while(sL!=iL){
-						if(left[iL].kmmer!=kL.kmmer){break;}else{++iL;}
-					}
+					while(left[++iL].kmmer==kL.kmmer){}
 				}
-			}
-			if(iR!=sR){
 				if(right[iR].kmmer==kL.kmmer){
-					++iR;
 					go=false;
-					while(sR!=iR){
-						if(right[iR].kmmer!=kR.kmmer){break;}else{++iR;}
-					}
+					while(right[++iR].kmmer==kR.kmmer){}
 				}
-			}
-			if(go){
-				compaction(kL.indice,kR.indice);
-			}
+			if(go){compaction(kL.indice,kR.indice);}
 		}else{
 			if(kL.kmmer<kR.kmmer){
-				++iL;
-				while(sL!=iL){
-					if(left[iL].kmmer!=kL.kmmer){break;}else{++iL;}
-				}
+				while(left[++iL].kmmer==kL.kmmer){}
 			}else{
-				++iR;
-				while(sR!=iR){
-					if(right[iR].kmmer!=kR.kmmer){break;}else{++iR;}
-				}
+				while(right[++iR].kmmer==kR.kmmer){}
 			}
 		}
 	}
 }
 
 
-bool graph3::output(uint i){
-return !isNumber(unitigs[i][0]);
-}
+bool graph3::output(uint i){return !isNumber(unitigs[i][0]);}
 
 
 bool graph3::clear(){delete [] unitigs;return true;}
 
 
-uint32_t graph3::size(){return indiceUnitigs;};
+uint graph3::size(){return indiceUnitigs;};
 
 
-void graph3::addtuple(tuple<string,uint32_t,uint32_t>& tuple){
+void graph3::addtuple(tuple<string,uint,uint>& tuple){
 	unitigs[indiceUnitigs]=move(get<0>(tuple));
+	// if(unitigs[indiceUnitigs]=="GCCCTATATATATATCCTATATATATATGCC"){
+	// 	cout<<"found"<<endl;
+	// 	cout<<indiceUnitigs<<endl;
+	// 	// lol=indiceUnitigs;
+	// 	// found=true;
+	// 	// exit(0);
+	// }
 	if(minimizer==(get<1>(tuple))){
-		__uint128_t kmer1(beg2int128(unitigs[indiceUnitigs]));
-		// kmer2=(beg2int128rc(unitigs[indiceUnitigs]));
-		__uint128_t kmer2(rcb(kmer1));
-		// ki.indice=indiceUnitigs;
+		kmer kmer1(beg2int128(unitigs[indiceUnitigs]));
+		kmer kmer2(rcb(kmer1));
 		if(kmer1<kmer2){
 			left.push_back(kmerIndice{indiceUnitigs,kmer1});
 		}else{
@@ -665,15 +572,11 @@ void graph3::addtuple(tuple<string,uint32_t,uint32_t>& tuple){
 		}
 	}
 	if(minimizer==get<2>(tuple)){
-		__uint128_t kmer1(end2int128(unitigs[indiceUnitigs]));
-		// kmer2=(end2int128rc(unitigs[indiceUnitigs]));
-		__uint128_t kmer2(rcb(kmer1));
-		// ki.indice=indiceUnitigs;
+		kmer kmer1(end2int128(unitigs[indiceUnitigs]));
+		kmer kmer2(rcb(kmer1));
 		if(kmer1<kmer2){
-			// ki.kmmer=kmer1;
 			right.push_back(kmerIndice{indiceUnitigs,kmer1});
 		}else{
-			// ki.kmmer=kmer2;
 			left.push_back(kmerIndice{indiceUnitigs,kmer2});
 		}
 	}
@@ -685,3 +588,142 @@ void TS(vector<kmerIndice>* V){
 	sort(V->begin(),V->end(),comparator());
 }
 
+
+void compareUnitigs(const string& fileFa,const string& fileDot){
+	uint a(0),b(0),c(0),d(0);
+	unordered_set<string> setFa,setDot;
+	ifstream streamFa(fileFa),streamDot(fileDot);
+	string seq;
+	getline(streamFa,seq);
+	while (!streamFa.eof()) {
+		getline(streamFa,seq,'>');
+		seq=seq.substr(0,seq.size()-1);
+		setFa.insert(seq);
+		// cout<<seq<<endl;
+		// cin.get();
+		getline(streamFa,seq);
+		++c;
+	}
+	cout<<1<<endl;
+	while (!streamDot.eof()){
+		getline(streamDot,seq);
+		transform(seq.begin(), seq.end(), seq.begin(), ::toupper);
+		seq=seq.substr(0,seq.size()-1);
+		setDot.insert(seq);
+		// cout<<seq<<endl;
+		// cin.get();
+		++d;
+	}
+	cout<<2<<endl;
+	for(auto it(setFa.begin());it!=setFa.end();++it){
+		if(setDot.count(*it)==0){
+			++a;
+		}
+	}
+	cout<<3<<endl;
+	for(auto it(setDot.begin());it!=setDot.end();++it){
+		if(setFa.count(*it)==0){
+			++a;
+		}
+	}
+	cout<<a<<" "<<b<<endl;
+	cout<<c<<" "<<d<<endl;
+}
+
+
+void compareKmers(const string& fileFa,const string& fileDot){
+	uint k(31);
+	string kmer;
+	uint a(0),b(0),c(0),d(0);
+	unordered_set<string> setFa,setDot;
+	ifstream streamFa(fileFa),streamDot(fileDot);
+	string seq,inter,nimp;
+
+
+
+	// cout<<1<<endl;
+	while (!streamFa.eof()) {
+		getline(streamFa,nimp);
+		// cout<<"nimp"<<nimp<<endl;
+		getline(streamFa,seq);
+		// cout<<"seq"<<seq<<endl;
+		point:
+		char c=streamFa.peek();
+		if(c=='>'){
+			point2:
+			// seq=seq.substr(0,seq.size());
+			// for(uint j(0);(j)<seq.size();++j){
+			// 	if(seq[j]!='A' and seq[j]!='C' and seq[j]!='T' and seq[j]!='G'){
+			// 		cout<<seq<<endl;
+			// 		cout<<"lol"<<endl;
+			// 		exit(0);
+			// 	}
+			// }
+			for (uint i = 0; i+k <=seq.size(); ++i) {
+				kmer=seq.substr(i,k);
+				// cout<<kmer<<endl;
+				kmer=getRepresent(kmer);
+				// if(setDot.count(kmer)==0){
+				// 	++a;
+				// }
+				setFa.insert(kmer);
+			}
+		}else{
+			if(!streamFa.eof()){
+				// cout<<"inter"<<endl;
+				// cout<<seq<<endl;
+				getline(streamFa,inter);
+				// cout<<inter<<endl;
+				seq+=inter;
+				goto point;
+			}else{
+				// cout<<"lol2"<<endl;
+				goto point2;
+			}
+		}
+	}
+	cout<<2<<endl;
+
+	while (!streamDot.eof()){
+		getline(streamDot,seq);
+		seq=seq.substr(0,k);
+		// cout<<seq<<endl;
+		// cin.get();
+		if(setFa.count(getRepresent(seq))==0){
+			cout<<seq<<endl;
+			++a;
+		}
+	}
+
+	// while (!streamDot.eof()){
+	// 	getline(streamDot,seq);
+	// 	transform(seq.begin(), seq.end(), seq.begin(), ::toupper);
+	// 	seq=seq.substr(0,seq.size()-1);
+	// 	// cout<<seq<<endl;
+	// 	for (uint i = 0; i+k <=seq.size(); ++i) {
+	// 		kmer=seq.substr(i,k);
+	// 		// cout<<kmer<<endl;
+	// 		kmer=getRepresent(kmer);
+	// 		// setDot.insert(kmer);
+	// 		if(setFa.count(kmer)==0){
+	// 			++b;
+	// 		}
+	// 	}
+	// 	// cout<<seq<<endl;
+	// 	// cin.get();
+	// 	// ++d;
+	// }
+	// for(auto it(setFa.begin());it!=setFa.end();++it){
+	// 	if(setDot.count(*it)==0){
+	// 		++a;
+	// 	}
+	// }
+	cout<<3<<endl;
+	// for(auto it(setDot.begin());it!=setDot.end();++it){
+	// 	if(setFa.count(*it)==0){
+	// 		++b;
+	// 	}
+	// }
+	cout<<a<<" "<<b<<endl;
+	cout<<c<<" "<<d<<endl;
+}

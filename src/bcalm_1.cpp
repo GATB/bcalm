@@ -92,6 +92,8 @@ unsigned long memory_usage(string message="")
 
 
 bcalm_1::bcalm_1 ()  : Tool ("bcalm_1"){
+    // compareKmers("out.fa","chr14-k55-t5.kmer");
+    // cout<<reversecompletment("ATATATATATCCTATATATATATGCCCTATATATATATCCTATATATATATGCC");
 	getParser()->push_back (new OptionOneParam ("-in", "input file",  true));
 	getParser()->push_back (new OptionOneParam ("-out", "output prefix",  false, "unitigs"));
 	getParser()->push_back (new OptionOneParam ("-k", "kmer size",  false,"31"));
@@ -124,7 +126,7 @@ void bcalm_1::execute (){
     int total_ram = (int)(((double)info.totalram*(double)info.mem_unit)/1024/1024);
     cout << "\nTotal RAM: " << total_ram << " MB\n";
 #else
-    int total_ram = 1500; /* don't know how to estimate total ram in osx; maybe GATB knows actually, so todo, use it*/
+    int total_ram = 4000; /* don't know how to estimate total ram in osx; maybe GATB knows actually, so todo, use it*/
 #endif
     if (total_ram < 1500)
         dsk_memory = 500;
@@ -171,7 +173,7 @@ void bcalm_1::execute (){
      */
 	initBinSeq();
     /** We set BankBinary buffer. */
-    BankBinary::setBufferSize (1000);
+    BankBinary::setBufferSize (10000);
 
     auto start_t=chrono::system_clock::now();
     size_t maxBucket(0);
@@ -464,6 +466,10 @@ void bcalm_1::execute (){
                 for(uint32_t i(0);i<number_elements;++i){
                     if(graphCompactor.output(i)){ // graph3
     					seq=graphCompactor.unitigs[i]; // graph3
+                        // if(seq=="ATATATATATCCTATATATATATGCCCTATATATATATCCTATATATATATGCC"){
+                        //     cout<<"yes"<<endl;
+                        //     exit(0);
+                        // }
 					//if(!g.isNumber[i]){ // graph4
 						//seq=g.unitigs[i].str(); // graph4
 

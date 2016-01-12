@@ -23,6 +23,9 @@
 
 #endif /* SPARSE_HASH */
 
+#define kmer __uint128_t
+// #define kmer uint64_t
+
 using namespace std;
 
 void create_hash_function_from_m_mers(int m);
@@ -119,7 +122,7 @@ class graph2
 
 struct kmerIndice{
 	uint32_t indice;
-	__uint128_t kmmer;
+	kmer kmmer;
 
 };
 
@@ -133,50 +136,59 @@ struct kmer2Indice{
 class graph3
 {
 	public:
-		uint k;
-        uint indiceAdd,indiceLeft,indiceRight,indiceUnitigs;
-		uint32_t minimizer;
-		uint32_t minsize;
-        uint32_t nbElement;
-        uint u1,u2,u3,u4;
+		uint k,indiceUnitigs,nbElement,minimizer,minsize;
+        // uint ;
+		// uint32_t minimizer;
+		// uint32_t minsize;
+        // uint32_t nbElement;
+        // uint lol;
+        // bool found;
+        // uint u1,u2,u3,u4;
         // kmerIndice ki;
-        // __uint128_t kmer1,kmer2;
+        // kmer kmer1,kmer2;
         // ,beg2,beg1,begrc2,end1,end2,endrc2, resrcb,offsetrcb, resBeg,resEnd;
 		string* unitigs;
+        // string unitigL,unitigR;
 		vector<kmerIndice> left;
 		vector<kmerIndice> right;
 		// vector<kmer2Indice> compactions;
 		void addvertex(string& str);
-        void addtuple(tuple<string,uint32_t,uint32_t>& tuple);
+        void addtuple(tuple<string,uint,uint>& tuple);
 		void addleftmin(unsigned int mini);
 		void addrightmin(unsigned int mini);
 		void debruijn();
         void debruijn2();
-        void compaction2(uint32_t iL, uint32_t iR);
+        void compaction2(uint iL, uint iR);
         // void compaction(const uint32_t& iL, const uint32_t& iR);
 		void compress();
-        __uint128_t end2int128rc(const string& str);
-        __uint128_t end2int128(const string& str);
-        __uint128_t beg2int128rc(const string& str);
-        __uint128_t beg2int128(const string& str);
-        __uint128_t rcb(__uint128_t min);
-		void compaction(uint32_t iR, uint32_t iL);
-		uint32_t size();
+        kmer end2int128rc(const string& str);
+        kmer end2int128(const string& str);
+        kmer beg2int128rc(const string& str);
+        kmer beg2int128(const string& str);
+        kmer rcb(kmer min);
+		void compaction(uint iR, uint iL);
+		uint size();
         bool output(uint i);
         bool clear();
 
-		graph3(uint32_t ka, uint32_t min,uint32_t size, uint nb){
-            u1=u2=u3=u4=indiceUnitigs=indiceRight=indiceLeft=indiceAdd=0;
+		graph3(uint ka, uint min,uint size, uint nb){
+            // u1=u2=u3=u4=indiceUnitigs=indiceRight=indiceLeft=indiceAdd=0;
+            indiceUnitigs=0;
 			minsize=size;
 			k=ka;
+            // found=false;
 			minimizer=min;
             nbElement=nb;
-            unitigs =new string [nbElement];
+            unitigs=new string [nbElement];
             left.reserve(nbElement);
     	    right.reserve(nbElement);
             // compactions.reserve(nbElement);
 		}
 };
+
+void compareUnitigs(const string& fileFa,const string& fileDot);
+void compareKmers(const string& fileFa,const string& fileDot);
+
 
 class graph4
 {
@@ -185,7 +197,7 @@ class graph4
 		uint32_t k;
 		uint32_t minimizer;
 		uint32_t minsize;
-		__uint128_t maximum;
+		kmer maximum;
 		//~ uint32_t nbKmer;
 		vector<binSeq> unitigs;
 		vector<bool> leftmins;
