@@ -36,8 +36,8 @@ typedef Kmer<SPAN>::ModelMinimizer <ModelCanon> Model;
 size_t kmerSize=31;
 size_t minSize=8;
 int nbGluePartitions = 200;
-//typedef uint64_t partition_t;
-typedef __uint128_t partition_t;
+typedef uint64_t partition_t;
+//typedef __uint128_t partition_t; // no
 
    // a hash wrapper for hashing kmers in Model form
     template <typename ModelType>
@@ -472,22 +472,12 @@ void bglue::execute (){
         uint64_t h1 = hasher(kmmerBegin);
         uint64_t h2 = hasher(kmmerEnd);
 
-        // hack
-        __uint128_t kmer1 = ((__uint128_t)kmmerBegin.value().getVal());
-        __uint128_t tmpkmer1 = (__uint128_t)(((kmmerBegin.value()>>((__uint128_t)64ULL)).getVal()));
-        kmer1 |= tmpkmer1 << 64ULL;
-        __uint128_t kmer2 = ((__uint128_t)kmmerEnd.value().getVal());
-        __uint128_t tmpkmer2 = (__uint128_t)(((kmmerEnd.value()>>((__uint128_t)64ULL)).getVal()));
-        kmer2 |= tmpkmer2 << 64ULL;
-
         uf_hashes_vectorsMutex[h1%nb_uf_hashes_vectors].lock();
-        //uf_hashes_vectors[h1%nb_uf_hashes_vectors].push_back(h1);
-        uf_hashes_vectors[h1%nb_uf_hashes_vectors].push_back(kmer1);
+        uf_hashes_vectors[h1%nb_uf_hashes_vectors].push_back(h1);
         uf_hashes_vectorsMutex[h1%nb_uf_hashes_vectors].unlock();
 
         uf_hashes_vectorsMutex[h2%nb_uf_hashes_vectors].lock();
-        //uf_hashes_vectors[h2%nb_uf_hashes_vectors].push_back(h2);
-        uf_hashes_vectors[h2%nb_uf_hashes_vectors].push_back(kmer2);
+        uf_hashes_vectors[h2%nb_uf_hashes_vectors].push_back(h2);
         uf_hashes_vectorsMutex[h2%nb_uf_hashes_vectors].unlock();
     };
 
@@ -587,17 +577,7 @@ void bglue::execute (){
         ModelCanon::Kmer kmmerBegin = modelCanon.codeSeed(kmerBegin.c_str(), Data::ASCII);
         ModelCanon::Kmer kmmerEnd = modelCanon.codeSeed(kmerEnd.c_str(), Data::ASCII);
 
-        // hack
-        __uint128_t kmer1 = ((__uint128_t)kmmerBegin.value().getVal());
-        __uint128_t tmpkmer1 = (__uint128_t)(((kmmerBegin.value()>>((__uint128_t)64ULL)).getVal()));
-        kmer1 |= tmpkmer1 << 64ULL;
-        __uint128_t kmer2 = ((__uint128_t)kmmerEnd.value().getVal());
-        __uint128_t tmpkmer2 = (__uint128_t)(((kmmerEnd.value()>>((__uint128_t)64ULL)).getVal()));
-        kmer2 |= tmpkmer2 << 64ULL;
-
-
-        ufkmers.union_(uf_mphf.lookup(kmer1), uf_mphf.lookup(kmer2));
-        //ufkmers.union_(uf_mphf.lookup(hasher(kmmerBegin)), uf_mphf.lookup(hasher(kmmerEnd)));
+        ufkmers.union_(uf_mphf.lookup(hasher(kmmerBegin)), uf_mphf.lookup(hasher(kmmerEnd)));
         //ufkmers.union_((hasher(kmmerBegin)), (hasher(kmmerEnd)));
 
 #if 0
@@ -681,35 +661,21 @@ void bglue::execute (){
             {
                 kmmerBegin = modelCanon.codeSeed(kmerBegin.c_str(), Data::ASCII);
                 found_partition = true;
-                //partition = ufkmers_vector[uf_mphf.lookup(hasher(kmmerBegin))];
-
-                // hack
-                __uint128_t kmer1 = ((__uint128_t)kmmerBegin.value().getVal());
-                __uint128_t tmpkmer1 = (__uint128_t)(((kmmerBegin.value()>>((__uint128_t)64ULL)).getVal()));
-                kmer1 |= tmpkmer1 << 64ULL;
-
-
-                partition = ufkmers_vector[uf_mphf.lookup(kmer1)];
+                partition = ufkmers_vector[uf_mphf.lookup(hasher(kmmerBegin))];
             }
 
             if (rmark)
             {
                 kmmerEnd = modelCanon.codeSeed(kmerEnd.c_str(), Data::ASCII);
-                // hack
-                __uint128_t kmer2 = ((__uint128_t)kmmerEnd.value().getVal());
-                __uint128_t tmpkmer2 = (__uint128_t)(((kmmerEnd.value()>>((__uint128_t)64ULL)).getVal()));
-                kmer2 |= tmpkmer2 << 64ULL;
-
 
                 if (found_partition) // just do a small check
                 {
-                    //if (ufkmers_vector[uf_mphf.lookup(hasher(kmmerEnd))] != partition)
-                    if (ufkmers_vector[uf_mphf.lookup(kmer2)] != partition)
-                    { std::cout << "bad UF! left kmer has partition " << partition << " but right kmer has partition " << ufkmers_vector[uf_mphf.lookup(kmer2)] << std::endl; exit(1); }
+                    if (ufkmers_vector[uf_mphf.lookup(hasher(kmmerEnd))] != partition)
+                    { std::cout << "bad UF! left kmer has partition " << partition << " but right kmer has partition " << ufkmers_vector[uf_mphf.lookup(hasher(kmmerEnd))] << std::endl; exit(1); }
                 }
                 else
                 {
-                    partition = ufkmers_vector[uf_mphf.lookup(kmer2)];
+                    partition = ufkmers_vector[uf_mphf.lookup(hasher(kmmerEnd))];
                     found_partition = true;
                 }
             }
