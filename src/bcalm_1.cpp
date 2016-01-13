@@ -12,7 +12,7 @@
 #include <tuple>
 #include "binSeq.h"
 #define OSX 1
-// #define BINSEQ 0
+#define BINSEQ
 #ifndef OSX
 #include <sys/sysinfo.h> // to determine system memory
 #endif
@@ -116,7 +116,7 @@ void bcalm_1::execute (){
     size_t abundance=getInput()->getInt("-abundance");
     minSize=getInput()->getInt("-m");
     nb_threads = getInput()->getInt("-nb-cores");
-    // nb_threads=1;
+    nb_threads=1;
     int minimizer_type = getInput()->getInt("-minimizer-type");
     int dsk_memory = getInput()->getInt("-dsk-memory");
 
@@ -443,8 +443,12 @@ void bcalm_1::execute (){
                 // (make sure to change other places labelled "// graph3" and "// graph4" as well)
                 //graph4 g(kmerSize-1,actualMinimizer,minSize); // graph4
                 uint number_elements(bucket_queues[actualMinimizer].size_approx());
-                graph3 graphCompactor(kmerSize-1,actualMinimizer,minSize,number_elements); // graph3
-                //~ //graph1 g(kmerSize);
+                #ifdef BINSEQ
+                graph4 graphCompactor(kmerSize-1,actualMinimizer,minSize,number_elements);
+                #else
+                // cout<<"here"<<endl;
+                graph3 graphCompactor(kmerSize-1,actualMinimizer,minSize,number_elements);
+                #endif
 
                 /* add nodes to graph */
                 std::tuple<BUCKET_STR_TYPE,uint,uint> bucket_elt;
@@ -473,9 +477,13 @@ void bcalm_1::execute (){
                 auto start_cdistribution_t=get_wtime();
                 string seq;
                 for(uint32_t i(0);i<number_elements;++i){
-                    if(graphCompactor.output(i)){ // graph3
-    					// seq=graphCompactor.unitigs[i].str(); // graph3
-                        seq=graphCompactor.unitigs[i];
+                    if(graphCompactor.output(i)){
+                        #ifdef BINSEQ
+    					seq=graphCompactor.unitigs[i].str(); // graph4
+                        #else
+                        seq=graphCompactor.unitigs[i]; // graph3
+                        #endif
+
 
                         int k = kmerSize;
                         Model::Kmer kmmerBegin = modelK1.codeSeed(seq.substr(0, k - 1).c_str(), Data::ASCII);

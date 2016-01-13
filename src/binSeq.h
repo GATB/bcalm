@@ -12,7 +12,28 @@
 #include <stdio.h>
 #include <vector>
 #include <string>
+#include <algorithm>
+#include <cassert>
+#include <cmath>
 #include <unordered_map>
+
+typedef unsigned int  uint;
+#define kmer __uint128_t
+#define overlap uint64_t
+static uint maxNuc(32);
+
+
+struct kmerIndice{
+	uint32_t indice;
+	kmer kmmer;
+};
+
+
+struct overlapIndice{
+	uint32_t indice;
+	overlap kmmer;
+};
+
 
 using namespace std;
 
@@ -27,36 +48,32 @@ public:
 	bool isInt;
 	string str();
 	void str2(string& res);
-	binSeq sub(uint8_t begin);
-	binSeq sub(size_t begin,size_t size);
-	binSeq getBegin(uint8_t size);
-	binSeq getEnd(uint8_t size);
-	__uint128_t getEndInt(uint8_t size);
-	__uint128_t getBeginInt(uint8_t size);
-	__uint128_t getBeginRcInt(uint8_t size);
-	__uint128_t getEndRcInt(uint8_t size);
+	binSeq sub(uint begin);
+	binSeq sub(uint begin,uint size);
+	binSeq getBegin(uint size);
+	binSeq getEnd(uint size);
+	kmer getEndInt(uint size);
+	kmer getBeginInt(uint size);
+	kmer getBeginRcInt(uint size);
+	kmer getEndRcInt(uint size);
+	overlap getBeginIntOver(uint size);
+	overlap getEndIntOver(uint size);
+	overlap getEndRcIntOver(uint size);
+	overlap getBeginRcIntOver(uint size);
 	void reverse();
 	binSeq getReverse();
 	void add(const binSeq& b);
 	void resize();
 	void clear();
-	size_t size();
-	uint32_t getNumber();
-	__uint128_t getInt();
+	uint size();
+	uint getNumber();
+	kmer getInt();
 
 	explicit binSeq(const string& str);
 	binSeq();
 	binSeq(const binSeq& bs);
-	explicit binSeq(uint32_t);
+	explicit binSeq(uint);
 };
-
-
-//~ inline bool operator==(const binSeq& lhs, const binSeq& rhs){return lhs.vect==rhs.vect;}
-//~ inline bool operator!=(const binSeq& lhs, const binSeq& rhs){return !operator==(lhs,rhs);}
-//~ inline binSeq operator+(binSeq lhs, const binSeq& rhs){
-	//~ lhs += rhs;
-	//~ return lhs;
-//~ }
 
 
 void initBinSeq();

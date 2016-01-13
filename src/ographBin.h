@@ -1,5 +1,5 @@
-#ifndef OGRAPH
-#define OGRAPH
+#ifndef OGRAPHBIN
+#define OGRAPHBIN
 
 #include <iostream>
 #include <fstream>
@@ -10,27 +10,15 @@
 #include "binSeq.h"
 
 
-#define kmer __uint128_t
-// #define kmer uint64_t
-
-
 using namespace std;
 
 
-struct kmerIndice{
-	uint32_t indice;
-	kmer kmmer;
-
-};
-
-
-class graph4
-{
+class graph4{
 	public:
 		uint k,indiceUnitigs,nbElement,minimizer,minsize;
 		binSeq* unitigs;
-		vector<kmerIndice> left;
-		vector<kmerIndice> right;
+		vector<overlapIndice> left;
+		vector<overlapIndice> right;
 		void addvertex(string& str);
         void addtuple(tuple<binSeq,uint,uint>& tuple);
 		void addleftmin(unsigned int mini);
@@ -39,10 +27,6 @@ class graph4
         void debruijn2();
         void compaction2(uint iL, uint iR);
 		void compress();
-        kmer end2int128rc(const string& str);
-        kmer end2int128(const string& str);
-        kmer beg2int128rc(const string& str);
-        kmer beg2int128(const string& str);
         kmer rcb(kmer min);
 		void compaction(uint iR, uint iL);
 		uint size();

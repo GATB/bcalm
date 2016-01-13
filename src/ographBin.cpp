@@ -1,3 +1,4 @@
+#include "ographBin.h"
 #include "ograph.h"
 #include <algorithm>
 #include <cassert>
@@ -13,91 +14,7 @@
 using namespace std;
 
 
-struct comparator{bool operator()(const kmerIndice& a , const kmerIndice& b) { return a.kmmer < b.kmmer; }};
-
-
-string reverseinplace(string& str){
-	uint i(str.size()-1),j(0);
-	for(; j<str.size()/2; --i, ++j){
-		str[i] ^= 4;
-		str[j] ^= 4;
-		if ((str[i]&3) != 3){str[i]^= 17;}
-		if ((str[j]&3) != 3){str[j]^= 17;}
-		swap(str[i],str[j]);
-	}
-	if(str.size()%2==1){
-		str[j] ^= 4;
-		if ((str[j]&3) != 3){str[j]^= 17;}
-	}
-	return str;
-}
-
-
-void reverseinplace2(string& str){
-	uint i(str.size()-1),j(0);
-	for(; j<str.size()/2; --i, ++j){
-		str[i] ^= 4;
-		str[j] ^= 4;
-		if ((str[i]&3) != 3){str[i]^= 17;}
-		if ((str[j]&3) != 3){str[j]^= 17;}
-		swap(str[i],str[j]);
-	}
-	if(str.size()%2==1){
-		str[j] ^= 4;
-		if ((str[j]&3) != 3){str[j]^= 17;}
-	}
-}
-
-
-uint chartoint(char c){
-	char d = (c >> 1) & 3;
-	if (d > 1)
-		d ^= 1;
-	return d;
-}
-
-
-bool isNumber(char c){return (c<64);}
-
-
-kmer graph4::beg2int128(const string& str){
-	kmer resBeg(0);
-	for(uint i(0);i<k;++i){
-		resBeg<<=2;
-		resBeg+=chartoint(str[i]);
-	}
-	return resBeg;
-}
-
-
-kmer graph4::beg2int128rc(const string& str){
-	kmer res(0);
-	for(int i(k-1);i>=0;i--){
-		res<<=2;
-		res+=3-chartoint(str[i]);
-	}
-	return res;
-}
-
-
-kmer graph4::end2int128rc(const string& str){
-	kmer res(0);
-	for(int i(k-1);i>=0;i--){
-		res<<=2;
-		res+=3-chartoint(str[str.size()-k+i]);
-	}
-	return res;
-}
-
-
-kmer graph4::end2int128(const string& str){
-	kmer resEnd(0);
-	for(uint i(0);i<k;++i){
-		resEnd<<=2;
-		resEnd+=chartoint(str[str.size()-k+i]);
-	}
-	return resEnd;
-}
+struct comparatorOver{bool operator()(const overlapIndice& a , const overlapIndice& b) { return a.kmmer < b.kmmer; }};
 
 
 kmer graph4::rcb(kmer min){
@@ -111,8 +28,9 @@ kmer graph4::rcb(kmer min){
 }
 
 
-void graph4::compaction( uint iL,  uint iR){
+void graph4::compaction(uint iL,  uint iR){
 	// cout<<iL<<" "<<iR<<endl;
+	// cout<<"gocomp"<<endl;
 	uint s1(unitigs[iL].size()),s2(unitigs[iR].size());
 	bool b1(unitigs[iL].isInt),b2(unitigs[iR].isInt);
 	if(b1 and b2){return compaction((unitigs[iL].getNumber()),(unitigs[iR]).getNumber());}
@@ -129,7 +47,6 @@ void graph4::compaction( uint iL,  uint iR){
 
 	binSeq rc2(unitigs[iR].getReverse());
 	kmer begrc2(unitigs[iR].getEndRcInt(k));
-	//~ __uint128_t begrc2(rc2.getBeginInt(k));
 	if(end1==begrc2){
 		unitigs[iL].add(rc2.sub(k));
 		unitigs[iR]=binSeq(iL);
@@ -144,7 +61,6 @@ void graph4::compaction( uint iL,  uint iR){
 		return;
 	}
 
-	//~ __uint128_t endrc2(rc2.getEndInt(k));
 	kmer endrc2(unitigs[iR].getBeginRcInt(k));
 	if(endrc2==beg1){
 		rc2.add(unitigs[iL].sub(k));
@@ -152,15 +68,16 @@ void graph4::compaction( uint iL,  uint iR){
 		unitigs[iL]=binSeq(iR);
 		return;
 	}
-// cout<<"wut"<<endl;
+	// cout<<"wut"<<endl;
 }
 
 
 void graph4::debruijn(){
-	sort(left.begin(),left.end(),comparator());
-	sort(right.begin(),right.end(),comparator());
+	// cout<<"debruijn go"<<endl;
+	sort(left.begin(),left.end(),comparatorOver());
+	sort(right.begin(),right.end(),comparatorOver());
 	uint iL(0),iR(0);
-	kmerIndice kL,kR;
+	overlapIndice kL,kR;
 	while(iL!=left.size() and iR!=right.size()){
 		kL=left[iL];
 		kR=right[iR];
@@ -184,6 +101,7 @@ void graph4::debruijn(){
 			}
 		}
 	}
+	// cout<<"debruijn end"<<endl;
 }
 
 
@@ -199,27 +117,21 @@ uint graph4::size(){return indiceUnitigs;};
 void graph4::addtuple(tuple<binSeq,uint,uint>& tuple){
 	unitigs[indiceUnitigs]=(get<0>(tuple));
 	if(minimizer==(get<1>(tuple))){
-		kmer kmer1(unitigs[indiceUnitigs].getBeginInt(k));
-		//~ beg.reverse();
-		kmer kmer2(unitigs[indiceUnitigs].getBeginRcInt(k));
-		// kmer kmer1(beg2int128(unitigs[indiceUnitigs]));
-		// kmer kmer2(rcb(kmer1));
+		overlap kmer1(unitigs[indiceUnitigs].getBeginIntOver(k));
+		overlap kmer2(unitigs[indiceUnitigs].getBeginRcIntOver(k));
 		if(kmer1<kmer2){
-			left.push_back(kmerIndice{indiceUnitigs,kmer1});
+			left.push_back(overlapIndice{indiceUnitigs,kmer1});
 		}else{
-			right.push_back(kmerIndice{indiceUnitigs,kmer2});
+			right.push_back(overlapIndice{indiceUnitigs,kmer2});
 		}
 	}
 	if(minimizer==get<2>(tuple)){
-		kmer kmer1(unitigs[indiceUnitigs].getEndInt(k));
-		//~ end.reverse();
-		kmer kmer2(unitigs[indiceUnitigs].getEndRcInt(k));
-		// kmer kmer1(end2int128(unitigs[indiceUnitigs]));
-		// kmer kmer2(rcb(kmer1));
+		overlap kmer1(unitigs[indiceUnitigs].getEndIntOver(k));
+		overlap kmer2(unitigs[indiceUnitigs].getEndRcIntOver(k));
 		if(kmer1<kmer2){
-			right.push_back(kmerIndice{indiceUnitigs,kmer1});
+			right.push_back(overlapIndice{indiceUnitigs,kmer1});
 		}else{
-			left.push_back(kmerIndice{indiceUnitigs,kmer2});
+			left.push_back(overlapIndice{indiceUnitigs,kmer2});
 		}
 	}
 	++indiceUnitigs;
