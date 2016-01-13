@@ -260,9 +260,6 @@ uint8_t char2Byte2[]={
 	};
 
 
-
-
-
 void printUC(uint8_t a){
 	for (int i = 0; i < 8; i++) {
 		printf("%d", !!((a << i) & 0x80));
@@ -271,10 +268,8 @@ void printUC(uint8_t a){
 }
 
 
-
-
 binSeq::binSeq(const string& str){
-	//~ isNumber=false;
+	isInt=false;
 	uint8_t mod(str.size()%3);
 	size_t i(0);
 	vect.reserve((str.size()/3)+mod);
@@ -296,7 +291,7 @@ binSeq::binSeq(const string& str){
 
 
 binSeq::binSeq(const binSeq& bs){
-	//~ isNumber=bs.isNumber;
+	isInt=false;
 	vect=bs.vect;
 }
 
@@ -701,6 +696,7 @@ void binSeq::add(const binSeq& bs){
 
 
 binSeq::binSeq(){
+	isInt=false;
 	//~ isNumber=false;
 }
 
@@ -711,7 +707,7 @@ size_t binSeq::size(){
 
 
 binSeq::binSeq(uint32_t n){
-	//~ isNumber=true;
+	isInt=true;
 	while(n!=0){
 		vect.push_back((uint8_t)n%(1<<8));
 		n>>=8;
@@ -777,42 +773,3 @@ void binSeq::reverse(){
 	//~ cout<<str()<<endl;
 	//~ cin.get();
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

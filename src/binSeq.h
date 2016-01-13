@@ -24,7 +24,7 @@ public:
 	//~ bool isNumber;
 	vector<uint8_t> vect;
 
-
+	bool isInt;
 	string str();
 	void str2(string& res);
 	binSeq sub(uint8_t begin);
@@ -44,22 +44,10 @@ public:
 	uint32_t getNumber();
 	__uint128_t getInt();
 
-	//~ binSeq& operator+=(const binSeq& rhs){
-		//~ this->add(rhs);
-		//~ return *this;
-	//~ }
-
-
-
-
-
-
 	explicit binSeq(const string& str);
 	binSeq();
 	binSeq(const binSeq& bs);
 	explicit binSeq(uint32_t);
-
-
 };
 
 

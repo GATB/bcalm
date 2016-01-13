@@ -89,6 +89,20 @@ string revcomp (string &s) {
 	for (signed int i = s.length() - 1; i >= 0; i--) {rc += revcomp(s[i]);}
 	return rc;
 }
+//TOBENCH
+// char revcomp(char c){
+// 	c^= 4;
+// 	if ((c&3) != 3){c^=17;}
+// 	return c;
+// }
+//
+// string revcomp(string& str){
+// 	string rc(0,str.size());
+// 	for(uint i(0);i<str.size();++i){
+// 		rc[str.size()-i-1]=revcomp(str[i]);
+// 	}
+// 	return rc;
+// }
 
 //this short-circuits the computation as soon as the difference is found
 string rcnorm (string &s) {

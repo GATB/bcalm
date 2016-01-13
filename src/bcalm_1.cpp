@@ -2,6 +2,7 @@
 #include <bcalm_1.hpp>
 #include <glue.hpp>
 #include <ograph.h>
+#include <ographBin.h>
 #include <iostream>
 #include <memory>
 #include <iostream>
@@ -11,6 +12,7 @@
 #include <tuple>
 #include "binSeq.h"
 #define OSX 1
+// #define BINSEQ 0
 #ifndef OSX
 #include <sys/sysinfo.h> // to determine system memory
 #endif
@@ -29,6 +31,7 @@
 
 //#define BINSEQ // use binseq in buckets instead of string (slower but uses less memory)
 // FIXME: it doesn't work for now
+
 #ifdef BINSEQ
 #define BUCKET_STR_TYPE binSeq
 #define TO_BUCKET_STR(x) binSeq(x)
@@ -113,6 +116,7 @@ void bcalm_1::execute (){
     size_t abundance=getInput()->getInt("-abundance");
     minSize=getInput()->getInt("-m");
     nb_threads = getInput()->getInt("-nb-cores");
+    // nb_threads=1;
     int minimizer_type = getInput()->getInt("-minimizer-type");
     int dsk_memory = getInput()->getInt("-dsk-memory");
 
@@ -347,7 +351,7 @@ void bcalm_1::execute (){
                 return;
 
             Kmer<SPAN>::Type current = item.value;
-            
+
             string seq = model.toString(current);
 
             Model::Kmer kmmerBegin = modelK1.codeSeed(seq.substr(0, k - 1).c_str(), Data::ASCII);
@@ -443,7 +447,7 @@ void bcalm_1::execute (){
                 //~ //graph1 g(kmerSize);
 
                 /* add nodes to graph */
-                std::tuple<BUCKET_STR_TYPE,uint32_t,uint32_t> bucket_elt;
+                std::tuple<BUCKET_STR_TYPE,uint,uint> bucket_elt;
                 while (bucket_queues[actualMinimizer].try_dequeue(bucket_elt))
                 {
                 // for(uint i(0);i<number_elements;++i)
@@ -454,16 +458,13 @@ void bcalm_1::execute (){
                     // g.addvertex(FROM_BUCKET_STR(std::get<0>(bucket_elt)));
                     graphCompactor.addtuple(bucket_elt);
                 }
+                // cout<<"endaddtuple"<<endl;
                 auto end_nodes_t=get_wtime();
                 atomic_double_add(global_wtime_add_nodes, diff_wtime(start_nodes_t, end_nodes_t));
 
                 /* compact graph*/
                 auto start_dbg=get_wtime();
-
                 graphCompactor.debruijn();
-                // auto start_dbg=get_wtime();
-                // auto end_dbg=get_wtime();
-                // g.compress();
 
                 auto end_dbg=get_wtime();
                 atomic_double_add(global_wtime_compactions, diff_wtime(start_dbg, end_dbg));
@@ -473,14 +474,8 @@ void bcalm_1::execute (){
                 string seq;
                 for(uint32_t i(0);i<number_elements;++i){
                     if(graphCompactor.output(i)){ // graph3
-    					seq=graphCompactor.unitigs[i]; // graph3
-                        // if(seq=="ATATATATATCCTATATATATATGCCCTATATATATATCCTATATATATATGCC"){
-                        //     cout<<"yes"<<endl;
-                        //     exit(0);
-                        // }
-					//if(!g.isNumber[i]){ // graph4
-						//seq=g.unitigs[i].str(); // graph4
-
+    					// seq=graphCompactor.unitigs[i].str(); // graph3
+                        seq=graphCompactor.unitigs[i];
 
                         int k = kmerSize;
                         Model::Kmer kmmerBegin = modelK1.codeSeed(seq.substr(0, k - 1).c_str(), Data::ASCII);
