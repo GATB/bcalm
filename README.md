@@ -1,12 +1,10 @@
-# Welcome
+# BCALM 2
 
-BCALM is a bioinformatics software for constructing the de Bruijn graph of sequencing data.
+BCALM 2 is a bioinformatics software for constructing the de Bruijn graph of sequencing data.
 
-More precisely, this repository is the new, parallel version of the BCALM software using the GATB library. (original single-threaded code: https://github.com/Malfoy/bcalm)
-
-# Under development
-
-Need to check correctness. Output might be missing a few unitigs due to edge cases.
+More precisely, this repository is the new, parallel version of the BCALM software.
+It is using a new algorithm, and is implemented using the GATB library. 
+The original, single-threaded code of BCALM (version 1) is still available at: https://github.com/Malfoy/bcalm
 
 # Usage
 
