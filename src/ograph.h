@@ -13,6 +13,9 @@
 using namespace std;
 
 
+struct comparator{bool operator()(const kmerIndice& a , const kmerIndice& b) { return a.kmmer < b.kmmer; }};
+
+
 class graph3{
 	public:
 		uint k,indiceUnitigs,nbElement,minimizer,minsize;

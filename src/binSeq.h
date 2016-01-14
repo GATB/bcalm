@@ -18,9 +18,10 @@
 #include <unordered_map>
 
 typedef unsigned int  uint;
+//if k<=32
+// #define kmer __uint128_t
+//if 32<k<=64
 #define kmer __uint128_t
-#define overlap uint64_t
-static uint maxNuc(32);
 
 
 struct kmerIndice{
@@ -29,23 +30,17 @@ struct kmerIndice{
 };
 
 
-struct overlapIndice{
-	uint32_t indice;
-	overlap kmmer;
-};
-
-
 using namespace std;
 
 
-class binSeq {
+class binSeq{
 public:
 	//~ static const unsigned char rc[];
 	//~ static const unordered_map<string,unsigned char> string2Byte;
 	//~ bool isNumber;
 	vector<uint8_t> vect;
-
 	bool isInt;
+
 	string str();
 	void str2(string& res);
 	binSeq sub(uint begin);
@@ -56,10 +51,6 @@ public:
 	kmer getBeginInt(uint size);
 	kmer getBeginRcInt(uint size);
 	kmer getEndRcInt(uint size);
-	overlap getBeginIntOver(uint size);
-	overlap getEndIntOver(uint size);
-	overlap getEndRcIntOver(uint size);
-	overlap getBeginRcIntOver(uint size);
 	void reverse();
 	binSeq getReverse();
 	void add(const binSeq& b);

@@ -26,6 +26,44 @@ string RCnadine(const string& str){
 }
 
 
+
+static const string int2string1[]={"A","C","G","T"};
+
+
+static const string int2string2[]={
+	"AA","AC","AG","AT",
+	"CA","CC","CG","CT",
+	"GA","GC","GG","GT",
+	"TA","TC","TG","TT"
+	};
+
+
+static const string int2string3[]={
+	"AAA","AAC","AAG","AAT","ACA","ACC","ACG","ACT","AGA","AGC","AGG","AGT","ATA","ATC","ATG","ATT",
+	"CAA","CAC","CAG","CAT","CCA","CCC","CCG","CCT","CGA","CGC","CGG","CGT","CTA","CTC","CTG","CTT",
+	"GAA","GAC","GAG","GAT","GCA","GCC","GCG","GCT","GGA","GGC","GGG","GGT","GTA","GTC","GTG","GTT",
+	"TAA","TAC","TAG","TAT","TCA","TCC","TCG","TCT","TGA","TGC","TGG","TGT","TTA","TTC","TTG","TTT"
+};
+
+
+static const string int2string[][64]={
+	{},
+	{"A","C","G","T"},
+	{
+		"AA","AC","AG","AT",
+		"CA","CC","CG","CT",
+		"GA","GC","GG","GT",
+		"TA","TC","TG","TT"
+	},
+	{
+		"AAA","AAC","AAG","AAT","ACA","ACC","ACG","ACT","AGA","AGC","AGG","AGT","ATA","ATC","ATG","ATT",
+		"CAA","CAC","CAG","CAT","CCA","CCC","CCG","CCT","CGA","CGC","CGG","CGT","CTA","CTC","CTG","CTT",
+		"GAA","GAC","GAG","GAT","GCA","GCC","GCG","GCT","GGA","GGC","GGG","GGT","GTA","GTC","GTG","GTT",
+		"TAA","TAC","TAG","TAT","TCA","TCC","TCG","TCT","TGA","TGC","TGG","TGT","TTA","TTC","TTG","TTT"
+	}
+};
+
+
 static const uint8_t rc[]={
 
 	0b00000000,0b00000000,0b00000000,0b00000000,0b00000000,0b00000000,0b00000000,0b00000000,
@@ -87,6 +125,7 @@ uint functionwihtoutcoll(uint8_t x,uint8_t y){
 
 void initBinSeq(){
 	// exit(0);
+
 	char2int1[65]=0b01000000;
 	char2int1[67]=0b01000001;
 	char2int1[71]=0b01000010;
@@ -176,25 +215,6 @@ void initBinSeq(){
 }
 
 
-static const string int2string1[]={"A","C","G","T"};
-
-
-static const string int2string2[]={
-	"AA","AC","AG","AT",
-	"CA","CC","CG","CT",
-	"GA","GC","GG","GT",
-	"TA","TC","TG","TT"
-	};
-
-
-static const string int2string3[]={
-	"AAA","AAC","AAG","AAT","ACA","ACC","ACG","ACT","AGA","AGC","AGG","AGT","ATA","ATC","ATG","ATT",
-	"CAA","CAC","CAG","CAT","CCA","CCC","CCG","CCT","CGA","CGC","CGG","CGT","CTA","CTC","CTG","CTT",
-	"GAA","GAC","GAG","GAT","GCA","GCC","GCG","GCT","GGA","GGC","GGG","GGT","GTA","GTC","GTG","GTT",
-	"TAA","TAC","TAG","TAT","TCA","TCC","TCG","TCT","TGA","TGC","TGG","TGT","TTA","TTC","TTG","TTT"
-	};
-
-
 uint8_t char2Byte[]={
 	0,0,0,0,0,0,0,0,0,0,
 	0,0,0,0,0,0,0,0,0,0,
@@ -269,44 +289,22 @@ binSeq::binSeq(const binSeq& bs){
 
 
 string binSeq::str(){
-	cout<<endl;
+	// cout<<endl;
 	string res;
-	// res.reserve(vect.size());
+	res.reserve(3*vect.size());
 	for(uint i(0);i<vect.size();++i){
-		switch(vect[i]>>6){
-			case 3:
-				//~ res+=(int2string3[c]);
-				res.append(int2string3[vect[i]&0b00111111]);
-				cout<<(uint)(vect[i]&0b00111111)<<endl;
-				cout<<int2string3[(uint)vect[i]&0b00111111]<<endl;
-				// cout<<res<<endl;
-				break;
-			case 2:
-				res.append(int2string2[vect[i]&0b00001111]);
-				// if(int2string2[vect[i]&0b00000011][1]!='A' and int2string2[vect[i]&0b00000011][1]!='C' and int2string2[vect[i]&0b00000011][1]!='G' and int2string2[vect[i]&0b00000011][1]!='T')
-				// 	cout<<int2string2[vect[i]&0b00000011]<<endl;
-				//~ res+=(int2string2[c]);
-				break;
-			default:
-				//~ res+=(int2string1[c]);
-				res.append(int2string1[vect[i]&0b00000011]);
-
-				break;
-		}
-	}
-	bool fail(false);
-	for(uint j(0);(j)<res.size();++j){
-		if(res[j]!='A' and res[j]!='C' and res[j]!='T' and res[j]!='G'){
-			fail=true;
-			break;
-		}
-	}
-	if(fail){
-		cout<<res<<endl;
-		for(uint i(0);i<vect.size();++i){
-			printUC(vect[i]);
-		}
-		cin.get();
+		res.append(int2string[vect[i]>>6][vect[i]&0b00111111]);
+		// switch(vect[i]>>6){
+		// 	case 3:
+		// 		res.append(int2string3[vect[i]&0b00111111]);
+		// 		break;
+		// 	case 2:
+		// 		res.append(int2string2[vect[i]&0b00001111]);
+		// 		break;
+		// 	default:
+		// 		res.append(int2string1[vect[i]&0b00000011]);
+		// 		break;
+		// }
 	}
 	return res;
 }
@@ -314,22 +312,20 @@ string binSeq::str(){
 
 void binSeq::str2(string& res){
 	res.clear();
-	res.reserve(vect.size());
+	res.reserve(3*vect.size());
 	for(uint i(0);i<vect.size();++i){
-		switch (vect[i]>>6) {
-			case 3:
-				//~ res+=(int2string3[c]);
-				res.append(int2string3[vect[i]&0b00111111]);
-				break;
-			case 2:
-				res.append(int2string2[vect[i]&0b00001111]);
-				//~ res+=(int2string2[c]);
-				break;
-			default:
-				//~ res+=(int2string1[c]);
-				res.append(int2string1[vect[i]&0b00000011]);
-				break;
-		}
+		res.append(int2string[vect[i]>>6][vect[i]&0b00111111]);
+		// switch (vect[i]>>6) {
+		// 	case 3:
+		// 		res.append(int2string3[vect[i]&0b00111111]);
+		// 		break;
+		// 	case 2:
+		// 		res.append(int2string2[vect[i]&0b00001111]);
+		// 		break;
+		// 	default:
+		// 		res.append(int2string1[vect[i]&0b00000011]);
+		// 		break;
+		// }
 	}
 }
 
@@ -421,75 +417,10 @@ kmer binSeq::getBeginInt(uint size){
 }
 
 
-overlap binSeq::getBeginIntOver(uint size){
-	overlap res(0);
-	uint i(0);
-	for(uint c(0); c<min(size,maxNuc);++i){
-		uint ch(vect[i]);
-		uint mod(ch>>6);
-		int n(c+mod-size);
-		if(n<=0){
-			res<<=(2*mod);
-			res+=(ch&0b00111111);
-			c+=mod;
-		}else{
-			if(n==2){
-				ch&=0b00110000;
-				res<<=2;
-				res+=(ch>>4);
-				//~ c++;
-				return res;
-			}else{
-				ch&=0b00111100;
-				res<<=(2*mod-2);
-				res+=(ch>>2);
-				//~ c+=2;
-				return res;
-			}
-		}
-	}
-	return res;
-}
-
-
 kmer binSeq::getBeginRcInt(uint size){
 	kmer res(0),inter;
 	uint i(0);
 	for(uint c(0); c<size;++i){
-		uint ch(rc[vect[i]]);
-		uint mod(ch>>6);
-		int n(c+mod-size);
-		if(n<=0){
-			inter=(ch&0b00111111);
-				inter<<=(2*c);
-				res+=inter;
-				c+=mod;
-		}else{
-			if(n==1){
-				if(mod==3){
-					inter=(ch&0b00001111);
-				}else{
-					inter=(ch&0b0000011);
-				}
-				inter<<=(2*c);
-				res+=inter;
-				return res;
-			}else{
-				inter=((ch&0b00000011));
-				inter<<=(2*c);
-				res+=inter;
-				return res;
-			}
-		}
-	}
-	return res;
-}
-
-
-overlap binSeq::getBeginRcIntOver(uint size){
-	overlap res(0),inter;
-	uint i(0);
-	for(uint c(0); c<min(maxNuc,size);++i){
 		uint ch(rc[vect[i]]);
 		uint mod(ch>>6);
 		int n(c+mod-size);
@@ -584,83 +515,10 @@ kmer binSeq::getEndInt(uint size){
 }
 
 
-overlap binSeq::getEndIntOver(uint size){
-	overlap res(0),inter(0);
-	uint i(vect.size()-1);
-	for(uint c(0); c<min(maxNuc,size);--i){
-		uint ch(vect[i]);
-		uint mod(ch>>6);
-		int n(c+mod-size);
-
-		if(n<=0){
-			inter=(ch&0b00111111);
-			inter<<=(2*c);
-			res+=inter;
-			c+=mod;
-		}else{
-			if(n==1){
-				if(mod==2){
-					inter=(ch&0b00000011);
-				}else{
-					inter=(ch&0b00001111);
-				}
-				inter<<=(2*c);
-				res+=inter;
-				//~ c+=2;
-				return res;
-			}else{
-				inter=(ch&0b00000011);
-				inter<<=(2*c);
-				res+=inter;
-				//~ c++;
-				return res;
-			}
-		}
-	}
-	return res;
-}
-
-
 kmer binSeq::getEndRcInt(uint size){
 	kmer res(0);
 	uint i(vect.size()-1);
 	for(uint c(0); c<size;--i){
-		uint ch(rc[vect[i]]);
-		uint mod(ch>>6);
-		int n(c+mod-size);
-		if(n<=0){
-			res<<=(2*mod);
-			res+=(ch&0b00111111);
-			c+=mod;
-		}else{
-			if(n==1){
-				if(mod==3){
-					ch&=0b00111100;
-					res<<=4;
-					res+=(ch>>2);
-					return res;
-				}else{
-					ch&=0b00110000;
-					res<<=2;
-					res+=(ch>>4);
-					return res;
-				}
-			}else{
-				ch&=0b00110000;
-				res<<=2;
-				res+=(ch>>4);
-				return res;
-			}
-		}
-	}
-	return res;
-}
-
-
-overlap binSeq::getEndRcIntOver(uint size){
-	overlap res(0);
-	uint i(vect.size()-1);
-	for(uint c(0); c<min(maxNuc,size);--i){
 		uint ch(rc[vect[i]]);
 		uint mod(ch>>6);
 		int n(c+mod-size);

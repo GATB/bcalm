@@ -14,9 +14,6 @@
 using namespace std;
 
 
-struct comparator{bool operator()(const kmerIndice& a , const kmerIndice& b) { return a.kmmer < b.kmmer; }};
-
-
 string reverseinplace(string& str){
 	uint i(str.size()-1),j(0);
 	for(; j<str.size()/2; --i, ++j){

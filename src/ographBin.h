@@ -17,8 +17,8 @@ class graph4{
 	public:
 		uint k,indiceUnitigs,nbElement,minimizer,minsize;
 		binSeq* unitigs;
-		vector<overlapIndice> left;
-		vector<overlapIndice> right;
+		vector<kmerIndice> left;
+		vector<kmerIndice> right;
 		void addvertex(string& str);
         void addtuple(tuple<binSeq,uint,uint>& tuple);
 		void addleftmin(unsigned int mini);
