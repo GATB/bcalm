@@ -16,7 +16,6 @@ using namespace std;
 
 kmer graph4::rcb(kmer min){
 	kmer resrcb(0);
-	kmer offsetrcb(1);
 	for(uint i(0); i<k;++i){
 		resrcb+=(3-(min%4))<<(2*(k-1-i));
 		min>>=2;
@@ -26,42 +25,40 @@ kmer graph4::rcb(kmer min){
 
 
 void graph4::compaction(uint iL,  uint iR){
-	// cout<<iL<<" "<<iR<<endl;
-	// cout<<"gocomp"<<endl;
 	uint s1(unitigs[iL].size()),s2(unitigs[iR].size());
 	bool b1(unitigs[iL].isInt),b2(unitigs[iR].isInt);
 	if(b1 and b2){return compaction((unitigs[iL].getNumber()),(unitigs[iR]).getNumber());}
 	if(b1){return compaction(unitigs[iL].getNumber(),iR);}
 	if(b2){return compaction(iL,unitigs[iR].getNumber());}
 
-	kmer end1(unitigs[iL].getEndInt(k));
-	kmer beg2(unitigs[iR].getBeginInt(k));
+	kmer end1(unitigs[iL].getEndInt());
+	kmer beg2(unitigs[iR].getBeginInt());
 	if(end1==beg2){
-		unitigs[iL].add(unitigs[iR].sub(k));
+		unitigs[iL].add(unitigs[iR].sub());
 		unitigs[iR]=binSeq(iL);
 		return;
 	}
 
-	binSeq rc2(unitigs[iR].getReverse());
-	kmer begrc2(unitigs[iR].getEndRcInt(k));
-	if(end1==begrc2){
-		unitigs[iL].add(rc2.sub(k));
-		unitigs[iR]=binSeq(iL);
-		return;
-	}
-
-	kmer beg1(unitigs[iL].getBeginInt(k));
-	kmer end2(unitigs[iR].getEndInt(k));
+	kmer beg1(unitigs[iL].getBeginInt());
+	kmer end2(unitigs[iR].getEndInt());
 	if(end2==beg1){
-		unitigs[iR].add(unitigs[iL].sub(k));
+		unitigs[iR].add(unitigs[iL].sub());
 		unitigs[iL]=binSeq(iR);
 		return;
 	}
 
-	kmer endrc2(unitigs[iR].getBeginRcInt(k));
+	kmer begrc2(rcb(end2));
+	if(end1==begrc2){
+		unitigs[iR].reverse();
+		unitigs[iL].add(unitigs[iR].sub());
+		unitigs[iR]=binSeq(iL);
+		return;
+	}
+
+	kmer endrc2(rcb(beg2));
 	if(endrc2==beg1){
-		rc2.add(unitigs[iL].sub(k));
-		unitigs[iR]=rc2;
+		unitigs[iR].reverse();
+		unitigs[iR].add(unitigs[iL].sub());
 		unitigs[iL]=binSeq(iR);
 		return;
 	}
@@ -114,8 +111,8 @@ uint graph4::size(){return indiceUnitigs;};
 void graph4::addtuple(tuple<binSeq,uint,uint>& tuple){
 	unitigs[indiceUnitigs]=(get<0>(tuple));
 	if(minimizer==(get<1>(tuple))){
-		kmer kmer1(unitigs[indiceUnitigs].getBeginInt(k));
-		kmer kmer2(unitigs[indiceUnitigs].getBeginRcInt(k));
+		kmer kmer1(unitigs[indiceUnitigs].getBeginInt());
+		kmer kmer2(rcb(kmer1));
 		if(kmer1<kmer2){
 			left.push_back(kmerIndice{indiceUnitigs,kmer1});
 		}else{
@@ -123,8 +120,8 @@ void graph4::addtuple(tuple<binSeq,uint,uint>& tuple){
 		}
 	}
 	if(minimizer==get<2>(tuple)){
-		kmer kmer1(unitigs[indiceUnitigs].getEndInt(k));
-		kmer kmer2(unitigs[indiceUnitigs].getEndRcInt(k));
+		kmer kmer1(unitigs[indiceUnitigs].getEndInt());
+		kmer kmer2(rcb(kmer1));
 		if(kmer1<kmer2){
 			right.push_back(kmerIndice{indiceUnitigs,kmer1});
 		}else{

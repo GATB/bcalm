@@ -29,6 +29,8 @@ struct kmerIndice{
 	kmer kmmer;
 };
 
+static uint kmerBinseq;
+
 
 using namespace std;
 
@@ -43,12 +45,12 @@ public:
 
 	string str();
 	void str2(string& res);
-	binSeq sub(uint begin);
+	binSeq sub();
 	binSeq sub(uint begin,uint size);
 	binSeq getBegin(uint size);
 	binSeq getEnd(uint size);
-	kmer getEndInt(uint size);
-	kmer getBeginInt(uint size);
+	kmer getEndInt();
+	kmer getBeginInt();
 	kmer getBeginRcInt(uint size);
 	kmer getEndRcInt(uint size);
 	void reverse();
@@ -67,7 +69,7 @@ public:
 };
 
 
-void initBinSeq();
+void initBinSeq(uint k);
 
 
 void testBinSeq();

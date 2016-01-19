@@ -16,7 +16,7 @@ string RCnadine(const string& str){
 	uint n = str.size();
 	for(int i(n-1), j(0); i > -1; i--, j++){
 		unsigned char c = str[i];
-		unsigned char d = (c >> 4)&7;
+		// unsigned char d = (c >> 4)&7;
 		c ^= 4;
 		if ((c&3) != 3)
 			c ^= 17;
@@ -123,8 +123,8 @@ uint functionwihtoutcoll(uint8_t x,uint8_t y){
 }
 
 
-void initBinSeq(){
-	// exit(0);
+void initBinSeq(uint k){
+	kmerBinseq=k-1;
 
 	char2int1[65]=0b01000000;
 	char2int1[67]=0b01000001;
@@ -265,12 +265,11 @@ binSeq::binSeq(const string& str){
 	isInt=false;
 	uint mod(str.size()%3);
 	uint i(0);
-	vect.reserve((str.size()/3)+mod);
+	vect.reserve((str.size()/3)+1);
 	for (; i<str.size()-mod; i+=3){
 		vect.push_back(char2int[functionwihtoutcoll(str[i],str[i+1],str[i+2])]);
 		//~ vect.push_back(0x11000000 | char2Byte[str[i]] | char2Byte1[str[i+1]] | char2Byte2[str[i+2]]);
 	}
-
 	if(mod!=0){
 		if(mod==1){
 			vect.push_back(char2int1[(uint8_t)(str[i])]);
@@ -289,48 +288,60 @@ binSeq::binSeq(const binSeq& bs){
 
 
 string binSeq::str(){
-	// cout<<endl;
 	string res;
 	res.reserve(3*vect.size());
 	for(uint i(0);i<vect.size();++i){
 		res.append(int2string[vect[i]>>6][vect[i]&0b00111111]);
-		// switch(vect[i]>>6){
-		// 	case 3:
-		// 		res.append(int2string3[vect[i]&0b00111111]);
-		// 		break;
-		// 	case 2:
-		// 		res.append(int2string2[vect[i]&0b00001111]);
-		// 		break;
-		// 	default:
-		// 		res.append(int2string1[vect[i]&0b00000011]);
-		// 		break;
-		// }
 	}
+	// for(uint i(0);i<res.size();++i){
+	// 	if(res[i]!='A' and res[i]!='C' and res[i]!='G' and res[i]!='T'){
+	// 		cout<<"lol"<<endl;
+	// 		exit(0);
+	// 	}
+	// }
 	return res;
 }
 
 
-void binSeq::str2(string& res){
-	res.clear();
-	res.reserve(3*vect.size());
-	for(uint i(0);i<vect.size();++i){
-		res.append(int2string[vect[i]>>6][vect[i]&0b00111111]);
-		// switch (vect[i]>>6) {
-		// 	case 3:
-		// 		res.append(int2string3[vect[i]&0b00111111]);
-		// 		break;
-		// 	case 2:
-		// 		res.append(int2string2[vect[i]&0b00001111]);
-		// 		break;
-		// 	default:
-		// 		res.append(int2string1[vect[i]&0b00000011]);
-		// 		break;
-		// }
-	}
-}
+// void binSeq::str2(string& res){
+// 	res.clear();
+// 	res.reserve(3*vect.size());
+// 	for(uint i(0);i<vect.size();++i){
+// 		res.append(int2string[vect[i]>>6][vect[i]&0b00111111]);
+// 	}
+// }
 
 
-binSeq binSeq::sub(uint begin){
+// binSeq binSeq::sub(){
+// 	uint begin(30);
+// 	binSeq res;
+// 	res.vect.reserve(vect.size());
+// 	uint count(0);
+// 	bool go(true);
+// 	uint i(0);
+// 	for(; go; ++i){
+// 		uint c(vect[i]);
+// 		uint n(c>>6);
+// 		if(count+n<begin){
+// 			count+=n;
+// 		}else{
+// 			go=false;
+// 			if(count+n!=begin){
+// 				if(count+n-begin==1){
+// 					res.vect.push_back((1<<6)| c&0b00000011);
+// 				}else{
+// 					res.vect.push_back((2<<6)| c&0b00001111);
+// 				}
+// 			}
+// 		}
+// 	}
+// 	res.vect.insert(res.vect.end(), vect.begin()+i, vect.end());
+// 	return res;
+// }
+
+
+
+binSeq binSeq::sub(){
 	binSeq res;
 	res.vect.reserve(vect.size());
 	uint count(0);
@@ -339,12 +350,12 @@ binSeq binSeq::sub(uint begin){
 	for(; go; ++i){
 		uint c(vect[i]);
 		uint n(c>>6);
-		if(count+n<begin){
+		if(count+n<kmerBinseq){
 			count+=n;
 		}else{
 			go=false;
-			if(count+n!=begin){
-				if(count+n-begin==1){
+			if(count+n!=kmerBinseq){
+				if(count+n-kmerBinseq==1){
 					res.vect.push_back((1<<6)| c&0b00000011);
 				}else{
 					res.vect.push_back((2<<6)| c&0b00001111);
@@ -355,44 +366,44 @@ binSeq binSeq::sub(uint begin){
 	res.vect.insert(res.vect.end(), vect.begin()+i, vect.end());
 	return res;
 }
+//
+// //
+// binSeq binSeq::getBegin(uint size){
+// 	binSeq res;
+// 	uint i(0);
+// 	for(uint c(0); c<size;++i){
+// 		uint ch(vect[i]);
+// 		uint mod(ch>>6);
+// 		uint n(c+mod-size);
+//
+// 		switch (n){
+// 			case 1:
+// 				ch&=0b00111100;
+// 				res.vect.push_back((2<<6)|(ch>>2));
+// 				c+=2;
+// 				break;
+// 			case 2:
+// 				ch&=0b00110000;
+// 				res.vect.push_back((1<<6)|(ch>>4));
+// 				c++;
+// 				break;
+// 			default:
+// 				res.vect.push_back(ch);
+// 				c+=mod;
+// 				break;
+// 		}
+// 	}
+// 	return res;
+// }
 
 
-binSeq binSeq::getBegin(uint size){
-	binSeq res;
-	uint i(0);
-	for(uint c(0); c<size;++i){
-		uint ch(vect[i]);
-		uint mod(ch>>6);
-		uint n(c+mod-size);
-
-		switch (n){
-			case 1:
-				ch&=0b00111100;
-				res.vect.push_back((2<<6)|(ch>>2));
-				c+=2;
-				break;
-			case 2:
-				ch&=0b00110000;
-				res.vect.push_back((1<<6)|(ch>>4));
-				c++;
-				break;
-			default:
-				res.vect.push_back(ch);
-				c+=mod;
-				break;
-		}
-	}
-	return res;
-}
-
-
-kmer binSeq::getBeginInt(uint size){
+kmer binSeq::getBeginInt(){
 	kmer res(0);
 	uint i(0);
-	for(uint c(0); c<size;++i){
+	for(uint c(0); c<kmerBinseq;++i){
 		uint ch(vect[i]);
 		uint mod(ch>>6);
-		int n(c+mod-size);
+		int n(c+mod-kmerBinseq);
 		if(n<=0){
 			res<<=(2*mod);
 			res+=(ch&0b00111111);
@@ -402,13 +413,11 @@ kmer binSeq::getBeginInt(uint size){
 				ch&=0b00110000;
 				res<<=2;
 				res+=(ch>>4);
-				//~ c++;
 				return res;
 			}else{
 				ch&=0b00111100;
 				res<<=(2*mod-2);
 				res+=(ch>>2);
-				//~ c+=2;
 				return res;
 			}
 		}
@@ -416,76 +425,75 @@ kmer binSeq::getBeginInt(uint size){
 	return res;
 }
 
+//
+// kmer binSeq::getBeginRcInt(uint size){
+// 	kmer res(0),inter;
+// 	uint i(0);
+// 	for(uint c(0); c<size;++i){
+// 		uint ch(rc[vect[i]]);
+// 		uint mod(ch>>6);
+// 		int n(c+mod-size);
+// 		if(n<=0){
+// 			inter=(ch&0b00111111);
+// 				inter<<=(2*c);
+// 				res+=inter;
+// 				c+=mod;
+// 		}else{
+// 			if(n==1){
+// 				if(mod==3){
+// 					inter=(ch&0b00001111);
+// 				}else{
+// 					inter=(ch&0b0000011);
+// 				}
+// 				inter<<=(2*c);
+// 				res+=inter;
+// 				return res;
+// 			}else{
+// 				inter=((ch&0b00000011));
+// 				inter<<=(2*c);
+// 				res+=inter;
+// 				return res;
+// 			}
+// 		}
+// 	}
+// 	return res;
+// }
+//
+// //
+// binSeq binSeq::getEnd(uint size){
+// 	binSeq res;
+// 	uint i(vect.size()-1);
+// 	for(uint c(0); c<size;--i){
+// 		uint ch(vect[i]);
+// 		uint mod(ch>>6);
+// 		int n(c+mod-size);
+// 		switch (n){
+// 			case 1:
+// 				res.vect.push_back((2<<6)|(ch&0b00001111));
+// 				c+=2;
+// 				break;
+// 			case 2:
+// 				res.vect.push_back((1<<6)|(ch&0b00000011));
+// 				c++;
+// 				break;
+// 			default:
+// 				res.vect.push_back(ch);
+// 				c+=mod;
+// 				break;
+// 		}
+// 	}
+// 	::reverse(res.vect.begin(),res.vect.end());
+// 	return res;
+// }
+//
 
-kmer binSeq::getBeginRcInt(uint size){
-	kmer res(0),inter;
-	uint i(0);
-	for(uint c(0); c<size;++i){
-		uint ch(rc[vect[i]]);
-		uint mod(ch>>6);
-		int n(c+mod-size);
-		if(n<=0){
-			inter=(ch&0b00111111);
-				inter<<=(2*c);
-				res+=inter;
-				c+=mod;
-		}else{
-			if(n==1){
-				if(mod==3){
-					inter=(ch&0b00001111);
-				}else{
-					inter=(ch&0b0000011);
-				}
-				inter<<=(2*c);
-				res+=inter;
-				return res;
-			}else{
-				inter=((ch&0b00000011));
-				inter<<=(2*c);
-				res+=inter;
-				return res;
-			}
-		}
-	}
-	return res;
-}
-
-
-binSeq binSeq::getEnd(uint size){
-	binSeq res;
-	uint i(vect.size()-1);
-	for(uint c(0); c<size;--i){
-		uint ch(vect[i]);
-		uint mod(ch>>6);
-		int n(c+mod-size);
-		switch (n){
-			case 1:
-				res.vect.push_back((2<<6)|(ch&0b00001111));
-				c+=2;
-				break;
-			case 2:
-				res.vect.push_back((1<<6)|(ch&0b00000011));
-				c++;
-				break;
-			default:
-				res.vect.push_back(ch);
-				c+=mod;
-				break;
-		}
-	}
-	::reverse(res.vect.begin(),res.vect.end());
-	return res;
-}
-
-
-kmer binSeq::getEndInt(uint size){
+kmer binSeq::getEndInt(){
 	kmer res(0),inter(0);
 	uint i(vect.size()-1);
-	for(uint c(0); c<size;--i){
+	for(uint c(0); c<kmerBinseq;--i){
 		uint ch(vect[i]);
 		uint mod(ch>>6);
-		int n(c+mod-size);
-
+		int n(c+mod-kmerBinseq);
 		if(n<=0){
 			inter=(ch&0b00111111);
 			inter<<=(2*c);
@@ -514,57 +522,50 @@ kmer binSeq::getEndInt(uint size){
 	return res;
 }
 
+//
+// kmer binSeq::getEndRcInt(uint size){
+// 	kmer res(0);
+// 	uint i(vect.size()-1);
+// 	for(uint c(0); c<size;--i){
+// 		uint ch(rc[vect[i]]);
+// 		uint mod(ch>>6);
+// 		int n(c+mod-size);
+// 		if(n<=0){
+// 			res<<=(2*mod);
+// 			res+=(ch&0b00111111);
+// 			c+=mod;
+// 		}else{
+// 			if(n==1){
+// 				if(mod==3){
+// 					ch&=0b00111100;
+// 					res<<=4;
+// 					res+=(ch>>2);
+// 					return res;
+// 				}else{
+// 					ch&=0b00110000;
+// 					res<<=2;
+// 					res+=(ch>>4);
+// 					return res;
+// 				}
+// 			}else{
+// 				ch&=0b00110000;
+// 				res<<=2;
+// 				res+=(ch>>4);
+// 				return res;
+// 			}
+// 		}
+// 	}
+// 	return res;
+// }
+//
 
-kmer binSeq::getEndRcInt(uint size){
-	kmer res(0);
-	uint i(vect.size()-1);
-	for(uint c(0); c<size;--i){
-		uint ch(rc[vect[i]]);
-		uint mod(ch>>6);
-		int n(c+mod-size);
-		if(n<=0){
-			res<<=(2*mod);
-			res+=(ch&0b00111111);
-			c+=mod;
-		}else{
-			if(n==1){
-				if(mod==3){
-					ch&=0b00111100;
-					res<<=4;
-					res+=(ch>>2);
-					return res;
-				}else{
-					ch&=0b00110000;
-					res<<=2;
-					res+=(ch>>4);
-					return res;
-				}
-			}else{
-				ch&=0b00110000;
-				res<<=2;
-				res+=(ch>>4);
-				return res;
-			}
-		}
-	}
-	return res;
-}
-
-
-void binSeq::add(const binSeq& bs){
-	vect.insert(vect.end(), bs.vect.begin(), bs.vect.end());
-}
+void binSeq::add(const binSeq& bs){vect.insert(vect.end(), bs.vect.begin(), bs.vect.end());}
 
 
-binSeq::binSeq(){
-	isInt=false;
-	//~ isNumber=false;
-}
+binSeq::binSeq(){vect.reserve(kmerBinseq/3+1);isInt=false;}
 
 
-uint binSeq::size(){
-	return vect.size();
-}
+uint binSeq::size(){return vect.size();}
 
 
 binSeq::binSeq(uint n){
@@ -585,17 +586,17 @@ uint binSeq::getNumber(){
 	return res;
 }
 
-
-kmer binSeq::getInt(){
-	kmer res(0);
-	for(uint i(0); i<vect.size(); ++i){
-		uint c(vect[i]);
-		//~ uint mod(c/(1<<6));
-		res<<=(2*(c>>6));
-		res+=c&0b00111111;
-	}
-	return res;
-}
+//
+// kmer binSeq::getInt(){
+// 	kmer res(0);
+// 	for(uint i(0); i<vect.size(); ++i){
+// 		uint c(vect[i]);
+// 		//~ uint mod(c/(1<<6));
+// 		res<<=(2*(c>>6));
+// 		res+=c&0b00111111;
+// 	}
+// 	return res;
+// }
 
 
 void binSeq::clear(){
@@ -615,7 +616,7 @@ binSeq binSeq::getReverse(){
 
 void binSeq::reverse(){
 	//~ cout<<str()<<endl;
-	string lol(RCnadine(str()));
+	// string lol(RCnadine(str()));
 	uint s(vect.size());
 	uint i(0);
 	for(; i<s/2 ;++i){

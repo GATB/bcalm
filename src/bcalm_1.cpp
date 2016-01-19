@@ -12,7 +12,7 @@
 #include <tuple>
 #include "binSeq.h"
 #define OSX 1
-// #define BINSEQ
+#define BINSEQ
 #ifndef OSX
 #include <sys/sysinfo.h> // to determine system memory
 #endif
@@ -173,7 +173,7 @@ void bcalm_1::execute (){
      * VARIOUS INIT
      *
      */
-	initBinSeq();
+	initBinSeq(kmerSize);
     /** We set BankBinary buffer. */
     BankBinary::setBufferSize (10000);
 
@@ -332,6 +332,19 @@ void bcalm_1::execute (){
             }
         };
 
+        // auto add_to_bucket_queue = [&active_minimizers, &bucket_queues](uint32_t minimizer, __uint128_t seq, uint32_t leftmin, uint32_t rightmin, int p)
+        // {
+        //     //std::cout << "adding elt to bucket: " << seq << " "<< minimizer<<std::endl;
+        //     bucket_queues[minimizer].enqueue(std::make_tuple(seq,leftmin,rightmin));
+        //
+        //     if (active_minimizers[p].find(minimizer) == active_minimizers[p].end())
+        //     {
+        //         active_minimizers_mutex.lock();
+        //         active_minimizers[p].insert(minimizer);
+        //         active_minimizers_mutex.unlock();
+        //     }
+        // };
+
         std::atomic<long> nb_left_min_diff_right_min;
         nb_left_min_diff_right_min = 0;
         std::atomic<uint32_t> kmerInGraph;
@@ -351,11 +364,13 @@ void bcalm_1::execute (){
             Kmer<SPAN>::Type current = item.value;
 
             string seq = model.toString(current);
-
             Model::Kmer kmmerBegin = modelK1.codeSeed(seq.substr(0, k - 1).c_str(), Data::ASCII);
             uint32_t leftMin(modelK1.getMinimizerValue(kmmerBegin.value()));
             Model::Kmer kmmerEnd = modelK1.codeSeed(seq.substr(seq.size() - k + 1, k - 1).c_str(), Data::ASCII);
             uint32_t rightMin(modelK1.getMinimizerValue(kmmerEnd.value()));
+            // string seq;
+            // uint32_t leftMin(0);
+            // uint32_t rightMin(0);
 
             ++kmerInGraph;
 
@@ -482,12 +497,10 @@ void bcalm_1::execute (){
                         seq=graphCompactor.unitigs[i]; // graph3
                         #endif
 
-
-                        int k = kmerSize;
-                        Model::Kmer kmmerBegin = modelK1.codeSeed(seq.substr(0, k - 1).c_str(), Data::ASCII);
-                        uint32_t leftMin(modelK1.getMinimizerValue(kmmerBegin.value()));
-                        Model::Kmer kmmerEnd = modelK1.codeSeed(seq.substr(seq.size() - k + 1, k - 1).c_str(), Data::ASCII);
-                        uint32_t rightMin(modelK1.getMinimizerValue(kmmerEnd.value()));
+                        Model::Kmer kmmerBegin = modelK1.codeSeed(seq.substr(0, kmerSize - 1).c_str(), Data::ASCII);
+                        uint leftMin(modelK1.getMinimizerValue(kmmerBegin.value()));
+                        Model::Kmer kmmerEnd = modelK1.codeSeed(seq.substr(seq.size() - kmerSize + 1, kmerSize - 1).c_str(), Data::ASCII);
+                        uint rightMin(modelK1.getMinimizerValue(kmmerEnd.value()));
                         bool lmark = actualMinimizer != leftMin;
                         bool rmark = actualMinimizer != rightMin;
 
