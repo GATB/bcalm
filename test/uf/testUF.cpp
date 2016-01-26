@@ -1,7 +1,7 @@
 
 #include <random>
 #include <set>
-#include "../bglue/unionFind.hpp"
+#include "../../bglue/unionFind.hpp"
     
 int main()
 {

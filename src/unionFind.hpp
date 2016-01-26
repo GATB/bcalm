@@ -4,6 +4,7 @@
 #include <vector>
 #include <atomic>
 #include <iostream>
+#include <unordered_map>
 
 /**
  * Lock-free parallel disjoint set data structure (aka UNION-FIND)
