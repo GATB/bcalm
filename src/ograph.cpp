@@ -289,65 +289,60 @@ kmer graph3::rcb(kmer min){
 
 
 void graph3::compaction(uint iL,  uint iR){
-	// if(iL==lol and found ){
-	// 	cout<<"compactionL !"<<endl;
-	// }
-	// if(iR==lol  and found){
-	// 	cout<<"compactionR !"<<endl;
-	// }
-	uint s1(unitigs[iL].size()),s2(unitigs[iR].size());
-	bool b1(isNumber(unitigs[iL][0])),b2(isNumber(unitigs[iR][0]));
-	if(b1 and b2){return compaction(stoi(unitigs[iL]),stoi(unitigs[iR]));}
-	if(b1){return compaction(stoi(unitigs[iL]),iR);}
-	if(b2){return compaction(iL,stoi(unitigs[iR]));}
+	if(iR!=iL){
+		uint s1(unitigs[iL].size()),s2(unitigs[iR].size());
+		bool b1(isNumber(unitigs[iL][0])),b2(isNumber(unitigs[iR][0]));
+		if(b1 and b2){return compaction(stoi(unitigs[iL]),stoi(unitigs[iR]));}
+		if(b1){return compaction(stoi(unitigs[iL]),iR);}
+		if(b2){return compaction(iL,stoi(unitigs[iR]));}
 
-	kmer beg1(beg2int128(unitigs[iL]));
-	kmer end2(end2int128(unitigs[iR]));
-	if(beg1==end2){
-		unitigs[iR]+=(unitigs[iL].substr(k));
-		// if((iL==lol or iR==lol) and found){
-		// 	cout<<unitigs[iR]<<endl;
-		// 	lol=iR;
-		// }
-		unitigs[iL]=to_string(iR);
-		return;
-	}
+		kmer beg1(beg2int128(unitigs[iL]));
+		kmer end2(end2int128(unitigs[iR]));
+		if(beg1==end2){
+			unitigs[iR]+=(unitigs[iL].substr(k));
+			// if((iL==lol or iR==lol) and found){
+			// 	cout<<unitigs[iR]<<endl;
+			// 	lol=iR;
+			// }
+			unitigs[iL]=to_string(iR);
+			return;
+		}
 
-	kmer endrc2(beg2int128rc(unitigs[iR]));
-	if(beg1==endrc2){
-		reverseinplace2(unitigs[iR]);
-		unitigs[iR]+=(unitigs[iL].substr(k));
-		// 	if((iL==lol or iR==lol) and found){
-		// 	cout<<unitigs[iR]<<endl;
-		// 	lol=iR;
-		// }
-		unitigs[iL]=to_string(iR);
-		return;
-	}
+		kmer endrc2(beg2int128rc(unitigs[iR]));
+		if(beg1==endrc2){
+			reverseinplace2(unitigs[iR]);
+			unitigs[iR]+=(unitigs[iL].substr(k));
+			// 	if((iL==lol or iR==lol) and found){
+			// 	cout<<unitigs[iR]<<endl;
+			// 	lol=iR;
+			// }
+			unitigs[iL]=to_string(iR);
+			return;
+		}
 
-	kmer beg2(rcb(endrc2));
-	kmer end1(end2int128(unitigs[iL]));
-	if(end1==beg2){
-		unitigs[iL]+=(unitigs[iR].substr(k));
-		// 	if((iL==lol or iR==lol) and found){
-		// 	cout<<unitigs[iL]<<endl;
-		// 	lol=iL;
-		// }
-		unitigs[iR]=to_string(iL);
-		return;
-	}
+		kmer beg2(rcb(endrc2));
+		kmer end1(end2int128(unitigs[iL]));
+		if(end1==beg2){
+			unitigs[iL]+=(unitigs[iR].substr(k));
+			// 	if((iL==lol or iR==lol) and found){
+			// 	cout<<unitigs[iL]<<endl;
+			// 	lol=iL;
+			// }
+			unitigs[iR]=to_string(iL);
+			return;
+		}
 
-	kmer begrc2(rcb(end2));
-	if(end1==begrc2){
-		unitigs[iL]+=(reverseinplace(unitigs[iR]).substr(k));
-		// if((iL==lol or iR==lol) and found){
-		// 	cout<<unitigs[iL]<<endl;
-		// 	lol=iL;
-		// }
-		unitigs[iR]=to_string(iL);
-		return;
+		kmer begrc2(rcb(end2));
+		if(end1==begrc2){
+			unitigs[iL]+=(reverseinplace(unitigs[iR]).substr(k));
+			// if((iL==lol or iR==lol) and found){
+			// 	cout<<unitigs[iL]<<endl;
+			// 	lol=iL;
+			// }
+			unitigs[iR]=to_string(iL);
+			return;
+		}
 	}
-	// cout<<"wut"<<endl;
 }
 
 
@@ -393,13 +388,6 @@ uint graph3::size(){return indiceUnitigs;};
 
 void graph3::addtuple(tuple<string,uint,uint>& tuple){
 	unitigs[indiceUnitigs]=move(get<0>(tuple));
-	// if(unitigs[indiceUnitigs]=="GCCCTATATATATATCCTATATATATATGCC"){
-	// 	cout<<"found"<<endl;
-	// 	cout<<indiceUnitigs<<endl;
-	// 	// lol=indiceUnitigs;
-	// 	// found=true;
-	// 	// exit(0);
-	// }
 	if(minimizer==(get<1>(tuple))){
 		kmer kmer1(beg2int128(unitigs[indiceUnitigs]));
 		kmer kmer2(rcb(kmer1));
