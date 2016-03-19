@@ -2,7 +2,6 @@
 #include <bcalm_1.hpp>
 #include <glue.hpp>
 #include <ograph.h>
-#include <ographBin.h>
 #include <iostream>
 #include <memory>
 #include <iostream>
@@ -11,8 +10,10 @@
 #include <chrono>
 #include <tuple>
 #include "binSeq.h"
+
+//#define BINSEQ // graph4 is not ready
+
 #define OSX 1
-#define BINSEQ
 #ifndef OSX
 #include <sys/sysinfo.h> // to determine system memory
 #endif
@@ -151,7 +152,7 @@ void bcalm_1::execute (){
         {
             string dsk_disk = (getInput()->getStr("-dsk-disk").compare("default") != 0) ? ("-max-disk " + getInput()->getStr("-dsk-disk")) : "";
 
-            Graph graph = Graph::create ("-in %s -kmer-size %d -minimizer-size %d  -bloom none -out %s.h5  -abundance-min %d -verbose 1 -minimizer-type %d -repartition-type 1 -max-memory %d %s", inputFile.c_str(), kmerSize, minSize, prefix.c_str(), abundance, minimizer_type, dsk_memory, dsk_disk.c_str());
+            Graph graph = Graph::create ("-in %s -kmer-size %d -minimizer-size %d -mphf none -bloom none -out %s.h5  -abundance-min %d -verbose 1 -minimizer-type %d -repartition-type 1 -max-memory %d %s", inputFile.c_str(), kmerSize, minSize, prefix.c_str(), abundance, minimizer_type, dsk_memory, dsk_disk.c_str());
 
             did_kmercounting = true;
         }
