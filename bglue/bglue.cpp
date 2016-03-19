@@ -385,7 +385,6 @@ class hasher_t
     }
 };
 
-
 /* main */
 void bglue::execute (){
 
@@ -645,6 +644,8 @@ void bglue::execute (){
 
     // setup output file
     string output_prefix = getInput()->getStr("-out");
+    std::atomic<unsigned long> out_id; // identified for output sequences
+    out_id = 0;
     BufferedFasta out (output_prefix, 4000000 /* give it a large buffer*/);
     out.bank->setDataLineSize(0); // antoine wants one seq per line in output
 
@@ -703,7 +704,7 @@ void bglue::execute (){
     // partition the glue into many files, à la dsk
     auto partitionGlue = [k, &modelCanon /* crashes if copied!*/, \
         &get_partition, &gluePartitions, &gluePartitionsLock,
-        &out, &outLock, &nb_seqs_in_partition]
+        &out, &outLock, &nb_seqs_in_partition, &out_id]
             (const Sequence& sequence)
     {
         string seq = sequence.toString();
@@ -731,7 +732,7 @@ void bglue::execute (){
 
         if (!found_partition) // this one doesn't need to be glued
         {
-            output(seq, out); // maybe could optimize writing by using queues
+            output(seq, out, std::to_string(out_id++)); // maybe could optimize writing by using queues
             return;
         }
 
@@ -780,7 +781,7 @@ void bglue::execute (){
     for (int partition = 0; partition < nbGluePartitions; partition++)
     {
         auto glue_partition = [&modelCanon, &ufkmers, &hasher, partition, &gluePartition_prefix,
-        &get_partition, &out, &outLock]( int thread_id)
+        &get_partition, &out, &outLock, &out_id]( int thread_id)
         {
             int k = kmerSize;
 
@@ -843,7 +844,7 @@ void bglue::execute (){
                 {
                     string seq = glue_sequences(*itO, it->second); // takes as input the indices of ordered sequences, and the markedSeq's themselves
 
-                    output(seq, out);
+                    output(seq, out, std::to_string(out_id++));
                 }
 
                 free_memory_vector(it->second);
