@@ -346,12 +346,45 @@ void graph3::compaction(uint iL,  uint iR){
 }
 
 
+// void graph3::debruijn(){
+// 	sort(left.begin(),left.end(),comparator());
+// 	sort(right.begin(),right.end(),comparator());
+// 	uint iL(0),iR(0);
+// 	kmerIndice kL,kR;
+// 	while(iL!=left.size() and iR!=right.size()){
+// 		kL=left[iL];
+// 		kR=right[iR];
+// 		if(kL.kmmer==kR.kmmer){
+// 			bool go(true);
+// 			++iL;++iR;
+// 				if(left[iL].kmmer==kL.kmmer){
+// 					go=false;
+// 					while(left[++iL].kmmer==kL.kmmer){}
+// 				}
+// 				if(right[iR].kmmer==kL.kmmer){
+// 					go=false;
+// 					while(right[++iR].kmmer==kR.kmmer){}
+// 				}
+// 			if(go){compaction(kL.indice,kR.indice);}
+// 		}else{
+// 			if(kL.kmmer<kR.kmmer){
+// 				while(left[++iL].kmmer==kL.kmmer){}
+// 			}else{
+// 				while(right[++iR].kmmer==kR.kmmer){}
+// 			}
+// 		}
+// 	}
+// }
+
+
 void graph3::debruijn(){
 	sort(left.begin(),left.end(),comparator());
 	sort(right.begin(),right.end(),comparator());
-	uint iL(0),iR(0);
+	uint iL(0),iR(0),sizeLeft(left.size()),sizeRight(right.size());
+	left.push_back({0,(kmer)-1});
+	right.push_back({0,(kmer)-1});
 	kmerIndice kL,kR;
-	while(iL!=left.size() and iR!=right.size()){
+	while(iL!=sizeLeft and iR!=sizeRight){
 		kL=left[iL];
 		kR=right[iR];
 		if(kL.kmmer==kR.kmmer){

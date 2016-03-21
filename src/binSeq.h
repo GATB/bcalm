@@ -19,9 +19,9 @@
 
 typedef unsigned int  uint;
 //if k<=32
-// #define kmer __uint128_t
+#define kmer uint64_t
 //if 32<k<=64
-#define kmer __uint128_t
+// #define kmer __uint128_t
 
 
 struct kmerIndice{
