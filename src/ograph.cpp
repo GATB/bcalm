@@ -53,187 +53,8 @@ uint chartoint(char c){
 		d ^= 1;
 	return d;
 }
-//
-//
-// uint64_t stringtoint(const string& str){
-// 	uint64_t res(0);
-// 	for(uint i(0);i<str.size();i++){
-// 		res<<=2;
-// 		res+=chartoint(str[i]);
-// 	}
-// 	return res;
-// }
-//
-//
-// uint64_t stringtointc(const string& str){
-// 	uint64_t res(0);
-// 	for(int32_t i(str.size()-1);i>=0;i--){
-// 		res<<=2;
-// 		res+=3-chartoint(str[i]);
-// 	}
-// 	return res;
-// }
-//
-//
-// kmer stringtoint128(const string& str){
-// 	kmer res(0);
-// 	for(uint i(0);i<str.size();i++){
-// 		res<<=2;
-// 		res+=chartoint(str[i]);
-// 	}
-// 	return res;
-// }
-//
 
-// kmer stringtointc128(const string& str){
-// 	kmer res(0);
-// 	for(int32_t i(str.size()-1);i>=0;i--){
-// 		res<<=2;
-// 		res+=3-chartoint(str[i]);
-// 	}
-// 	return res;
-// }
-//
-//
-// uint64_t string2intmin(const string& str){
-// 	return min(stringtoint(str),stringtointc(str));
-// }
-//
-//
-// bool accordtomin(int min, int left_or_right_min){
-// 	if(min == -1){
-// 		return true;
-// 	}
-//
-// 	if(left_or_right_min==min)
-// 		return true;
-//
-// 	return false;
-//
-// }
-//
-//
-// string compaction2(const string& seq1,const string& seq2, int k){
-// 	size_t s1(seq1.size()),s2(seq2.size());
-// 	if(s1==0){return seq2;}
-// 	if(s2==0){return seq1;}
-//
-// 	string rc2(reversecompletment(seq2));
-// 	string rc1(reversecompletment(seq1));
-//
-// 	if(seq1.substr(0,k)==seq2.substr(s2-k,k)){
-// 		return seq2+seq1.substr(k);
-// 	}else{
-// 		if(rc2.substr(s2-k,k)==seq1.substr(0,k)){
-// 			return rc2+seq1.substr(k);
-// 		}
-// 	}
-//
-// 	if(seq2.substr(0,k)==seq1.substr(s1-k,k)){
-// 		return seq1+seq2.substr(k);
-// 	}else{
-// 		if(rc1.substr(s1-k,k)==seq2.substr(0,k)){
-// 			return rc1+seq2.substr(k);
-// 		}
-// 	}
-//
-// 	if(rc1.substr(0,k)==seq2.substr(s2-k,k)){
-// 			return seq2+rc1.substr(k);
-// 	}else{
-// 		if(rc2.substr(s2-k,k)==rc1.substr(0,k)){
-// 			return rc2+rc1.substr(k);
-// 		}
-// 	}
-//
-// 	if(rc2.substr(0,k)==seq1.substr(s1-k,k)){
-// 		return seq1+rc2.substr(k);
-// 	}else{
-// 		if(rc1.substr(s1-k,k)==rc2.substr(0,k)){
-// 			return rc1+rc2.substr(k);
-// 		}
-// 	}
-// 	return seq1;
-// }
-//
-//
-// string compaction(const string& seq1,const string& seq2, int k){
-// 	int s1(seq1.size()),s2(seq2.size());
-// 	if(s1==0 or s2==0){
-// 		return seq1;
-// 	}
-// 	string beg1(seq1.substr(0,k));
-// 	if(beg1==seq2.substr(s2-k,k)){
-// 		return seq2+seq1.substr(k);
-// 	}
-//
-// 	string end1(seq1.substr(s1-k,k));
-// 	if(seq2.substr(0,k)==end1){
-// 		return seq1+seq2.substr(k);
-// 	}
-//
-// 	string rc2(reversecompletment(seq2));
-// 	if(rc2.substr(s2-k,k)==beg1){
-// 		return rc2+seq1.substr(k);
-// 	}
-//
-// 	if(rc2.substr(0,k)==end1){
-// 		return seq1+rc2.substr(k);
-// 	}
-// 	return seq1;
-// }
-//
-//
-// string compactionBeg(const string& seq1,const string& seq2, int k){
-// 	int s2(seq2.size());
-// 	string rc2(reversecompletment(seq2));
-// 	//~ string rc1(reversecompletment(seq1));
-// 	string beg(seq1.substr(0,k));
-// 	string begRc(reversecompletment(beg));
-//
-// 	if(beg==seq2.substr(s2-k,k)){
-// 		return seq2+seq1.substr(k);
-// 	}else{
-// 		if(beg==rc2.substr(s2-k,k)){
-// 			return rc2+seq1.substr(k);
-// 		}
-// 	}
-//
-// 	if(begRc==seq2.substr(0,k)){
-// 		return rc2.substr(0,s2-k)+seq1;
-// 	}else{
-// 		if(begRc==rc2.substr(0,k)){
-// 			return seq2.substr(0,s2-k)+seq1;
-// 		}
-// 	}
-// 	return seq1;
-// }
-//
-//
-// string compactionEnd(const string& seq1,const string& seq2, int k){
-// 	int s1(seq1.size()),s2(seq2.size());
-// 	string rc2(reversecompletment(seq2));
-// 	string end(seq1.substr(s1-k,k));
-// 	string endRc(reversecompletment(end));
-//
-// 	if(end==seq2.substr(0,k)){
-// 		return seq1+seq2.substr(k);
-// 	}else{
-// 		if(end==rc2.substr(0,k)){
-// 			return seq1+rc2.substr(k);
-// 		}
-// 	}
-//
-// 	if(endRc==seq2.substr(s2-k,k)){
-// 		return seq1+rc2.substr(k);
-// 	}else{
-// 		if(endRc==rc2.substr(s2-k,k)){
-// 			return seq1+seq2.substr(k);
-// 		}
-// 	}
-// 	return seq1;
-// }
-//
-//
+
 bool isNumber(char c){return (c<64);}
 
 
@@ -300,10 +121,6 @@ void graph3::compaction(uint iL,  uint iR){
 		kmer end2(end2int128(unitigs[iR]));
 		if(beg1==end2){
 			unitigs[iR]+=(unitigs[iL].substr(k));
-			// if((iL==lol or iR==lol) and found){
-			// 	cout<<unitigs[iR]<<endl;
-			// 	lol=iR;
-			// }
 			unitigs[iL]=to_string(iR);
 			return;
 		}
@@ -312,10 +129,6 @@ void graph3::compaction(uint iL,  uint iR){
 		if(beg1==endrc2){
 			reverseinplace2(unitigs[iR]);
 			unitigs[iR]+=(unitigs[iL].substr(k));
-			// 	if((iL==lol or iR==lol) and found){
-			// 	cout<<unitigs[iR]<<endl;
-			// 	lol=iR;
-			// }
 			unitigs[iL]=to_string(iR);
 			return;
 		}
@@ -324,10 +137,6 @@ void graph3::compaction(uint iL,  uint iR){
 		kmer end1(end2int128(unitigs[iL]));
 		if(end1==beg2){
 			unitigs[iL]+=(unitigs[iR].substr(k));
-			// 	if((iL==lol or iR==lol) and found){
-			// 	cout<<unitigs[iL]<<endl;
-			// 	lol=iL;
-			// }
 			unitigs[iR]=to_string(iL);
 			return;
 		}
@@ -335,46 +144,11 @@ void graph3::compaction(uint iL,  uint iR){
 		kmer begrc2(rcb(end2));
 		if(end1==begrc2){
 			unitigs[iL]+=(reverseinplace(unitigs[iR]).substr(k));
-			// if((iL==lol or iR==lol) and found){
-			// 	cout<<unitigs[iL]<<endl;
-			// 	lol=iL;
-			// }
 			unitigs[iR]=to_string(iL);
 			return;
 		}
 	}
 }
-
-
-// void graph3::debruijn(){
-// 	sort(left.begin(),left.end(),comparator());
-// 	sort(right.begin(),right.end(),comparator());
-// 	uint iL(0),iR(0);
-// 	kmerIndice kL,kR;
-// 	while(iL!=left.size() and iR!=right.size()){
-// 		kL=left[iL];
-// 		kR=right[iR];
-// 		if(kL.kmmer==kR.kmmer){
-// 			bool go(true);
-// 			++iL;++iR;
-// 				if(left[iL].kmmer==kL.kmmer){
-// 					go=false;
-// 					while(left[++iL].kmmer==kL.kmmer){}
-// 				}
-// 				if(right[iR].kmmer==kL.kmmer){
-// 					go=false;
-// 					while(right[++iR].kmmer==kR.kmmer){}
-// 				}
-// 			if(go){compaction(kL.indice,kR.indice);}
-// 		}else{
-// 			if(kL.kmmer<kR.kmmer){
-// 				while(left[++iL].kmmer==kL.kmmer){}
-// 			}else{
-// 				while(right[++iR].kmmer==kR.kmmer){}
-// 			}
-// 		}
-// 	}
-// }
 
 
 void graph3::debruijn(){

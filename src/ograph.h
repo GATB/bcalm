@@ -19,21 +19,9 @@ struct comparator{bool operator()(const kmerIndice& a , const kmerIndice& b) { r
 class graph3{
 	public:
 		uint k,indiceUnitigs,nbElement,minimizer,minsize;
-        // uint ;
-		// uint32_t minimizer;
-		// uint32_t minsize;
-        // uint32_t nbElement;
-        // uint lol;
-        // bool found;
-        // uint u1,u2,u3,u4;
-        // kmerIndice ki;
-        // kmer kmer1,kmer2;
-        // ,beg2,beg1,begrc2,end1,end2,endrc2, resrcb,offsetrcb, resBeg,resEnd;
 		string* unitigs;
-        // string unitigL,unitigR;
 		vector<kmerIndice> left;
 		vector<kmerIndice> right;
-		// vector<kmer2Indice> compactions;
 		void addvertex(string& str);
         void addtuple(tuple<string,uint,uint>& tuple);
 		void addleftmin(unsigned int mini);
@@ -41,7 +29,6 @@ class graph3{
 		void debruijn();
         void debruijn2();
         void compaction2(uint iL, uint iR);
-        // void compaction(const uint32_t& iL, const uint32_t& iR);
 		void compress();
         kmer end2int128rc(const string& str);
         kmer end2int128(const string& str);
@@ -54,17 +41,14 @@ class graph3{
         bool clear();
 
 		graph3(uint ka, uint min,uint size, uint nb){
-            // u1=u2=u3=u4=indiceUnitigs=indiceRight=indiceLeft=indiceAdd=0;
             indiceUnitigs=0;
 			minsize=size;
 			k=ka;
-            // found=false;
 			minimizer=min;
             nbElement=nb;
             unitigs=new string [nbElement];
             left.reserve(nbElement);
     	    right.reserve(nbElement);
-            // compactions.reserve(nbElement);
 		}
 };
 

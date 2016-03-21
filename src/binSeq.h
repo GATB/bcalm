@@ -19,9 +19,9 @@
 
 typedef unsigned int  uint;
 //if k<=32
-#define kmer uint64_t
+// #define kmer uint64_t
 //if 32<k<=64
-// #define kmer __uint128_t
+#define kmer __uint128_t
 
 
 struct kmerIndice{
@@ -37,9 +37,6 @@ using namespace std;
 
 class binSeq{
 public:
-	//~ static const unsigned char rc[];
-	//~ static const unordered_map<string,unsigned char> string2Byte;
-	//~ bool isNumber;
 	vector<uint8_t> vect;
 	bool isInt;
 
