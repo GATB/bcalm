@@ -24,11 +24,6 @@ typedef unsigned int  uint;
 #define kmer __uint128_t
 
 
-struct kmerIndice{
-	uint32_t indice;
-	kmer kmmer;
-};
-
 static uint kmerBinseq;
 
 

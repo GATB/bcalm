@@ -8,6 +8,7 @@
 #include <string>
 #include <cstdlib>
 #include "binSeq.h"
+#include "ograph.h" // just for kmerIndice
 
 
 using namespace std;

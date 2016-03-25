@@ -7,10 +7,17 @@
 #include <array>
 #include <string>
 #include <cstdlib>
-#include "binSeq.h"
 
 
 using namespace std;
+
+#define kmer __uint128_t // limitation to k<64 right here.
+
+struct kmerIndice{
+	uint32_t indice;
+	kmer kmmer;
+};
+
 
 
 struct comparator{bool operator()(const kmerIndice& a , const kmerIndice& b) { return a.kmmer < b.kmmer; }};
