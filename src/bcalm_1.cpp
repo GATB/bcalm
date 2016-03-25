@@ -11,7 +11,7 @@
 #include <tuple>
 #include "binSeq.h"
 
-//#define BINSEQ // graph4 is not ready
+//#define BINSEQ // "graph4 is not ready" according to antoine. also, initBinSeq provokes segfault at end of bcalm
 
 #define OSX 1
 #ifndef OSX
@@ -157,6 +157,7 @@ void bcalm_1::execute (){
             did_kmercounting = true;
         }
     }
+
     auto end_kc=chrono::system_clock::now();
     auto waitedFor_kc=end_kc-start_kc;
     double unit = 1000000000;
@@ -174,7 +175,11 @@ void bcalm_1::execute (){
      * VARIOUS INIT
      *
      */
-	initBinSeq(kmerSize);
+
+    #ifdef BINSEQ
+    initBinSeq(kmerSize);
+    #endif
+    
     /** We set BankBinary buffer. */
     BankBinary::setBufferSize (10000);
 
