@@ -2,7 +2,7 @@
 
 BCALM 2 is a bioinformatics software for constructing the de Bruijn graph of sequencing data.
 
-More precisely, this repository is the new, parallel version of the BCALM software.
+This repository is the new, parallel version of the BCALM software.
 It is using a new algorithm, and is implemented using the GATB library. 
 The original, single-threaded code of BCALM (version 1) is still available at: https://github.com/Malfoy/bcalm
 
@@ -53,8 +53,8 @@ Alternatively, input can be a list of files (one file per line):
     
 # Reverse-complements
 
-Bcalm2 converts all k-mers into their canonical representation with respect to reverse-complements.
-In other words, Bcalm2 considers that a k-mer and its reverse complement are the same object, which will be present only once in the output.
+BCALM 2 converts all k-mers into their canonical representation with respect to reverse-complements.
+In other words, a k-mer and its reverse complement are considered to be the same object, appearing only once in the output, either in forward or reverse orientation.
 
 # Project build
 
