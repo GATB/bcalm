@@ -118,6 +118,7 @@ void bcalm_1::execute (){
     // nb_threads=1;
     int minimizer_type = getInput()->getInt("-minimizer-type");
     int dsk_memory = getInput()->getInt("-dsk-memory");
+    bool verbose = (getInput()->get(STR_VERBOSE) && getInput()->getInt(STR_VERBOSE) > 0);
 
     if (nb_threads > nb_threads_simulate)
         nb_threads_simulate = nb_threads;
@@ -301,7 +302,8 @@ void bcalm_1::execute (){
         Iterator<Count>* it_kmers = partition[p].iterator();
         LOCAL (it_kmers);
 
-        cout << "\nPartition " << p << " has " << partition[p].getNbItems() << " kmers" << endl;
+        if (verbose) 
+            cout << "\nPartition " << p << " has " << partition[p].getNbItems() << " kmers" << endl;
 
         size_t k = kmerSize;
 
@@ -417,6 +419,15 @@ void bcalm_1::execute (){
         getDispatcher()->iterate (it_kmers, insertIntoQueues);
 
         // also add traveller kmers that were saved to disk from a previous superbucket
+        // at this point you might ask:
+        // but why don't we need to examine other partitions for potential traveller kmers?
+        // no, because we iterate partitions in minimizer order.
+        // but then you might again something else:
+        // "i thought bcalm1 needed to iterate partitions in minimizer order, but not bcalm2"
+        // -> indeed, bcalm2 algorithm doesn't, but in the implementation i still choose to iterate in minimizer order.
+        // because it seemed like a good idea at the time, when handling traveller kmers.
+        // looking back, it might be a good idea to not do that anymore.
+        // this could enable loading multiple partitions at once (and more parallelization)
         string traveller_kmers_file = traveller_kmers_prefix + std::to_string(p);
         if (System::file().doesExist(traveller_kmers_file)) // for some partitions, there may be no traveller kmers
         {
@@ -437,7 +448,8 @@ void bcalm_1::execute (){
                 add_to_bucket_queue(max_minimizer, seq, leftMin, rightMin, p);
                 nb_traveller_kmers_loaded++;
             }
-            std::cout << "Loaded " << nb_traveller_kmers_loaded << " doubled kmers for partition " << p << endl;
+            if (verbose) 
+                std::cout << "Loaded " << nb_traveller_kmers_loaded << " doubled kmers for partition " << p << endl;
             traveller_kmers_bank.finalize();
             System::file().remove (traveller_kmers_file);
         }
@@ -445,7 +457,8 @@ void bcalm_1::execute (){
         auto end_createbucket_t=get_wtime();
         atomic_double_add(global_wtime_create_buckets, diff_wtime(start_createbucket_t, end_createbucket_t));
 
-        cout << "Iterated " << partition[p].getNbItems() << " kmers, among them " << nb_left_min_diff_right_min << " has leftmin!=rightmin" << endl;
+        if (verbose) 
+            cout << "Iterated " << partition[p].getNbItems() << " kmers, among them " << nb_left_min_diff_right_min << " has leftmin!=rightmin" << endl;
 
         ThreadPool pool(nb_threads);
 
@@ -588,15 +601,23 @@ void bcalm_1::execute (){
 
                 double longest_lambda = lambda_timings.front();
 
-                cout <<"\nIn this superbucket (containing " << active_minimizers.size() << " active minimizers)," <<endl;
-                cout <<"                  sum of time spent in lambda's: "<< global_wtime_lambda / 1000000 <<" msecs" <<endl;
-                cout <<"                                 longest lambda: "<< longest_lambda / 1000000 <<" msecs" <<endl;
-                cout <<"         tot time of best scheduling of lambdas: "<< tot_time_best_sched_lambda / 1000000 <<" msecs" <<endl;
+                if (verbose) 
+                {
+                    cout <<"\nIn this superbucket (containing " << active_minimizers.size() << " active minimizers)," <<endl;
+                    cout <<"                  sum of time spent in lambda's: "<< global_wtime_lambda / 1000000 <<" msecs" <<endl;
+                    cout <<"                                 longest lambda: "<< longest_lambda / 1000000 <<" msecs" <<endl;
+                    cout <<"         tot time of best scheduling of lambdas: "<< tot_time_best_sched_lambda / 1000000 <<" msecs" <<endl;
+                }
+
                 double best_theoretical_speedup =  global_wtime_lambda  / longest_lambda;
                 double actual_theoretical_speedup =  global_wtime_lambda  / tot_time_best_sched_lambda;
-                cout <<"                       best theoretical speedup: "<<  best_theoretical_speedup << "x" <<endl;
-                if (nb_threads_simulate > 1)
-                    cout <<"     best theoretical speedup with "<< nb_threads_simulate << " thread(s): "<<  actual_theoretical_speedup << "x" <<endl;
+
+                if (verbose) 
+                {
+                    cout <<"                       best theoretical speedup: "<<  best_theoretical_speedup << "x" <<endl;
+                    if (nb_threads_simulate > 1)
+                        cout <<"     best theoretical speedup with "<< nb_threads_simulate << " thread(s): "<<  actual_theoretical_speedup << "x" <<endl;
+                }
 
                 weighted_best_theoretical_speedup_cumul += best_theoretical_speedup * wallclock_sb;
                 weighted_best_theoretical_speedup_sum_times                        += wallclock_sb;
@@ -631,21 +652,29 @@ void bcalm_1::execute (){
 
     /* printing some timing stats */
     auto end_t=chrono::system_clock::now();
-    cout<<"Buckets compaction and gluing           : "<<chrono::duration_cast<chrono::nanoseconds>(end_t - start_buckets).count() / unit<<" secs"<<endl;
-    cout<<"Within that, \n";
-    cout <<"                                 creating buckets from superbuckets: "<< global_wtime_create_buckets / unit <<" secs"<<endl;
-    cout <<"                      bucket compaction (wall-clock during threads): "<< global_wtime_foreach_bucket / unit <<" secs" <<endl;
-    cout <<"\n                within all bucket compaction threads,\n";
-    cout <<"                       adding nodes to subgraphs: "<< global_wtime_add_nodes / unit <<" secs" <<endl;
-    cout <<"         subgraphs constructions and compactions: "<< global_wtime_compactions / unit <<" secs"<<endl;
-    cout <<"                  compacted nodes redistribution: "<< global_wtime_cdistribution / unit <<" secs"<<endl;
+    if (verbose) 
+    {
+        cout<<"Buckets compaction and gluing           : "<<chrono::duration_cast<chrono::nanoseconds>(end_t - start_buckets).count() / unit<<" secs"<<endl;
+        cout<<"Within that, \n";
+        cout <<"                                 creating buckets from superbuckets: "<< global_wtime_create_buckets / unit <<" secs"<<endl;
+        cout <<"                      bucket compaction (wall-clock during threads): "<< global_wtime_foreach_bucket / unit <<" secs" <<endl;
+        cout <<"\n                within all bucket compaction threads,\n";
+        cout <<"                       adding nodes to subgraphs: "<< global_wtime_add_nodes / unit <<" secs" <<endl;
+        cout <<"         subgraphs constructions and compactions: "<< global_wtime_compactions / unit <<" secs"<<endl;
+        cout <<"                  compacted nodes redistribution: "<< global_wtime_cdistribution / unit <<" secs"<<endl;
+    }
     double sum =  global_wtime_cdistribution + global_wtime_compactions + global_wtime_add_nodes + global_wtime_create_buckets;
-    cout<<"Sum of CPU times for bucket compactions: "<< sum / unit <<" secs"<<endl;
+    if (verbose) 
+        cout<<"Sum of CPU times for bucket compactions: "<< sum / unit <<" secs"<<endl;
     if (nb_threads == 1)
         cout<<"Discrepancy between sum of fine-grained timings and total wallclock of buckets compactions step: "<< (chrono::duration_cast<chrono::nanoseconds>(end_t-start_buckets).count() - sum ) / unit <<" secs"<<endl;
+
     cout<<"BCALM total wallclock (excl kmer counting): "<<chrono::duration_cast<chrono::nanoseconds>(end_t-start_t).count() / unit <<" secs"<<endl;
-    cout<<"Max bucket : "<<maxBucket<<endl;
-    if (time_lambdas)
+
+    if (verbose) 
+        cout<<"Max bucket : "<<maxBucket<<endl;
+
+    if (time_lambdas && verbose)
     {
         cout<<"Performance of compaction step:\n"<<endl;
         cout<<"                 Wallclock time spent in parallel section : "<< global_wtime_parallel / unit << " secs"<<endl;
