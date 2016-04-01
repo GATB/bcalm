@@ -197,8 +197,22 @@ void bcalm_1::execute (){
 
     typedef Kmer<SPAN>::Count Count;
     Partition<Count>& partition = dskGroup.getPartition<Count> ("solid");
-    size_t nb_partitions = partition.size();
-    cout << "DSK created " << nb_partitions << " partitions" << endl;
+    size_t nb_h5_partitions = partition.size();
+
+    /* get actual number of partitions/passes _during_ DSK. oh so complicated .
+     * this is needed because we need to group passes together. else 
+     * the algo simply doesn't work. */
+    Group& configGroup = storage->getGroup("configuration");
+    stringstream ss; ss << configGroup.getProperty ("xml");
+    Properties props; props.readXML (ss);
+    size_t nb_passes = props.getInt("nb_passes");
+    size_t nb_partitions = props.getInt("nb_partitions");
+    cout << "DSK used " << nb_passes << " passes and " << nb_partitions << " partitions" << std::endl;
+
+    if (nb_h5_partitions != nb_passes * nb_partitions)
+        cout << "Error: number of h5 partitions ("<< nb_h5_partitions << ") does not match number of DSK passes*partitions ("\
+            << nb_passes<<"*"<<nb_partitions<<")" << endl;
+
 
     /** We retrieve the minimizers distribution from the solid kmers storage. */
     Repartitor repart;
@@ -298,13 +312,6 @@ void bcalm_1::execute (){
     {
         uint32_t p = it_parts->item(); /* partition index */
 
-        /** We retrieve an iterator on the Count objects of the pth partition. */
-        Iterator<Count>* it_kmers = partition[p].iterator();
-        LOCAL (it_kmers);
-
-        if (verbose) 
-            cout << "\nPartition " << p << " has " << partition[p].getNbItems() << " kmers" << endl;
-
         size_t k = kmerSize;
 
         // create many queues in place of Buckets
@@ -353,7 +360,9 @@ void bcalm_1::execute (){
         //     }
         // };
 
-        std::atomic<long> nb_left_min_diff_right_min;
+        std::atomic<unsigned long> nb_left_min_diff_right_min;
+        std::atomic<unsigned long> nb_kmers_in_partition;
+        nb_kmers_in_partition = 0;
         nb_left_min_diff_right_min = 0;
         std::atomic<uint32_t> kmerInGraph;
         kmerInGraph = 0;
@@ -361,11 +370,12 @@ void bcalm_1::execute (){
         /* lambda function to process a kmer and decide which bucket(s) it should go to */
         auto insertIntoQueues = [p, &minimizerMax, &minimizerMin, &add_to_bucket_queue,
                     &bucket_queues, &modelK1, &k, &repart, &nb_left_min_diff_right_min,
-                    &kmerInGraph, &model, &save_traveller_kmer, &abundance]
+                    &kmerInGraph, &model, &save_traveller_kmer, &abundance,
+                    &nb_kmers_in_partition]
                 (Count item) {
 
             // if the abundance threshold is higher than the h5 abundance,
-            // filter out this kmer (useful for my spruce runs)
+            // filter out this kmer (useful when you want to re-use same .h5 but with higher "-abundance" parameter)
             if ((size_t)item.abundance < abundance)
                 return;
 
@@ -381,6 +391,7 @@ void bcalm_1::execute (){
             // uint32_t rightMin(0);
 
             ++kmerInGraph;
+            ++nb_kmers_in_partition;
 
             if (repart(leftMin) == p)
                 add_to_bucket_queue(leftMin, seq, leftMin, rightMin, p);
@@ -416,10 +427,22 @@ void bcalm_1::execute (){
         auto start_createbucket_t=get_wtime();
 
         /* MAIN FIRST LOOP: expand a superbucket by inserting kmers into queues. this creates buckets */
-        getDispatcher()->iterate (it_kmers, insertIntoQueues);
+        // do it for all passes (because the union of passes correspond to a partition)
+        for (size_t pass_index = 0 ; pass_index < nb_passes; pass_index ++)
+        {
+            /** We retrieve an iterator on the Count objects of the pth partition in pass pass_index */
+            unsigned long interm_partition_index = p + pass_index * nb_partitions;
+            Iterator<Count>* it_kmers = partition[interm_partition_index].iterator();
+
+            LOCAL (it_kmers);
+
+            getDispatcher()->iterate (it_kmers, insertIntoQueues);
+        }
+
+        if (verbose) 
+            cout << endl << "Iterated " << nb_kmers_in_partition << " kmers, among them " << nb_left_min_diff_right_min << " were doubled" << endl;
 
         // also add traveller kmers that were saved to disk from a previous superbucket
-        // at this point you might ask:
         // but why don't we need to examine other partitions for potential traveller kmers?
         // no, because we iterate partitions in minimizer order.
         // but then you might again something else:
@@ -429,11 +452,11 @@ void bcalm_1::execute (){
         // looking back, it might be a good idea to not do that anymore.
         // this could enable loading multiple partitions at once (and more parallelization)
         string traveller_kmers_file = traveller_kmers_prefix + std::to_string(p);
+        unsigned long nb_traveller_kmers_loaded = 0;
         if (System::file().doesExist(traveller_kmers_file)) // for some partitions, there may be no traveller kmers
         {
             BankFasta traveller_kmers_bank (traveller_kmers_file);
             BankFasta::Iterator it (traveller_kmers_bank);
-            int nb_traveller_kmers_loaded = 0;
             for (it.first(); !it.isDone(); it.next())
             {
                 string seq = it->toString();
@@ -456,9 +479,6 @@ void bcalm_1::execute (){
 
         auto end_createbucket_t=get_wtime();
         atomic_double_add(global_wtime_create_buckets, diff_wtime(start_createbucket_t, end_createbucket_t));
-
-        if (verbose) 
-            cout << "Iterated " << partition[p].getNbItems() << " kmers, among them " << nb_left_min_diff_right_min << " has leftmin!=rightmin" << endl;
 
         ThreadPool pool(nb_threads);
 
@@ -672,7 +692,7 @@ void bcalm_1::execute (){
     cout<<"BCALM total wallclock (excl kmer counting): "<<chrono::duration_cast<chrono::nanoseconds>(end_t-start_t).count() / unit <<" secs"<<endl;
 
     if (verbose) 
-        cout<<"Max bucket : "<<maxBucket<<endl;
+        cout<<"Maximum number of kmers in a subgraph: "<<maxBucket<<endl;
 
     if (time_lambdas && verbose)
     {
