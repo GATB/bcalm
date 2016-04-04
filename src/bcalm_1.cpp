@@ -120,6 +120,12 @@ void bcalm_1::execute (){
     int dsk_memory = getInput()->getInt("-dsk-memory");
     bool verbose = (getInput()->get(STR_VERBOSE) && getInput()->getInt(STR_VERBOSE) > 0);
 
+    if (kmerSize > 64)
+    {
+        std::cout<<"unsupposed kmer size, for now, k <= 64" << std::endl;
+        exit(1);
+    }
+
     if (nb_threads > nb_threads_simulate)
         nb_threads_simulate = nb_threads;
 
