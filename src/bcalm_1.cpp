@@ -122,7 +122,7 @@ void bcalm_1::execute (){
 
     if (kmerSize > 64)
     {
-        std::cout<<"unsupposed kmer size, for now, k <= 64" << std::endl;
+        std::cout<<"unsupported kmer size, for now, k <= 64" << std::endl;
         exit(1);
     }
 
