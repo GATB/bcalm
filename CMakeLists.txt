@@ -90,11 +90,4 @@ file (GLOB_RECURSE  ProjectFiles  ${PROGRAM_SOURCE_DIR}/*.cpp)
 add_executable(${program} ${ProjectFiles})
 target_link_libraries(${program} ${gatb-core-libraries})
 
-set (program "bglue")
-set (PROGRAM_SOURCE_DIR ${PROJECT_SOURCE_DIR}/bglue)
-include_directories (${PROGRAM_SOURCE_DIR})
-file (GLOB_RECURSE  ProjectFiles    FOLLOW_SYMLINKS ${PROGRAM_SOURCE_DIR}/*.cpp )
-add_executable(${program} ${ProjectFiles})
-target_link_libraries(${program} ${gatb-core-libraries})
-
 
