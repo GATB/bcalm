@@ -68,3 +68,9 @@ Then, you should get a binary in
 
 Note: the first compilation should take some time since the GATB-CORE library is generated.
 
+Acknowledgements
+========
+If using BCALM 2, please cite:
+Rayan Chikhi, Antoine Limasset and Paul Medvedev, Compacting de Bruijn graphs from sequencing data quickly and in low memory, Proceedings of ISMB 2016, Bioinformatics, 32 (12): i201-i208. 
+
+This project has been supported in part by NSF awards DBI-1356529, CCF-1439057, IIS-1453527, and IIS-1421908.
