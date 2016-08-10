@@ -68,6 +68,14 @@ Then, you should get a binary in
 
 Note: the first compilation should take some time since the GATB-CORE library is generated.
 
+# Larger k values
+
+BCALM 2 supports arbitrary large $k$-mer lengths. You need to recompile it from sources. To support $k$-mer lengths up to, say, 320, type this in the build folder:
+
+    rm -Rf CMake* && cmake -DKSIZE_LIST="32 64 96 128 160 192 224 256 320" .. && make -j 8
+
+The list of kmers should only contain multiples of 32. Intermediate values create optimized code for smaller $k$'s. You could specify just `KSIZE_LIST="320"` but then using smaller k values would be as slow as large ones.
+
 Acknowledgements
 ========
 If using BCALM 2, please cite:
