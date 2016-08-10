@@ -10,21 +10,19 @@ The original, single-threaded code of BCALM (version 1) is still available at: h
 
 Read the instructions below to compile, then:
 
-    ./bcalm -in [reads.fa] -k [kmer_size] -abundance [abundance_threshold]
-    ./bglue -in unitigs.h5 -k [kmer_size]
+    ./bcalm -in [reads.fa] -kmer-size [kmer_size] -abundance-min [abundance_threshold]
   
 e.g.
 
-    ./bcalm -in reads.fa -k 21 -abundance 2
-    ./bglue -in unitigs.h5 -k 21
+    ./bcalm -in reads.fastq -kmer-size 21 -abundance-min 2
 
 Importants parameters are:
 
-    -k [int]
+    -kmer-size [int]
     
 The k-mer size, i.e. length of the nodes of the de Bruijn graph.
 
-    -abundance [int]
+    -abundance-min [int]
 
 Sets a threshold X below which k-mers that are seen (strictly) less than X times in the dataset are filtered out; i.e. sequencing errors, typically.
 
