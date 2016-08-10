@@ -48,7 +48,13 @@ Alternatively, input can be a list of files (one file per line):
 
     ls -1 *.fastq > list_reads
     ./bcalm -in list_reads [..]
-    
+   
+# Output
+
+BCALM 2 output the set of unitigs of the de Bruijn graph.
+A unitig is a non-branching path.
+Also, in the output, the mean k-mer abundance of each unitig is reported in the MA field of the FASTA header.
+ 
 # Reverse-complements
 
 BCALM 2 converts all k-mers into their canonical representation with respect to reverse-complements.
@@ -68,7 +74,7 @@ Note: the first compilation should take some time since the GATB-CORE library is
 
 # Larger k values
 
-BCALM 2 supports arbitrary large $k$-mer lengths. You need to recompile it from sources. To support $k$-mer lengths up to, say, 320, type this in the build folder:
+BCALM 2 supports arbitrary large k-mer lengths. You need to recompile it from sources. For k up to, say, 320, type this in the build folder:
 
     rm -Rf CMake* && cmake -DKSIZE_LIST="32 64 96 128 160 192 224 256 320" .. && make -j 8
 
