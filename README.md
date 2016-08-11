@@ -54,7 +54,9 @@ Alternatively, input can be a list of files (one file per line):
 BCALM 2 outputs the set of unitigs of the de Bruijn graph.
 A unitig is the sequence of a non-branching path. Unitigs that are connected by an edge in the graph overlap by exactly (k-1) nucleotides. Edges aren't reported, just the unitig sequences; but they could be inferred from the (k-1) overlaps.
 
-Also, in the output, the mean k-mer abundance of each unitig is reported in the MA field of the FASTA header.
+FASTA output header: 
+
+    ><id> LN:i:<length of unitig> KC:i:<total kmer counts in unitig> KM:f:<mean kmer count in unitig>
  
 # Reverse-complements
 
