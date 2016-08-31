@@ -4,17 +4,18 @@ language: cpp
 compiler:
   - clang
   - gcc
-# making sure gcc is 4.8
+# making sure gcc is 4.8 and clang is 3.7
 addons:
   apt:
     sources:
       - ubuntu-toolchain-r-test
-      - llvm-toolchain-precise-3.6
+      - llvm-toolchain-precise-3.7
     packages:
       - g++-4.8
+      - clang-3.7
 # Build steps
-install:
   - if [ "`echo $CXX`" == "g++" ]; then export CXX=g++-4.8; fi
+  - if [ "`echo $CXX`" == "clang++" ]; then export CXX=clang++-3.7 fi
 script:
   - mkdir build
   - cd build
