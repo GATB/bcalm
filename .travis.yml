@@ -1,23 +1,26 @@
-# Enable C++ support
 language: cpp
-# Compiler selection
 compiler:
-  - clang
-  - gcc
-# making sure gcc is 4.8 and clang is 3.7
+- clang
+- gcc
 addons:
   apt:
     sources:
-      - ubuntu-toolchain-r-test
-      - llvm-toolchain-precise-3.7
+    - ubuntu-toolchain-r-test
+    - llvm-toolchain-precise-3.7
     packages:
-      - g++-4.8
-      - clang-3.7
+    - g++-4.8
+    - clang-3.7
 install:
-  - if [ "`echo $CXX`" == "g++" ]; then export CXX=g++-4.8; fi
-  - if [ "`echo $CXX`" == "clang++" ]; then export CXX=clang++-3.7; fi
+- if [ "`echo $CXX`" == "g++" ]; then export CXX=g++-4.8; fi
+- if [ "`echo $CXX`" == "clang++" ]; then export CXX=clang++-3.7; fi
 script:
-  - mkdir build
-  - cd build
-  - cmake .. && make
-
+- mkdir build
+- cd build
+- cmake .. && make
+deploy:
+  provider: releases
+  api_key:
+    secure: HavxBgRTTf6oKGzl9Op0yWNsH+rbhFbMh6VGU625WgYynwaMIgDoijF9z4/Jop8AlenV+/mTE+BTAh+MG6DHyJ04SI8EL3EgOubYhlEH1aPBgFe6W1lM6y50Rm7xqLrJWnSNruJXklnYxwLF2dQZRV3Hk+Hne9IHpkArvDcqiz4=
+  file: bcalm
+  on:
+    repo: GATB/bcalm
