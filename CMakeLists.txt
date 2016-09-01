@@ -80,14 +80,14 @@ SET (CPACK_SOURCE_GENERATOR             "TGZ")
 
 # We ignore unwanted files for the source archive
 SET (CPACK_SOURCE_IGNORE_FILES
-    "^${PROJECT_SOURCE_DIR}/\\.git/"     ;
-    "^${PROJECT_SOURCE_DIR}/\\.gitmodules" ;
-    "^${PROJECT_SOURCE_DIR}/\\.gitignore" ;
+    "^${PROJECT_SOURCE_DIR}/.git/"     ;
+    "^${PROJECT_SOURCE_DIR}/.gitmodules" ;
+    "^${PROJECT_SOURCE_DIR}/.gitignore" ;
     "^${PROJECT_SOURCE_DIR}/build/"  ;
-    "^${GATB_CORE_HOME}/\\.cproject" ;
-    "^${GATB_CORE_HOME}/\\.git/"     ;
-    "^${GATB_CORE_HOME}/\\.project"  ;
-    "^${GATB_CORE_HOME}/\\.gitignore"
+    "^${GATB_CORE_HOME}/.cproject" ;
+    "^${GATB_CORE_HOME}/.git/"     ;
+    "^${GATB_CORE_HOME}/.project"  ;
+    "^${GATB_CORE_HOME}/.gitignore"
 )
 
 # We copy the project binary to the 'bin' directory
