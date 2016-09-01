@@ -22,5 +22,7 @@ deploy:
   api_key:
     secure: HavxBgRTTf6oKGzl9Op0yWNsH+rbhFbMh6VGU625WgYynwaMIgDoijF9z4/Jop8AlenV+/mTE+BTAh+MG6DHyJ04SI8EL3EgOubYhlEH1aPBgFe6W1lM6y50Rm7xqLrJWnSNruJXklnYxwLF2dQZRV3Hk+Hne9IHpkArvDcqiz4=
   file: bcalm
+  skip_cleanup: true
   on:
     repo: GATB/bcalm
+    tags: true
