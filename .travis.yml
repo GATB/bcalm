@@ -14,8 +14,12 @@ addons:
     - g++-4.8
     - clang-3.7
 install:
-- if [ "`echo $CXX`" == "g++" ]; then export CXX=g++-4.8; fi
-- if [ "`echo $CXX`" == "clang++" ]; then export CXX=clang++-3.7; fi
+- if [ "`echo $CXX`" == "g++" ]     && [ "$TRAVIS_OS_NAME" == "linux" ]; then export CXX=g++-4.8; fi
+- if [ "`echo $CXX`" == "clang++" ] && [ "$TRAVIS_OS_NAME" == "linux" ]; then export CXX=clang++-3.7; fi
+matrix:
+    exclude:
+        - os: osx
+          compiler: gcc 
 script:
 - mkdir build
 - cd build
