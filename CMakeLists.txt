@@ -30,6 +30,37 @@ SET (GATB_CORE_EXCLUDE_EXAMPLES  1)
 include (GatbCore)
 
 ################################################################################
+#  TOOLS
+################################################################################
+
+MACRO(SUBDIRLIST result curdir)
+    FILE(GLOB children RELATIVE ${curdir} ${curdir}/*)
+    SET (dirlist "")
+    FOREACH(child ${children})
+      IF(IS_DIRECTORY ${curdir}/${child})
+          LIST(APPEND dirlist ${child})
+      ENDIF()
+    ENDFOREACH()
+    SET(${result} ${dirlist})
+ENDMACRO()
+
+# We add the compilation options for the library
+add_definitions (${gatb-core-flags})
+
+# We add the gatb-core include directory
+include_directories (${gatb-core-includes})
+
+# We add the path for extra libraries
+link_directories (${gatb-core-extra-libraries-path})
+
+set (program "bcalm")
+set (PROGRAM_SOURCE_DIR ${PROJECT_SOURCE_DIR}/src)
+include_directories (${PROGRAM_SOURCE_DIR})
+file (GLOB_RECURSE  ProjectFiles  ${PROGRAM_SOURCE_DIR}/*.cpp)
+add_executable(${program} ${ProjectFiles})
+target_link_libraries(${program} ${gatb-core-libraries})
+
+################################################################################
 # DELIVERY
 ################################################################################
 
@@ -67,37 +98,5 @@ INSTALL (FILES LICENSE README.md DESTINATION bin/..)
 set (CPACK_PACKAGE_FILE_NAME  ${PROJECT_NAME}-bin-${CMAKE_SYSTEM_NAME})
 
 include (CPack)
-
-
-################################################################################
-#  TOOLS
-################################################################################
-
-MACRO(SUBDIRLIST result curdir)
-    FILE(GLOB children RELATIVE ${curdir} ${curdir}/*)
-    SET (dirlist "")
-    FOREACH(child ${children})
-      IF(IS_DIRECTORY ${curdir}/${child})
-          LIST(APPEND dirlist ${child})
-      ENDIF()
-    ENDFOREACH()
-    SET(${result} ${dirlist})
-ENDMACRO()
-
-# We add the compilation options for the library
-add_definitions (${gatb-core-flags})
-
-# We add the gatb-core include directory
-include_directories (${gatb-core-includes})
-
-# We add the path for extra libraries
-link_directories (${gatb-core-extra-libraries-path})
-
-set (program "bcalm")
-set (PROGRAM_SOURCE_DIR ${PROJECT_SOURCE_DIR}/src)
-include_directories (${PROGRAM_SOURCE_DIR})
-file (GLOB_RECURSE  ProjectFiles  ${PROGRAM_SOURCE_DIR}/*.cpp)
-add_executable(${program} ${ProjectFiles})
-target_link_libraries(${program} ${gatb-core-libraries})
 
 
