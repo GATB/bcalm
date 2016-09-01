@@ -17,8 +17,11 @@ script:
 - mkdir build
 - cd build
 - cmake .. && make && make package
+- cd ..
 before_deploy:
     - export RELEASE_FILE=$(ls build/bcalm-bin-*.tar.gz)
+    - ls 
+    - ls build
     - echo "Deploying $RELEASE_FILE to GitHub"
 deploy:
   provider: releases
