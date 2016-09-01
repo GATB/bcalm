@@ -38,7 +38,7 @@ include (GatbCore)
 #SET (CPACK_USER_NAME                    "your_gforge_login")
 
 # We set the version number
-SET (CPACK_PACKAGE_VERSION              "1.0.0")  
+SET (CPACK_PACKAGE_VERSION              "")  
 
 # We have to tell what is the server name
 SET (CPACK_GFORGE_PROJECT_NAME          "gatb-tools")
@@ -47,16 +47,26 @@ SET (CPACK_GFORGE_PROJECT_NAME          "gatb-tools")
 SET (CPACK_GENERATOR                    "TGZ")
 SET (CPACK_SOURCE_GENERATOR             "TGZ")
 
-# We ignore unwated files for the source archive
-SET (CPACK_SOURCE_IGNORE_FILES          
-    "^${PROJECT_SOURCE_DIR}/build/"  
-    "^${GATB_CORE_HOME}/.project"
-    "^${GATB_CORE_HOME}/.gitignore"
-    "^${GATB_CORE_HOME}/doc/design"
-    "^${GATB_CORE_HOME}/DELIVERY.md"
+# We ignore unwanted files for the source archive
+SET (CPACK_SOURCE_IGNORE_FILES
+    "^${PROJECT_SOURCE_DIR}/\\.git/"     ;
+    "^${PROJECT_SOURCE_DIR}/\\.gitmodules" ;
+    "^${PROJECT_SOURCE_DIR}/\\.gitignore" ;
+    "^${PROJECT_SOURCE_DIR}/build/"  ;
+    "^${GATB_CORE_HOME}/\\.cproject" ;
+    "^${GATB_CORE_HOME}/\\.git/"     ;
+    "^${GATB_CORE_HOME}/\\.project"  ;
+    "^${GATB_CORE_HOME}/\\.gitignore"
 )
 
-include (Delivery)
+# We copy the project binary to the 'bin' directory
+INSTALL (TARGETS ${PROJECT_NAME} DESTINATION bin)
+INSTALL (DIRECTORY "${PROJECT_SOURCE_DIR}/example/" DESTINATION example)
+INSTALL (FILES LICENSE README.md DESTINATION bin/..)
+
+set (CPACK_PACKAGE_FILE_NAME  ${PROJECT_NAME}-bin-${CMAKE_SYSTEM_NAME})
+
+include (CPack)
 
 
 ################################################################################
