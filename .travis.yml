@@ -1,4 +1,7 @@
 language: cpp
+os:
+- linux
+- osx
 compiler:
 - clang
 - gcc
@@ -31,4 +34,3 @@ deploy:
   skip_cleanup: true
   on:
     repo: GATB/bcalm
-    tags: true
