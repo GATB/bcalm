@@ -38,3 +38,4 @@ deploy:
   skip_cleanup: true
   on:
     repo: GATB/bcalm
+    tags: true
