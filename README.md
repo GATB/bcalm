@@ -1,9 +1,9 @@
 # BCALM 2 
 
-BCALM 2 is a bioinformatics software for constructing the compacted de Bruijn graph of sequencing data.
+BCALM 2 is a bioinformatics tools for constructing the compacted de Bruijn graph from sequencing data.
 
 This repository is the new, parallel version of the BCALM software.
-It is using a new algorithm, and is implemented using the GATB library. 
+It is using a new algorithm, and is implemented using the [GATB](https://github.com/GATB/gatb-core/) library. 
 The original, single-threaded code of BCALM (version 1) is still available at: https://github.com/Malfoy/bcalm
 
 [![Build Status](https://travis-ci.org/GATB/bcalm.svg?branch=master)](https://travis-ci.org/GATB/bcalm)
@@ -34,10 +34,12 @@ GCC >= 4.8 or a very recent C++11 capable compiler
 
 # Installation
 
-To retrieve bcalm and its submodule (gatb-core), type
+Download the latest [Linux/MacOS binaries](https://github.com/GATB/bcalm/releases), or compile from source as follows:
 
-    git clone --recursive https://github.com/GATB/bcalm
-    
+    git clone --recursive https://github.com/GATB/bcalm 
+    cd bcalm
+    mkdir build;  cd build;  cmake ..;  make -j 8
+
 # Input formats
 
 File input format can be fasta, fastq, either gzipped or not.
@@ -71,18 +73,6 @@ Where:
 
 BCALM 2 converts all k-mers into their canonical representation with respect to reverse-complements.
 In other words, a k-mer and its reverse complement are considered to be the same object, appearing only once in the output, either in forward or reverse orientation.
-
-# Project build
-
-For building your project, you should do the following
-    
-    mkdir build;  cd build;  cmake ..;  make -j 8
-    
-Then, you should get a binary in
-
-    tools/bcalm
-
-Note: the first compilation should take some time since the GATB-CORE library is generated.
 
 # Larger k values
 
