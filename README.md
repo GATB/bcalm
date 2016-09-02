@@ -57,15 +57,15 @@ BCALM 2 outputs the set of unitigs of the de Bruijn graph.
 A unitig is the sequence of a non-branching path. Unitigs that are connected by an edge in the graph overlap by exactly (k-1) nucleotides. 
 FASTA output header: 
 
-    ><id> LN:i:<length of unitig> KC:i:<total kmer counts in unitig> KM:f:<mean kmer count in unitig> L:<+/->:<other unitig id>:<+/-> [..]
+    ><id> LN:i:<length> KC:i:<abundance> KM:f:<abundance> L:<+/->:<other id>:<+/-> [..]
 
 Where:
 
-    * `LN` field is the length of the unitig
+* `LN` field is the length of the unitig
     
-    * `KC` and `KM` fields are for total abundance and mean abundance of kmers inside the unitig, respectively.
+* `KC` and `KM` fields are for total abundance and mean abundance of kmers inside the unitig, respectively.
 
-    * Edges between unitigs are reported as `L:x:y:z` entries in the FASTA header (1 entry per edge). A classic forward-forward outcoming edge is labeled `L:+:[next node]:+`. A forward-reverse, `L:+:[next node]:-`. Incoming edges are labeled as follows: `L:-:[previous node]:+`, meaning that if you reverse-complemented the current node, then there would be an edge from the last k-mer of current node to the first k-mer of the forward strand of [previous node]. (Think of incoming edges as outcoming edges of the reverse-complement of the node.)
+* Edges between unitigs are reported as `L:x:y:z` entries in the FASTA header (1 entry per edge). A classic forward-forward outcoming edge is labeled `L:+:[next node]:+`. A forward-reverse, `L:+:[next node]:-`. Incoming edges are labeled as follows: `L:-:[previous node]:+`, meaning that if you reverse-complemented the current node, then there would be an edge from the last k-mer of current node to the first k-mer of the forward strand of [previous node]. (Think of incoming edges as outcoming edges of the reverse-complement of the node.)
  
 # Reverse-complements
 
