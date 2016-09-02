@@ -16,6 +16,18 @@ FOREACH (path "${CMAKE_CURRENT_SOURCE_DIR}/cmake" "${GATB_CORE_HOME}/gatb-core/c
     ENDIF()
 ENDFOREACH(path)
 
+#############################
+# getting git version
+#from http://stackoverflow.com/questions/1435953/how-can-i-pass-git-sha1-to-compiler-as-definition-using-cmake
+exec_program(
+    "git"
+    ${CMAKE_CURRENT_SOURCE_DIR}
+    ARGS "rev-parse --short HEAD"
+    OUTPUT_VARIABLE VERSION_SHA1 )
+
+add_definitions( -DGIT_SHA1="${VERSION_SHA1}" )
+
+
 ################################################################################
 # THIRD PARTIES
 ################################################################################
@@ -95,7 +107,14 @@ INSTALL (TARGETS ${PROJECT_NAME} DESTINATION bin)
 INSTALL (DIRECTORY "${PROJECT_SOURCE_DIR}/example/" DESTINATION example)
 INSTALL (FILES LICENSE README.md DESTINATION bin/..)
 
-set (CPACK_PACKAGE_FILE_NAME  ${PROJECT_NAME}-bin-${CMAKE_SYSTEM_NAME})
+# cmake_system_name for mac is Darwin, i want to change that
+if (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
+    set(PRETTY_SYSTEM_NAME "Linux")
+elseif (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
+    set(PRETTY_SYSTEM_NAME "Mac")
+endif()
+
+set (CPACK_PACKAGE_FILE_NAME  ${PROJECT_NAME}-binaries-${PRETTY_SYSTEM_NAME})
 
 include (CPack)
 

@@ -67,6 +67,11 @@ struct Functor  {  void operator ()  (bcalm_1 *bcalm)
 
 void bcalm_1::execute (){
 
+#ifdef GIT_SHA1
+    std::cout << "BCALM 2, git commit " << GIT_SHA1 << std::endl;
+#endif
+
+
     /** we get the kmer size chosen by the end user. */
     size_t kmerSize = getInput()->getInt (STR_KMER_SIZE);
 
