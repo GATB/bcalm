@@ -1,6 +1,6 @@
 # BCALM 2 
 
-BCALM 2 is a bioinformatics tools for constructing the compacted de Bruijn graph from sequencing data.
+BCALM 2 is a bioinformatics tool for constructing the compacted de Bruijn graph from sequencing data.
 
 This repository is the new, parallel version of the BCALM software.
 It is using a new algorithm, and is implemented using the [GATB](https://github.com/GATB/gatb-core/) library. 
