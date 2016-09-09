@@ -44,11 +44,7 @@ Download the latest [Linux/MacOS binaries](https://github.com/GATB/bcalm/release
 
 File input format can be fasta, fastq, either gzipped or not.
 
-To pass several files as input, separate file names by a comma (","), for example:
-
-    ./bcalm -in A1.fa,A2.fa,A3.fa [..]
-
-Alternatively, input can be a list of files (one file per line):
+To pass several files as input:
 
     ls -1 *.fastq > list_reads
     ./bcalm -in list_reads [..]
