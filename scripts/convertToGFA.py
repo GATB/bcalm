@@ -56,7 +56,7 @@ with open(inputFilename) as f:
     links=[]
     g = open(outputFilename,'w')
     #adding Header to the file
-    g.write('H  VN:Z:1.0\n') 
+    g.write('H\tVN:Z:1.0\n') 
     print "GFA file open"
     #firstLine is for implemetation purpose so that we don't add some garbage value to the output file.
     firstLine = 0
@@ -70,14 +70,14 @@ with open(inputFilename) as f:
         if(line[0]==">"):
             if(firstLine!=0):#if it's not the firstline in the input file, we store the input in GFA format in the output file
                 add = ""
-                add += "S " #for segment
+                add += "S\t" #for segment
                 add += name #id of segment
-                add += " "
+                add += "\t"
                 add += segment #segment itself
-                add += " "
+                add += "\t"
                 for i in optional: #optional tags
                     add+=i
-                    add+=" "
+                    add+="\t"
                 add+="\n"
                 #adding Segment to the file
                 g.write(add)
@@ -101,21 +101,21 @@ with open(inputFilename) as f:
                 elif(a[i][0:2] == "L:"): #for links
                     b = a[i].split(":")
                     k1 = int(k)-1
-                    links.append("L "+name+" "+b[1]+" "+b[2]+" "+b[3]+" "+str(k1)+"M\n")
+                    links.append("L\t"+name+"\t"+b[1]+"\t"+b[2]+"\t"+b[3]+"\t"+str(k1)+"M\n")
                 else: #all the other optional tags
                     optional.append(a[i])
     
     
     #we will miss the last one, because it won't go into the if condition - if(line[0]==">") and hence won't add the segment to the file. 
     add = ""
-    add += "S "
+    add += "S\t"
     add += name
-    add += " "
+    add += "\t"
     add += segment
-    add += " "
+    add += "\t"
     for i in optional:
         add+=i
-        add+=" "
+        add+="\t"
     add+="\n"
     #adding Segment to the file
     g.write(add)
