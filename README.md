@@ -42,7 +42,7 @@ Download the latest [Linux/MacOS binaries](https://github.com/GATB/bcalm/release
 
 # Input formats
 
-File input format can be fasta, fastq, either gzipped or not.
+File input format can be fasta, fastq, either gzipped or not. BCALM 2 does not care about paired-end information, all given reads contribute to k-mers in the graph (as long as such k-mers pass the abundance threshold).
 
 To pass several files as input:
 
