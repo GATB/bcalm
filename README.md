@@ -64,6 +64,8 @@ Where:
 * `KC` and `KM` fields are for total abundance and mean abundance of kmers inside the unitig, respectively.
 
 * Edges between unitigs are reported as `L:x:y:z` entries in the FASTA header (1 entry per edge). A classic forward-forward outcoming edge is labeled `L:+:[next node]:+`. A forward-reverse, `L:+:[next node]:-`. Incoming edges are encoded as outcoming edges of the reverse-complement node. E.g. `L:-:[previous node]:+` means that if you reverse-complemented the current node, then there would be an edge from the last k-mer of current node to the first k-mer of the forward strand of [previous node].
+
+GFA support is under test, there is a program in the `scripts` folder to convert the output of BCALM 2 to GFA, contributed by Mayank Pahadia, but I have not personally verified its correctness yet.
  
 # Reverse-complements
 
@@ -76,7 +78,9 @@ BCALM 2 supports arbitrary large k-mer lengths. You need to recompile it from so
 
     rm -Rf CMake* && cmake -DKSIZE_LIST="32 64 96 128 160 192 224 256 320" .. && make -j 8
 
-The list of kmers should only contain multiples of 32. Intermediate values create optimized code for smaller $k$'s. You could specify just `KSIZE_LIST="320"` but then using smaller k values would be as slow as large ones.
+For compilation, list of kmers should only contain multiples of 32. Intermediate values create optimized code for smaller $k$'s. You could specify just `KSIZE_LIST="320"` but then using smaller k values would be as slow as large ones.
+
+Of course, after that, BCALM 2 can be run with any k value up to the largest one specified during compilation.
 
 Acknowledgements
 ========
