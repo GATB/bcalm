@@ -31,7 +31,6 @@ bcalm_1::bcalm_1 ()  : Tool ("bcalm_1"){
     IOptionsParser* graphParser = GraphUnitigsTemplate<32>::getOptionsParser(false);
 
     // hiding options
-    if (IOptionsParser* p = graphParser->getParser(STR_KMER_ABUNDANCE_MAX))  {  p->setVisible(false); }
     if (IOptionsParser* p = graphParser->getParser(STR_KMER_ABUNDANCE_MIN_THRESHOLD))  {  p->setVisible(false); }
     if (IOptionsParser* p = graphParser->getParser(STR_HISTOGRAM_MAX))  {  p->setVisible(false); }
     if (IOptionsParser* p = graphParser->getParser(STR_SOLIDITY_KIND))  {  p->setVisible(false); } // oohh. multi-sample dbg construction someday maybe?
