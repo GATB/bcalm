@@ -66,11 +66,13 @@ Where:
 * Edges between unitigs are reported as `L:x:y:z` entries in the FASTA header (1 entry per edge). A classic forward-forward outcoming edge is labeled `L:+:[next node]:+`. A forward-reverse, `L:+:[next node]:-`. Incoming edges are encoded as outcoming edges of the reverse-complement node. E.g. `L:-:[previous node]:+` means that if you reverse-complemented the current node, then there would be an edge from the last k-mer of current node to the first k-mer of the forward strand of [previous node].
 
 GFA support is under test, there is a program in the `scripts` folder to convert the output of BCALM 2 to GFA, contributed by Mayank Pahadia, but I have not personally verified its correctness yet.
- 
+
 # Reverse-complements
 
 BCALM 2 converts all k-mers into their canonical representation with respect to reverse-complements.
 In other words, a k-mer and its reverse complement are considered to be the same object, appearing only once in the output, either in forward or reverse orientation.
+
+Note: in the output of BCALM 2, each unitig may be either be returned in forward or reverse orientation, with no guarantee that the orientation will stay the same across identical runs of the software.
 
 # Larger k values
 
