@@ -37,6 +37,9 @@ def main():
     parser.add_argument('inputFilename', help='Input FASTA file')
     parser.add_argument('outputFilename', help='Output GFA file')
     parser.add_argument('kmerSize', type=int, help='k-mer length')
+    parser.add_argument('-s', '--single-directed', action='store_true',
+                        help='Avoid outputting the whole skew-simmetric graph and output only one edge between two nodes',
+                        dest='single_directed')
 
     args = parser.parse_args()
 
@@ -94,7 +97,13 @@ def main():
                     elif(a[i][0:2] == "L:"): #for links
                         b = a[i].split(":")
                         k1 = int(args.kmerSize)-1
-                        links.append("L\t"+name+"\t"+b[1]+"\t"+b[2]+"\t"+b[3]+"\t"+str(k1)+"M\n")
+                        if args.single_directed:
+                            if name < b[2]:
+                                links.append("L\t"+name+"\t"+b[1]+"\t"+b[2]+"\t"+b[3]+"\t"+str(k1)+"M\n")
+                            elif name == b[2] and not (b[1] == b[3] == '-'): # manage links between the same unitig
+                                links.append("L\t"+name+"\t"+b[1]+"\t"+b[2]+"\t"+b[3]+"\t"+str(k1)+"M\n")
+                        else:
+                            links.append("L\t"+name+"\t"+b[1]+"\t"+b[2]+"\t"+b[3]+"\t"+str(k1)+"M\n")
                     else: #all the other optional tags
                         optional.append(a[i])
 
