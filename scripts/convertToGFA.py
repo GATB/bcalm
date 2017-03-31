@@ -29,34 +29,26 @@
 
 
 import sys
+import argparse
 
-inputFilename = ""
-outputFilename = ""
+parser = argparse.ArgumentParser(description="Convert a bclam-generated FASTA to a GFA.",
+                                 formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+parser.add_argument('inputFilename', help='Input FASTA file')
+parser.add_argument('outputFilename', help='Output GFA file')
+parser.add_argument('kmerSize', type=int, help='k-mer length')
 
+args = parser.parse_args()
 
-if(len(sys.argv)<4): #Check the number of arguments on command line
-    print "Pass the input filename, output filename and kmer size as asrguments to the python script"
-    print "For example - python convertToGFA.py inputFileName outputFileName kmerSize"
-    raise SystemExit
-
-#Set the filenames and kmer size
-inputFilename = str(sys.argv[1])
-outputFilename = str(sys.argv[2])
-k = str(sys.argv[3])
-print inputFilename,outputFilename,k
-
-
-
-with open(inputFilename) as f:
+with open(args.inputFilename) as f:
     #name stores the id of the unitig
     #optional is a list which stores all the optional tags of a segment
     #links stores all the link information about a segment
     name = ""
     optional=[]
     links=[]
-    g = open(outputFilename,'w')
+    g = open(args.outputFilename,'w')
     #adding Header to the file
-    g.write('H\tVN:Z:1.0\n') 
+    g.write('H\tVN:Z:1.0\n')
     print "GFA file open"
     #firstLine is for implemetation purpose so that we don't add some garbage value to the output file.
     firstLine = 0
@@ -65,8 +57,8 @@ with open(inputFilename) as f:
     for line in f:
         line = line.replace("\n","")
         if(line[0]!=">"):
-            #segment might be in more than one line, hence we get the whole segment first, and then put it in the GFA file. 
-            segment += line 
+            #segment might be in more than one line, hence we get the whole segment first, and then put it in the GFA file.
+            segment += line
         if(line[0]==">"):
             if(firstLine!=0):#if it's not the firstline in the input file, we store the input in GFA format in the output file
                 add = ""
@@ -83,7 +75,7 @@ with open(inputFilename) as f:
                 g.write(add)
                 segment = ""
                 for j in links: #adding all the links of the current segment to the GFA file
-                    g.write(j) 
+                    g.write(j)
 
             firstLine = 1
             #once the previous segment and it's information has been stored, we start the next segment and it's information
@@ -93,20 +85,20 @@ with open(inputFilename) as f:
             links = []
             #we skip the first value because the first value is ">ID"
             for i in range(1,len(a)):
-                #we need this because the line can end with a space, hence we get one extra value in our list. 
+                #we need this because the line can end with a space, hence we get one extra value in our list.
                 if(a[i]==""):
                     continue
                 if(a[i][0:2] == "MA"): #previous versions had MA optional tag as well, kept it just for implementation with previous bcalm2 version
                     optional.append(a[i][0:2]+":f:"+a[i][2:])
                 elif(a[i][0:2] == "L:"): #for links
                     b = a[i].split(":")
-                    k1 = int(k)-1
+                    k1 = int(args.kmerSize)-1
                     links.append("L\t"+name+"\t"+b[1]+"\t"+b[2]+"\t"+b[3]+"\t"+str(k1)+"M\n")
                 else: #all the other optional tags
                     optional.append(a[i])
-    
-    
-    #we will miss the last one, because it won't go into the if condition - if(line[0]==">") and hence won't add the segment to the file. 
+
+
+    #we will miss the last one, because it won't go into the if condition - if(line[0]==">") and hence won't add the segment to the file.
     add = ""
     add += "S\t"
     add += name
@@ -123,6 +115,4 @@ with open(inputFilename) as f:
     for j in links:
         g.write(j)
     print "done"
-    g.close() 
-            
-            
+    g.close()
