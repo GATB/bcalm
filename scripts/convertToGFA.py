@@ -31,8 +31,25 @@
 import sys
 import argparse
 
+def write_segment(name,segment,optional,g,links):
+    add = ""
+    add += "S\t" #for segment
+    add += name #id of segment
+    add += "\t"
+    add += segment #segment itself
+    add += "\t"
+    for i in optional: #optional tags
+        add+=i
+        add+="\t"
+    add+="\n"
+    #adding Segment to the file
+    g.write(add)
+    for j in links: #adding all the links of the current segment to the GFA file
+        g.write(j)
+
+
 def main():
-    parser = argparse.ArgumentParser(description="Convert a bclam-generated FASTA to a GFA.",
+    parser = argparse.ArgumentParser(description="Convert a bcalm-generated FASTA to a GFA.",
                                      formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument('inputFilename', help='Input FASTA file')
     parser.add_argument('outputFilename', help='Output GFA file')
@@ -52,8 +69,9 @@ def main():
         links=[]
         g = open(args.outputFilename,'w')
         #adding Header to the file
-        g.write('H\tVN:Z:1.0\n')
-        print "GFA file open"
+        k = int(args.kmerSize)
+        g.write('H\tVN:Z:1.0\t K:i:%d\n' %k) # includes the k-mer size
+        print("GFA file open")
         #firstLine is for implemetation purpose so that we don't add some garbage value to the output file.
         firstLine = 0
         #segment stores the segment till present, in a fasta file, segment can be on many lines, hence we need to get the whole segment from all the lines
@@ -65,21 +83,8 @@ def main():
                 segment += line
             if(line[0]==">"):
                 if(firstLine!=0):#if it's not the firstline in the input file, we store the input in GFA format in the output file
-                    add = ""
-                    add += "S\t" #for segment
-                    add += name #id of segment
-                    add += "\t"
-                    add += segment #segment itself
-                    add += "\t"
-                    for i in optional: #optional tags
-                        add+=i
-                        add+="\t"
-                    add+="\n"
-                    #adding Segment to the file
-                    g.write(add)
+                    write_segment(name,segment,optional,g,links)
                     segment = ""
-                    for j in links: #adding all the links of the current segment to the GFA file
-                        g.write(j)
 
                 firstLine = 1
                 #once the previous segment and it's information has been stored, we start the next segment and it's information
@@ -92,7 +97,7 @@ def main():
                     #we need this because the line can end with a space, hence we get one extra value in our list.
                     if(a[i]==""):
                         continue
-                    if(a[i][0:2] == "MA"): #previous versions had MA optional tag as well, kept it just for implementation with previous bcalm2 version
+                    if(a[i][0:2] == "MA"): #previous bcalm2 versions had "MA=[xxx]" optional tag as well, kept it just for compatibility, and reformated
                         optional.append(a[i][0:2]+":f:"+a[i][2:])
                     elif(a[i][0:2] == "L:"): #for links
                         b = a[i].split(":")
@@ -109,22 +114,8 @@ def main():
 
 
         #we will miss the last one, because it won't go into the if condition - if(line[0]==">") and hence won't add the segment to the file.
-        add = ""
-        add += "S\t"
-        add += name
-        add += "\t"
-        add += segment
-        add += "\t"
-        for i in optional:
-            add+=i
-            add+="\t"
-        add+="\n"
-        #adding Segment to the file
-        g.write(add)
-        segment = ""
-        for j in links:
-            g.write(j)
-        print "done"
+        write_segment(name,segment,optional,g,links)
+        print("done")
         g.close()
 
 if __name__ == "__main__":
