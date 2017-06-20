@@ -41,9 +41,8 @@ def write_segment(name,segment,optional,g,links):
     for i in optional: #optional tags
         add+=i
         add+="\t"
-    add+="\n"
     #adding Segment to the file
-    g.write(add)
+    g.write(add.strip()+"\n")
     for j in links: #adding all the links of the current segment to the GFA file
         g.write(j)
 
