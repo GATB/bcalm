@@ -55,6 +55,9 @@ BCALM 2 outputs the set of unitigs of the de Bruijn graph.
 A unitig is the sequence of a non-branching path. Unitigs that are connected by an edge in the graph overlap by exactly (k-1) nucleotides. 
 We have two output formats: FASTA and GFA.
 
+**GFA** output: use `scripts/convertToGFA.py` to convert the output of BCALM 2 to GFA (contributed by Mayank Pahadia).
+
+
 FASTA output header: 
 
     ><id> LN:i:<length> KC:i:<abundance> KM:f:<abundance> L:<+/->:<other id>:<+/-> [..]
@@ -66,8 +69,6 @@ Where:
 * `KC` and `KM` fields are for total abundance and mean abundance of kmers inside the unitig, respectively.
 
 * Edges between unitigs are reported as `L:x:y:z` entries in the FASTA header (1 entry per edge). A classic forward-forward outcoming edge is labeled `L:+:[next node]:+`. A forward-reverse, `L:+:[next node]:-`. Incoming edges are encoded as outcoming edges of the reverse-complement node. E.g. `L:-:[previous node]:+` means that if you reverse-complemented the current node, then there would be an edge from the last k-mer of current node to the first k-mer of the forward strand of [previous node].
-
-GFA output: there is a program in the `scripts` folder to convert the output of BCALM 2 to GFA, contributed by Mayank Pahadia.
 
 # Reverse-complements
 
