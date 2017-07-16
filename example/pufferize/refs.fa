@@ -1,0 +1,6 @@
+>1 (run it with k=9)
+ACTAATCATTACATGAGATCAGGCAATG
+>2 (starts with 1's last 9-mer)
+CAGGCAATGAGATGATAACATGATAGATGAGACCAATT
+>3 (starts with 2's last 9-mer but inverted)
+AATTGGTCTGGTTGGATTGTACTCATGATG
