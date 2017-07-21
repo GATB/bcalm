@@ -89,7 +89,7 @@ Of course, after that, BCALM 2 can be run with any k value up to the largest one
 
 # Intermediate files
 
-BCALM 2 produces some intermediate files: a .h5 file (or a _gatb/ folder), which contain the k-mer counts. The "*glue*" files contain compacted sequences that needs to be glued together (see BCALM 2 paper). Those files can be safely deleted after an execution, as the actual output is just the FASTA file containing the unitigs.
+BCALM 2 produces some intermediate files: a .h5 file (or a _gatb/ folder), which contain the k-mer counts. The "\*glue\*" files contain compacted sequences that needs to be glued together (see BCALM 2 paper). Those files can be safely deleted after an execution, as the actual output is just the FASTA file containing the unitigs.
 
 Acknowledgements
 ========
