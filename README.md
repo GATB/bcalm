@@ -87,6 +87,10 @@ For compilation, list of kmers should only contain multiples of 32. Intermediate
 
 Of course, after that, BCALM 2 can be run with any k value up to the largest one specified during compilation.
 
+# Intermediate files
+
+BCALM 2 produces some intermediate files: a .h5 file (or a _gatb/ folder), which contain the k-mer counts. The "*glue*" files contain compacted sequences that needs to be glued together (see BCALM 2 paper). Those files can be safely deleted after an execution, as the actual output is just the FASTA file containing the unitigs.
+
 Acknowledgements
 ========
 If using BCALM 2, please cite:
