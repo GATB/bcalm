@@ -56,7 +56,7 @@ for header, ref in fasta_iter(references):
 
 # parse unitigs and split if necessary
 # ASSUMPTION: we might need to split a unitig multiple times
-# NOTE: the split exact position in unitig depends on whether the seen kmer is the first or last kmer in a reference string.
+# NOTE: the exact position of the split in unitig depends on whether the seen kmer is the first or last kmer in a reference string.
 # NOTE: unitigs are renumbered consecutively
 # NOTE: former unitigs links are discarded
 #output = open(unitigs+".pufferized.fa","w")
