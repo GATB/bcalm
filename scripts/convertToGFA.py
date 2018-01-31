@@ -71,7 +71,7 @@ def main():
         g = open(args.outputFilename,'w')
         #adding Header to the file
         k = int(args.kmerSize)
-        g.write('H\tVN:Z:1.0\t k:i:%d\n' %k) # includes the k-mer size
+        g.write('H\tVN:Z:1.0\t ks:i:%d\n' %k) # includes the k-mer size
         print("GFA file open")
         #firstLine is for implemetation purpose so that we don't add some garbage value to the output file.
         firstLine = 0
