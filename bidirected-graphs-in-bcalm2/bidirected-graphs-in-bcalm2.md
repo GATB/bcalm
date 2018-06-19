@@ -6,7 +6,7 @@ In the publications describing BCALM 2 [[Chikhi et al. 2017](https://doi.org/10.
 
 There are several ways of representing bi-directed graphs. Here we describe the way BCALM 2 represents them.  An edge in a bi-directed graph e is 5-tuple  (e.from, e.to, e.fromSign, e.toSign, e.label).  The e.from and e.to are vertices, and we interpret these naturally as saying that the *direction* of e is from e.from to e.to.  The e.fromSign and e.toSign can take on either the value '+' or '-'.  The e.label is an arbitrary identifier. Note that there can be multiple edges of the same type as long as the labels are different, i.e. there can be edges (x, y, +, -, "lbl1" ) and (x, y, +, -, "lbl2").  We can visualize these edges, e.g. (x, y, -, +, "lbl1"):
 
-![Fig2](bidirected-graphs-in-bcalm2/fig1.png)
+![Fig1](fig1.png)
 
 Note that we draw the fromSign next to the "from" vertex, and the toSign next to the "to" vertex. In other words, the following graph is equivalent to the one above:
 
