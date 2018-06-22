@@ -23,7 +23,7 @@ The label can be omitted if not important. Given two nodes x and y, there are 8 
 
 The table contains the 8 edge types, organized such that each row lists a pair of edges that are mirrors of each other. Each pair is given a *mirror type* number for the purposes of our discussion, but the  numbers are arbitrary. We can also visualize the four mirror types as follows:
 
-![Fig3](fig3.png)
+![Fig3](fig33.png)
 
 Bi-directed graphs have the constraint that, given two nodes x and y, a label l, and a mirror type, either both or none of the mirror edges with label l exist between x and y. Informally, edges always come in identically-labeled pairs (with one exception listed below). Thus, even though  there are 8 type of edges that can be between x and y, there are really only 4 types of *connections*.  There are alternate representations of bi-directed graphs that remove this redundancy, but we do not describe them here.
 
