@@ -52,7 +52,8 @@ To pass several files as input:
 # Output
 
 BCALM 2 outputs the set of unitigs of the de Bruijn graph.
-A unitig is the sequence of a non-branching path. Unitigs that are connected by an edge in the graph overlap by exactly (k-1) nucleotides. 
+A unitig is the sequence of a non-branching path. Unitigs that are connected by an edge in the graph overlap by exactly (k-1) nucleotides. For a formal description of what BCALM2 outputs, see [here](bidirected-graphs-in-bcalm2/bidirected-graphs-in-bcalm2.md)
+
 We have two output formats: FASTA and GFA.
 
 **GFA** output: use `scripts/convertToGFA.py` to convert the output of BCALM 2 to GFA (contributed by Mayank Pahadia).
@@ -70,12 +71,14 @@ Where:
 
 * Edges between unitigs are reported as `L:x:y:z` entries in the FASTA header (1 entry per edge). A classic forward-forward outcoming edge is labeled `L:+:[next node]:+`. A forward-reverse, `L:+:[next node]:-`. Incoming edges are encoded as outcoming edges of the reverse-complement node. E.g. `L:-:[previous node]:+` means that if you reverse-complemented the current node, then there would be an edge from the last k-mer of current node to the first k-mer of the forward strand of [previous node].
 
-# Reverse-complements
+# Reverse-complements and double-strandedness
 
 BCALM 2 converts all k-mers into their canonical representation with respect to reverse-complements.
 In other words, a k-mer and its reverse complement are considered to be the same object, appearing only once in the output, either in forward or reverse orientation.
 
 Note: in the output of BCALM 2, each unitig may be either be returned in forward or reverse orientation, with no guarantee that the orientation will stay the same across identical runs of the software.
+
+For a formal description of how BCALM2 handles double-strandedness of DNA, see [here](bidirected-graphs-in-bcalm2/bidirected-graphs-in-bcalm2.md)
 
 # Larger k values
 
