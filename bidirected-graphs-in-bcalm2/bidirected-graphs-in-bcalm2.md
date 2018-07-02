@@ -86,7 +86,13 @@ A unitig is *maximal* if it cannot be extended in either direction. Consider the
 
 ![Fig8](fig8.png)
 
-It can be shown that maximal unitigs form a vertex decomposition of the graph (though I have not seen a proof of this statement). In the *compacted* bi-directed graph, every maximal unitig and its mirror is replaced by a single vertex. Formally, the nodes of the compacted graph are the maximal unitigs, and the edges represent all overlaps of length k-1.
+In the *compacted* bi-directed graph, every maximal unitig and its mirror is replaced by a single vertex. Formally, the nodes of the compacted graph are the maximal unitigs, and the edges represent all overlaps of length k-1.
+
+The unitig definition is motivated by the desire for it to have the following properties (though I have not seen a formal proof of these in the bi-directed setting):
+* Maximal unitigs should be a vertex decomposition of the graph; in particular, two maximal unitigs should not share a vertex
+* A walk in a bi-directed graph cannot visit a vertex in a unitig without visiting the whole unitig, with one exception. A walk may begin (respectively, end) with a prefix (respectively, suffix) of the unitig.
+
+
 
 ## BCALM 2 
 BCALM 2 computes the compacted bi-directed node-centric de Bruijn graph of order k from its input. The output is in two formats. In the FASTA output file of BCALM 2, every FASTA entry corresponds to a node. An edge e is represented in the header of node e.from as `L:<e.fromSign>:<e.to>:<e.toSign>`. Note that BCALM 2 records all edges, even though, in principle,  one could record only one edge per mirror type. 
