@@ -69,18 +69,18 @@ Given a set of strings S, a *[node-centric](https://www.biostars.org/p/175058/#2
 Here, we gave each edge a name (e.g. e1) so that we can refer to the edges below. Observe that e1 and e2 are mirror edges, while e3 is a self-mirror and e4 is a self-mirror.
 
 ## Walks and unitigs and compaction
-A sequence of edges e_1, ... , e_n in a bi-directed graph is *walk* if 
-* It is a walk in the directed sense, i.e. e_i.to = e_{i+1}.from, for all 0 < i < n.
-* The signs at an internal vertices are equal, i.e. e_i.toSign = e_{i+1}.fromSign, for all 0 < i < n.
+A sequence of edges e<sub>1</sub>, ... , e<sub>n</sub> in a bi-directed graph is *walk* if 
+* It is a walk in the directed sense, i.e. e<sub>i</sub>.to = e<sub>i+1</sub>.from, for all 0 < i < n.
+* The signs at an internal vertices are equal, i.e. e<sub>i</sub>.toSign = e<sub>i+1</sub>.fromSign, for all 0 < i < n.
 
 A single vertex is also considered a walk. In the previous graph example, the sequence (e2, e3, e4, e3, e1) is a walk, while (e2, e3, e4, e1) is not.
 
 In a bi-directed overlap graph, a walk spells a corresponding string. For example, (e2, e3, e1) spells the original string GTATAC, while (e3, e1) spells TATAC. Observe that each walk has a corresponding *mirror walk* which spells the reverse-complement. For example, the mirror walk of (e3, e1) is (e2, e3) and spells GTATA.
 
-Given a walk (e_1, ..., e_n), let v_0 = e_1.from and v_i = e_i.to, for all 1 <= i <= n. A walk is a *unitig* if it is either a single vertex or a path (i.e. does not repeat vertices) such that
-* for every 0 < i < n, the only edges incident on v_i are e_{i-1}, e_i,  and their mirrors.
-* e_1 is the only outgoing edge from v_0 that has the the sign e_1.fromSign at v_0,
-* e_n is the only incoming edge to v_n that has the sign e_n.toSign at v_n.
+Given a walk (e<sub>1</sub>, ..., e<sub>n</sub>), let v<sub>0</sub> = e<sub>1</sub>.from and v<sub>i</sub> = e<sub>i</sub>.to, for all 1 <= i <= n. A walk is a *unitig* if it is either a single vertex or a path (i.e. does not repeat vertices) such that
+* for every 0 < i < n, the only edges incident on v<sub>i</sub> are e<sub>i-1</sub>, e<sub>i</sub>,  and their mirrors.
+* e<sub>1</sub> is the only outgoing edge from v<sub>0</sub> that has the the sign e<sub>1</sub>.fromSign at v<sub>0</sub>,
+* e<sub>n</sub> is the only incoming edge to v<sub>n</sub> that has the sign e<sub>n</sub>.toSign at v<sub>n</sub>.
 
 A unitig is *maximal* if it cannot be extended in either direction. Consider the graph defined by the rectangular nodes and solid edges below (i.e. discarding the rhombus-shaped nodes and dashed edges for now), In this graph, there is a maximal unitig traversing (B, C, D, E). There is also a mirror maximal unitig traversing (E, D, C, B). There are also 4 other maximal unitigs: (A), (H), (K), and (I). The rhombus-shaped nodes and dashed edges represent nodes and edges that, if added  to the graph, would destroy the unitig (B, C, D, E) and its mirror.
 
