@@ -97,6 +97,6 @@ BCALM 2 produces some intermediate files: a .h5 file (or a _gatb/ folder), which
 Acknowledgements
 ========
 If using BCALM 2, please cite:
-Rayan Chikhi, Antoine Limasset and Paul Medvedev, Compacting de Bruijn graphs from sequencing data quickly and in low memory, Proceedings of ISMB 2016, Bioinformatics, 32 (12): i201-i208.  ([Bibtex](http://bioinformatics.oxfordjournals.org/citmgr?type=bibtex&gca=bioinfo%3B32%2F12%2Fi201))
+Rayan Chikhi, Antoine Limasset and Paul Medvedev, Compacting de Bruijn graphs from sequencing data quickly and in low memory, Proceedings of ISMB 2016, Bioinformatics, 32 (12): i201-i208.  ([Bibtex](https://academic.oup.com/Citation/Download?resourceId=2289008&resourceType=3&citationFormat=2))
 
 This project has been supported in part by NSF awards DBI-1356529, CCF-1439057, IIS-1453527, and IIS-1421908.
