@@ -25,7 +25,7 @@ The table contains the 8 edge types, organized such that each row lists a pair o
 
 ![Fig3](fig33.png)
 
-Bi-directed graphs have the constraint that, given two nodes x and y, a label l, and a mirror type, either both or none of the mirror edges with label l exist between x and y. Informally, edges always come in identically-labeled pairs (with one exception listed below). Thus, even though  there are 8 type of edges that can be between x and y, there are really only 4 types of *connections*.  There are alternate representations of bi-directed graphs that remove this redundancy, but we do not describe them here.
+Bi-directed graphs have the *mirror constraint* that, given two nodes x and y, a label l, and a mirror type, either both or none of the mirror edges with label l exist between x and y. Informally, edges always come in identically-labeled pairs (with one exception listed below). Thus, even though  there are 8 type of edges that can be between x and y, there are really only 4 types of *connections*.  There are alternate representations of bi-directed graphs that remove this redundancy, but we do not describe them here.
 
 The above rule has an interesting effect on self-loops (i.e. when e.from = e.to). In such cases, observe that the two mirror edges of Type 3 are identical. The same holds for Type 4.  We refer to such edges as *self-mirrors*. A bi-directed graph does not allow to represent duplicate edges, and so this connection is represented by only one edge. This case forms an exception to the rule that all edges come in pairs with their mirror. I suspect that this special case has cost humanity thousand of hours in debugging time. 
 
@@ -50,16 +50,16 @@ We label each edge with the length of the equal suffixes/prefixes. For example, 
 ![Fig5](fig5.png)
 
 
-Intuitively, an edge implies that the strings of the two nodes can be combined, using an overlap, into a bigger string. The sign at a node indicates whether the label or the label's reverse-complement is used. A '+' indicates that the label is used, while a '-' indicates that the label's reverse-complement is used. 
+Intuitively, an edge implies that the strings of the two nodes can be combined, using an overlap, into a bigger string. The sign at a node indicates whether the label or the label's reverse-complement is used. A '+' indicates that the label is used, while a '-' indicates that the label's reverse-complement is used. This is called the *spelling rule*. In this case, for example, the string spelled by the top edge is AAGTCTAC.
 
-Notice that the two overlaps between the nodes in the previous example are mirror edges of type 4. This is not a coincidence. One can show from the properties of reverse-complements that if there is an overlap implied by an  edge, then there must also be an overlap implied by the mirror of that edge. 
+Notice that the two overlaps between the nodes in the previous example are mirror edges of type 4. This is not a coincidence. One can show from the properties of reverse-complements that if there is an overlap implied by an  edge, then there must also be an overlap implied by the mirror of that edge. Thus, our definition of edges in a bi-directed overlap graph satisfies the mirror constraint of bi-directed graphs.
 
 In this context, a self-mirror edge corresponds to a situation where either a suffix or a prefix of a node is equal to its own reverse-complement. Here is an example of a Type 3 self-mirror. Note that a self-mirror cannot have an overlap with an odd length, because an odd-length string can never be its own reverse-complement.
 
 ![Fig6](fig66.png)
 
 
-## Bidirected de-Bruijn graph
+## Bi-directed de-Bruijn graph
 
 Given a set of strings S, a *[node-centric](https://www.biostars.org/p/175058/#256741) bi-directed de-Bruijn graph of order k* is a type of bi-directed overlap graph. The nodes correspond to all the distinct k-mer substrings of S, with the caveat that two k-mers that are reverse-complements of each other are represented by a single node. The label of this node is chosen arbitrarily as either the k-mer or its reverse complement; however there is often a convention that the label is chosen as the lexicographically smallest option. The edges correspond to all the overlaps of length k-1. For example, with k = 3 and S={GTATAC}, the graph is:
 
@@ -68,25 +68,28 @@ Given a set of strings S, a *[node-centric](https://www.biostars.org/p/175058/#2
 
 Here, we gave each edge a name (e.g. e1) so that we can refer to the edges below. Observe that e1 and e2 are mirror edges, while e3 is a self-mirror and e4 is a self-mirror.
 
-## Walks and unitigs and compaction
+## Walks 
+
 A sequence of edges e<sub>1</sub>, ... , e<sub>n</sub> in a bi-directed graph is *walk* if 
 * It is a walk in the directed sense, i.e. e<sub>i</sub>.to = e<sub>i+1</sub>.from, for all 0 < i < n.
 * The signs at an internal vertices are equal, i.e. e<sub>i</sub>.toSign = e<sub>i+1</sub>.fromSign, for all 0 < i < n.
 
 A single vertex is also considered a walk. In the previous graph example, the sequence (e2, e3, e4, e3, e1) is a walk, while (e2, e3, e4, e1) is not.
 
-In a bi-directed overlap graph, a walk spells a corresponding string. For example, (e2, e3, e1) spells the original string GTATAC, while (e3, e1) spells TATAC. Observe that each walk has a corresponding *mirror walk* which spells the reverse-complement. For example, the mirror walk of (e3, e1) is (e2, e3) and spells GTATA.
+In a bi-directed overlap graph, a walk spells a corresponding string using the spelling rule previously described. For example, (e2, e3, e1) spells the original string GTATAC, while (e3, e1) spells TATAC. Observe that each walk has a corresponding *mirror walk* which spells the reverse-complement. For example, the mirror walk of (e3, e1) is (e2, e3) and spells GTATA.
+
+## Unitigs and compaction
 
 Given a walk (e<sub>1</sub>, ..., e<sub>n</sub>), let v<sub>0</sub> = e<sub>1</sub>.from and v<sub>i</sub> = e<sub>i</sub>.to, for all 1 <= i <= n. A walk is a *unitig* if it is either a single vertex or a path (i.e. does not repeat vertices) such that
 * for every 0 < i < n, the only edges incident on v<sub>i</sub> are e<sub>i-1</sub>, e<sub>i</sub>,  and their mirrors.
 * e<sub>1</sub> is the only outgoing edge from v<sub>0</sub> that has the the sign e<sub>1</sub>.fromSign at v<sub>0</sub>,
 * e<sub>n</sub> is the only incoming edge to v<sub>n</sub> that has the sign e<sub>n</sub>.toSign at v<sub>n</sub>.
 
-A unitig is *maximal* if it cannot be extended in either direction. Consider the graph defined by the rectangular nodes and solid edges below (i.e. discarding the rhombus-shaped nodes and dashed edges for now), In this graph, there is a maximal unitig traversing (B, C, D, E). There is also a mirror maximal unitig traversing (E, D, C, B). There are also 4 other maximal unitigs: (A), (H), (K), and (I). The rhombus-shaped nodes and dashed edges represent nodes and edges that, if added  to the graph, would destroy the unitig (B, C, D, E) and its mirror.
+A unitig is *maximal* if it cannot be extended in either direction. Consider the graph defined by the rectangular nodes and solid edges below (i.e. discarding the rhombus-shaped nodes and dashed edges for now). In this graph, there is a maximal unitig traversing (B, C, D, E). There is also a mirror maximal unitig traversing (E, D, C, B). There are also 4 other maximal unitigs: (A), (H), (K), and (I). The rhombus-shaped nodes and dashed edges represent nodes and edges that, if added  to the graph, would destroy the unitig (B, C, D, E) and its mirror. The maximal unitigs of the graph would then be (K), (A), (B), (C), (D), (E), (I), and (H).
 
 ![Fig8](fig8.png)
 
-In the *compacted* bi-directed graph, every maximal unitig and its mirror is replaced by a single vertex. Formally, the nodes of the compacted graph are the maximal unitigs, and the edges represent all overlaps of length k-1.
+In the *compacted* bi-directed graph, every maximal unitig and its mirror is replaced by a single vertex. Formally, the nodes of the compacted graph are the maximal unitigs (grouped in mirror pairs), and the edges represent all overlaps of length k-1.
 
 The unitig definition is motivated by the desire for it to have the following properties (though I have not seen a formal proof of these in the bi-directed setting):
 * Maximal unitigs should be a vertex decomposition of the graph; in particular, two maximal unitigs should not share a vertex
