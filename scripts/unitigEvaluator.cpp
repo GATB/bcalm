@@ -4,6 +4,8 @@
 // it can be compiled with just:
 // g++ -lomp -o unitigEvaluator unitigEvaluator.cpp
 // updated: 27th November 2018
+//          6th june 2019
+// WARNING: reference needs to be one line per sequence
 #include <fstream>
 #include <cstring>
 #include <string>
@@ -109,7 +111,7 @@ int main(int argc, char ** argv){
 		cout<<"Problem with files opening"<<endl;
 		exit(1);
 	}
-	uint64_t FP(0),TP(0),FN(0),size(0),number(0),genomicKmersNum(0);
+	uint64_t FP(0),TP(0),FN(0),size(0),number(0),genomicKmersNum(0),genomicDuplicated(0);
 	omp_lock_t lock[1024];
 	for (int i=0; i<1024; i++)
         omp_init_lock(&(lock[i]));
@@ -179,6 +181,8 @@ int main(int argc, char ** argv){
     								#pragma omp atomic
     								TP++;
                                 }
+                                else
+                                    genomicDuplicated++;
 							}
 						}
 					}
@@ -212,6 +216,8 @@ int main(int argc, char ** argv){
 	cout<<"True positive (kmers in the unitig and the references) 		GOOD kmers:	"<<intToString(TP)<<endl;
 	cout<<"False positive (kmers in the unitig and NOT in the references)	ERRONEOUS kmers:	"<<intToString(FP)<<endl;
 	cout<<"False Negative (kmers NOT in the unitig but in the references)	MISSING kmers:	"<<intToString(FN)<<endl;
+    if (genomicDuplicated > 0)
+    	cout<<"REPEATED kmers in the unitigs (should not happen):	"<<intToString(genomicDuplicated)<<endl;
 	cout<<"Erroneous kmer rate (*10,000): "<<(double)10000*FP/(FP+TP)<<endl;
 	cout<<"Missing kmer rate (*10,000): "<<(double)10000*FN/genomicKmersNum<<endl;
 
