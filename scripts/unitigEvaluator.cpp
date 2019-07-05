@@ -13,13 +13,8 @@
 #include <iostream>
 #include <algorithm>
 #include <chrono>
-#include <unordered_set>
-#include "sparsepp/spp.h"
+#include <unordered_map>
 #include <omp.h>
-
-
-using spp::sparse_hash_map;
-
 
 
 uint64_t xs(uint64_t y){
@@ -117,7 +112,7 @@ int main(int argc, char ** argv){
         omp_init_lock(&(lock[i]));
 
 	for(uint HASH(0);HASH<nbHash;++HASH){
-		vector<sparse_hash_map<string, bool>> genomicKmers;
+		vector<std::unordered_map<string, bool>> genomicKmers;
 		genomicKmers.resize(1024);
 
 		#pragma omp parallel num_threads(nb_cores)
