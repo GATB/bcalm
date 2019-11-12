@@ -61,6 +61,21 @@ struct Functor  {  void operator ()  (bcalm_1 *bcalm)
             throw OptionFailure (bcalm->getParser(), "Specifiy -in");
         }
 
+        // delete the .h5 file
+        bool delete_h5_file = true;
+        if (delete_h5_file)
+        {
+            // copies the h5 naming mechanism in GraphUnitigs.cpp
+            string input = bcalm->getInput()->getStr(STR_URI_INPUT);
+            string prefix;
+            if (bcalm->getInput()->get(STR_URI_OUTPUT)) 
+                prefix = bcalm->getInput()->getStr(STR_URI_OUTPUT);
+            else
+                prefix = System::file().getBaseName (input) + prefix;
+
+            System::file().remove (prefix + ".h5");
+        }
+
     }
 };
 
