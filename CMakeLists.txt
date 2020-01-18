@@ -27,6 +27,8 @@ exec_program(
 
 add_definitions( -DGIT_SHA1="${VERSION_SHA1}" )
 
+file (STRINGS "VERSION" VERSION)
+add_definitions( -DVERSION="${VERSION}" )
 
 ################################################################################
 # THIRD PARTIES
@@ -105,7 +107,7 @@ SET (CPACK_SOURCE_IGNORE_FILES
 # We copy the project binary to the 'bin' directory
 INSTALL (TARGETS ${PROJECT_NAME} DESTINATION bin)
 INSTALL (DIRECTORY "${PROJECT_SOURCE_DIR}/example/" DESTINATION example)
-INSTALL (FILES LICENSE README.md DESTINATION bin/..)
+INSTALL (FILES VERSION LICENSE README.md DESTINATION bin/..)
 
 # cmake_system_name for mac is Darwin, i want to change that
 if (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
@@ -114,9 +116,6 @@ elseif (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
     set(PRETTY_SYSTEM_NAME "Mac")
 endif()
 
-
-
-file (STRINGS "VERSION" VERSION)
 set (CPACK_PACKAGE_FILE_NAME  ${PROJECT_NAME}-binaries-${VERSION}-${PRETTY_SYSTEM_NAME})
 
 include (CPack)

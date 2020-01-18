@@ -82,7 +82,7 @@ struct Functor  {  void operator ()  (bcalm_1 *bcalm)
 void bcalm_1::execute (){
 
 #ifdef GIT_SHA1
-    std::cout << "BCALM 2, git commit " << GIT_SHA1 << std::endl;
+    std::cout << "BCALM 2, version " << VERSION << ", git commit " << GIT_SHA1 << std::endl;
 #endif
 
 
