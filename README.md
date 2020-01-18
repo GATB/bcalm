@@ -39,6 +39,10 @@ Download the latest [Linux/MacOS binaries](https://github.com/GATB/bcalm/release
     git clone --recursive https://github.com/GATB/bcalm 
     cd bcalm
     mkdir build;  cd build;  cmake ..;  make -j 8
+    
+You can also install bcalm from [bioconda](https://bioconda.github.io/) with [conda](https://docs.conda.io/en/latest/):
+
+    conda install -c conda-forge -c bioconda bcalm
 
 # Input formats
 
