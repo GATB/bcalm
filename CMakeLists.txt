@@ -17,15 +17,21 @@ FOREACH (path "${CMAKE_CURRENT_SOURCE_DIR}/cmake" "${GATB_CORE_HOME}/gatb-core/c
 ENDFOREACH(path)
 
 #############################
-# getting git version
+#getting git version
 #from http://stackoverflow.com/questions/1435953/how-can-i-pass-git-sha1-to-compiler-as-definition-using-cmake
 exec_program(
     "git"
     ${CMAKE_CURRENT_SOURCE_DIR}
     ARGS "rev-parse --short HEAD"
-    OUTPUT_VARIABLE VERSION_SHA1 )
+    OUTPUT_VARIABLE VERSION_SHA1
+    RETURN_VALUE ERROR_GIT)
 
-add_definitions( -DGIT_SHA1="${VERSION_SHA1}" )
+if(!${ERROR_GIT})
+    add_definitions( -DGIT_SHA1="${VERSION_SHA1}" )
+endif(!${ERROR_GIT})
+
+################################
+#add version nifo
 
 file (STRINGS "VERSION" VERSION)
 add_definitions( -DVERSION="${VERSION}" )

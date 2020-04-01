@@ -89,8 +89,6 @@ void bcalm_1::execute (){
     /** we get the kmer size chosen by the end user. */
     size_t kmerSize = getInput()->getInt (STR_KMER_SIZE);
 
-    if (kmerSize % 4 == 0) {std::cout << "due to a currently known bug, bcalm with a kmer multiple of 4 is temporarily unavailable. please retry with another k-mer size" <<  std::endl; exit(1);}
-
     /** We launch Minia with the correct Integer implementation according to the choosen kmer size. */
     Integer::apply<Functor,bcalm_1*> (kmerSize, this);
 
