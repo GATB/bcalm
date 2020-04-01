@@ -26,9 +26,11 @@ exec_program(
     OUTPUT_VARIABLE VERSION_SHA1
     RETURN_VALUE ERROR_GIT)
 
-if(!${ERROR_GIT})
+if(NOT ${ERROR_GIT})
     add_definitions( -DGIT_SHA1="${VERSION_SHA1}" )
-endif(!${ERROR_GIT})
+else()
+    message("Warning: cannot retrieve git version. Bcalm won't display its version. Error value: ${ERROR_GIT})")
+endif(NOT ${ERROR_GIT})
 
 ################################
 #add version nifo
