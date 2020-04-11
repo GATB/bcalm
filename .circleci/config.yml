@@ -5,17 +5,21 @@ jobs:
         - image: "debian:stretch"
       steps:
         - checkout
-        - run:
-            name: Getting submodules
-            command: |
-                   git submodule init 
-                   git submodule update --remote
+
         - run:
             name: Installing SUDO
             command: 'apt-get update && apt-get install -y sudo && rm -rf /var/lib/apt/lists/*'
         - run:
             name: Installing GCC
             command: 'apt-get update && apt-get install -y build-essential wget zlib1g zlib1g-dev'
+        - run:
+            name: Installing Git
+            command: 'apt-get update && apt-get install -y git'
+        - run:
+            name: Getting submodules
+            command: |
+                   git submodule init 
+                   git submodule update --remote
         - run:
             name: Install CMAKE
             command: |
