@@ -36,7 +36,7 @@ before_deploy:
 deploy:
   provider: releases
   api_key:
-    secure: hQsQR/iRTVbDDJlyJpBln98CT+Mm9GHy/H/gYvLwhoh73f+OmUEreB2HS/KsWp3TTgZeI/ANRBpY11I4Xrai1sntqjXO2LG79pEIoL62AcCBEQJ1RsnkGg9s10qFKzQqImuPDzincnVIrSr92L8kcXBuErU2YK7/Ss5ABzxRN+E=
+    secure: KW6qAyrtX1fyCpZEjttW4YaKRGFvioqYBoN3mvlGJeYJqTFvuPbQ4PMA+ueQWvQFImhF74C/WQjnw0uUgRpBUV5mQZOFqA0QIGJNaIkL/dSqs7N9YI97VX3TH/GxPsLpW1KfQPF0DkCJ8pobWEz5k3Itl8woSXcX2HskxtQNKA0=
   file: "${RELEASE_FILE}"
   skip_cleanup: true
   on:
