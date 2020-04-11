@@ -1,0 +1,45 @@
+language: cpp
+os:
+- linux
+- osx
+compiler:
+- clang
+- gcc
+addons:
+  apt:
+    sources:
+    - ubuntu-toolchain-r-test
+    - llvm-toolchain-precise-3.7
+    - george-edison55-precise-backports #for cmake3
+    packages:
+    - g++-4.8
+    - clang-3.7
+    - cmake
+    - cmake-data
+install:
+    - if [ "`echo $CXX`" == "g++" ]     && [ "$TRAVIS_OS_NAME" == "linux" ]; then export CXX=g++-4.8; fi
+    - if [ "`echo $CXX`" == "clang++" ] && [ "$TRAVIS_OS_NAME" == "linux" ]; then export CXX=clang++-3.7; fi
+matrix:
+  exclude:
+  - os: osx
+    compiler: gcc
+script:
+    - mkdir build
+    - cd build
+    - cmake .. && make && make package
+    - cd ..
+before_deploy:
+    - export RELEASE_FILE=$(ls build/bcalm-binaries-*.tar.gz)
+    - ls
+    - ls build
+    - echo "Deploying $RELEASE_FILE to GitHub"
+deploy:
+  provider: releases
+  api_key:
+    secure: hQsQR/iRTVbDDJlyJpBln98CT+Mm9GHy/H/gYvLwhoh73f+OmUEreB2HS/KsWp3TTgZeI/ANRBpY11I4Xrai1sntqjXO2LG79pEIoL62AcCBEQJ1RsnkGg9s10qFKzQqImuPDzincnVIrSr92L8kcXBuErU2YK7/Ss5ABzxRN+E=
+  file: "${RELEASE_FILE}"
+  skip_cleanup: true
+  on:
+    repo: GATB/bcalm
+    tags: true
+
