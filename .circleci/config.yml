@@ -43,8 +43,9 @@ jobs:
         - run:
             name: Making package in case we'll release
             command: 'cd build && make package && mkdir ../artifacts && mv bcalm-binaries-*.tar.gz ../artifacts'
-
-
+        - store_artifacts:
+            path: ./artifacts
+    
   publish-github-release:
     docker:
       - image: cibuilds/github:0.10
