@@ -8,7 +8,7 @@ There are several ways of representing bi-directed graphs. Here we describe the 
 
 ![Fig1](fig1.png)
 
-Note that we draw the fromSign next to the "from" vertex, and the toSign next to the "to" vertex. In other words, the following graph is equivalent to the one above:
+Note that we draw the fromSign next to the "from" vertex, and the toSign next to the "to" vertex. In other words, the following two graph are equivalent:
 
 ![Fig2](fig2.png)
 
