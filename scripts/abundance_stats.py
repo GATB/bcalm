@@ -24,13 +24,17 @@ if len(sys.argv) < 2:
  
 unitigs = sys.argv[1]
 abundances = []
+<<<<<<< HEAD
 from collections import defaultdict
 totsize = defaultdict(int)
+=======
+>>>>>>> be8238dbac264fc60739c77effea906e3f01a8e5
 for header, unitig in fasta_iter(unitigs):
     for field in header.split():
         if field.startswith("km:f:"):
             abundance = field.split(":")[-1]
             #print(abundance)
+<<<<<<< HEAD
             abundance = int(float(abundance)) # convert to rounded int
             abundances += [abundance]
             totsize[abundance] += len(unitig)
@@ -40,3 +44,12 @@ c = Counter(abundances)
 print("'value' : 'number of unitigs having this mean abundance value' : 'total size of unitigs having this mean abundance'")
 for val in sorted(list(c)):
     print(val,":",c[val],':',totsize[val])
+=======
+            abundances += [int(float(abundance))]
+
+from collections import Counter
+c = Counter(abundances)
+print("'value' : 'number of unitigs having this mean abundance value'")
+for val in sorted(list(c)):
+    print(val,":",c[val])
+>>>>>>> be8238dbac264fc60739c77effea906e3f01a8e5
