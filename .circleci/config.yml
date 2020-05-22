@@ -42,7 +42,7 @@ jobs:
             command: 'mkdir build && cd build && cmake .. && make -j 4'
         - run:
             name: Making package in case we'll release
-            command: 'cd build && make package && mkdir ../artifacts && mv bcalm-binaries-*.tar.gz ../artifacts'
+            command: 'cd build && make package && mkdir ../artifacts && mv bcalm-binaries-*.tar.gz ../artifacts && cd ..'
         - store_artifacts:
             path: ./artifacts
     
@@ -55,7 +55,7 @@ jobs:
       - run:
           name: "Publish Release on GitHub"
           command: |
-            VERSION=$(cat VERSION)
+            VERSION=$(cat ../VERSION)
             ghr -t ${GITHUB_TOKEN} -u ${CIRCLE_PROJECT_USERNAME} -r ${CIRCLE_PROJECT_REPONAME} -c ${CIRCLE_SHA1} -delete ${VERSION} ./artifacts/
 workflows:
   version: 2
