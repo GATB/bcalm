@@ -65,7 +65,7 @@ We have two output formats: FASTA and GFA.
 
 FASTA output header: 
 
-    ><id> LN:i:<length> KC:i:<abundance> KM:f:<abundance> L:<+/->:<other id>:<+/-> [..]
+    ><id> LN:i:<length> KC:i:<abundance> km:f:<abundance> L:<+/->:<other id>:<+/-> [..]
 
 Where:
 
