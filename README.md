@@ -71,7 +71,7 @@ Where:
 
 * `LN` field is the length of the unitig
     
-* `KC` and `KM` fields are for total abundance and mean abundance of kmers inside the unitig, respectively.
+* `KC` and `km` fields are for total abundance and mean abundance of kmers inside the unitig, respectively.
 
 * Edges between unitigs are reported as `L:x:y:z` entries in the FASTA header (1 entry per edge). A classic forward-forward outcoming edge is labeled `L:+:[next node]:+`. A forward-reverse, `L:+:[next node]:-`. Incoming edges are encoded as outcoming edges of the reverse-complement node. E.g. `L:-:[previous node]:+` means that if you reverse-complemented the current node, then there would be an edge from the last k-mer of current node to the first k-mer of the forward strand of [previous node].
 
