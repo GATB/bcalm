@@ -25,14 +25,16 @@
 
 int main (int argc, char* argv[])
 {
-	
+
+
+     if(argc > 1 && (   strcmp(argv[1],STR_VERSION)==0 || strcmp(argv[1],"-v")==0    )     ){
+        std::cout << "BCALM 2, version " << VERSION;
 #ifdef GIT_SHA1
-	if(argc > 1 && (   strcmp(argv[1],STR_VERSION)==0 || strcmp(argv[1],"-v")==0    )     ){
-        std::cout << "BCALM 2, version " << VERSION << ", git commit " << GIT_SHA1 << std::endl;
-     	std::cout << "Using gatb-core version "<< System::info().getVersion() << std::endl;
+        std::cout << ", git commit " << GIT_SHA1;
+#endif
+     	std::cout << std::endl << "Using gatb-core version "<< System::info().getVersion() << std::endl;
 		return EXIT_SUCCESS;
 	}
-#endif
 
     try
     {

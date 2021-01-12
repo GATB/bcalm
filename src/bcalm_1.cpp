@@ -81,9 +81,11 @@ struct Functor  {  void operator ()  (bcalm_1 *bcalm)
 
 void bcalm_1::execute (){
 
+    std::cout << "BCALM 2, version " << VERSION; 
 #ifdef GIT_SHA1
-    std::cout << "BCALM 2, version " << VERSION << ", git commit " << GIT_SHA1 << std::endl;
+    std::cout << ", git commit " << GIT_SHA1;
 #endif
+    std::cout << std::endl;
 
 
     /** we get the kmer size chosen by the end user. */
