@@ -2,8 +2,6 @@
 
 BCALM 2 is a bioinformatics tool for constructing the compacted de Bruijn graph from sequencing data.
 
-The legacy, single-threaded code of BCALM version 1 is still available at: https://github.com/Malfoy/bcalm
-
 [![Build Status](https://travis-ci.org/GATB/bcalm.svg?branch=master)](https://travis-ci.org/GATB/bcalm)
 
 # Usage
@@ -102,3 +100,5 @@ If using BCALM 2, please cite:
 Rayan Chikhi, Antoine Limasset and Paul Medvedev, Compacting de Bruijn graphs from sequencing data quickly and in low memory, Proceedings of ISMB 2016, Bioinformatics, 32 (12): i201-i208.  ([Bibtex](https://academic.oup.com/Citation/Download?resourceId=2289008&resourceType=3&citationFormat=2))
 
 This project has been supported in part by NSF awards DBI-1356529, CCF-1439057, IIS-1453527, and IIS-1421908.
+
+The legacy, single-threaded code of BCALM version 1 is still available at: https://github.com/Malfoy/bcalm
