@@ -71,6 +71,14 @@ Where:
 
 * Edges between unitigs are reported as `L:x:y:z` entries in the FASTA header (1 entry per edge). A classic forward-forward outcoming edge is labeled `L:+:[next node]:+`. A forward-reverse, `L:+:[next node]:-`. Incoming edges are encoded as outcoming edges of the reverse-complement node. E.g. `L:-:[previous node]:+` means that if you reverse-complemented the current node, then there would be an edge from the last k-mer of current node to the first k-mer of the forward strand of [previous node].
 
+FASTA output header with `-all-abundance-counts`:
+
+    ><id> LN:i:<length> ab:Z:<abundance_0> <abundance_(length-k)>  L:<+/->:<other id>:<+/-> [..]
+    
+Where:
+
+* `ab` field is a vector containing all the kmer abundance in the unitig 
+    
 # Reverse-complements and double-strandedness
 
 BCALM 2 converts all k-mers into their canonical representation with respect to reverse-complements.
