@@ -86,7 +86,7 @@ BCALM 2 supports arbitrary large k-mer lengths. You need to recompile it from so
 
     rm -Rf CMake* && cmake -DKSIZE_LIST="32 64 96 128 160 192 224 256 320" .. && make -j 8
 
-For compilation, list of kmers should only contain multiples of 32. Also, for technical reason, keep 32 in the list. Of course, for higher k's, BCALM will run slower. Intermediate values create optimized code for smaller $k$'s. You could specify just `KSIZE_LIST="32 320"` but then using k values above would 32 be as slow as if k was equal to 320.
+For compilation, list of kmers should only contain multiples of 32. Also, for technical reason, keep 32 in the list. Of course, for higher k's, BCALM will run slower. Intermediate values create optimized code for smaller $k$'s. You could specify just `KSIZE_LIST="32 320"` but then using k values above 32 would be as slow as if k was equal to 320.
 
 After that, BCALM 2 can be run with any k value up to the largest one specified during compilation.
 
