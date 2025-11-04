@@ -2,8 +2,8 @@
 
 In the publications describing BCALM 2 [[Chikhi et al. 2017](https://doi.org/10.1093/bioinformatics/btw279), [Chikhi et al. 2014](http://arxiv.org/abs/1401.5383)], we describe how BCALM 2 works in the directed graph model. However, BCALM 2 uses the [bi-directed graph](https://en.wikipedia.org/wiki/Bidirected_graph) model, which we did not describe in the paper for the sake of brevity. The bi-directed graph model is a natural extension of the directed graph and has been widely used; but, it can be tricky to understand for newcomers and remains a source of confusion even to experts. In this document, we describe the details of how BCALM 2 works with bi-directed graphs. 
 
-* ***Update (2025)***
-  * _In the last several years, I have concluded that the way we formalized bi-directed graphs in BCALM 2 was not ideal. In more recent work, we have adopted a  different definition, based on undirected edges between vertex sides. This definition is formally stated in Section 2 of a [this paper](https://www.biorxiv.org/content/10.1101/2022.01.20.477068v2.full.pdf). If you are interested specifically in how BCALM 2 (and similar tools) represent bi-directed graphs, keep on reading. If you are instead looking for a definition of bi-directed graphs to adopt in your own work, I suggest following the newer definition._
+* Update (2025)
+  * In the last several years, I have concluded that the way we formalized bi-directed graphs in BCALM 2 was not ideal. In more recent work, we have adopted a  different definition, based on undirected edges between vertex sides. This definition is formally stated in Section 2 of a [this paper](https://www.biorxiv.org/content/10.1101/2022.01.20.477068v2.full.pdf). If you are interested specifically in how BCALM 2 (and similar tools) represent bi-directed graphs, keep on reading. If you are instead looking for a definition of bi-directed graphs to adopt in your own work, I suggest following the newer definition.
 
 ## Bi-directed graphs
 
